@@ -10,6 +10,16 @@ import Signup from "./Auth/Signup";
 import ForgotPassword from "./Auth/ForgotPassword";
 import Sidebar from "./Layout/Sidebar";
 import Profile from "./Profile/Profile"
+import SuperAdminDashboard from "./Dashboard/SuperAdmin/SuperAdminDashboard";
+// import InventoryManagement from "./Dashboard/SuperAdmin/InventoryManagement"
+import SuperAdminAssets from "./Dashboard/SuperAdmin/SuperAdminAssets"
+import SuperAdminUsers from "./Dashboard/SuperAdmin/SuperAdminUsers"
+import SuperAdminSettings from "./Dashboard/SuperAdmin/SuperAdminSettings"
+import SuperAdminRequisitions from "./Dashboard/SuperAdmin/SuperAdminRequisitions"
+import SuperAdminReports from "./Dashboard/SuperAdmin/SuperAdminReports"
+import SuperAdminFacilities from "./Dashboard/SuperAdmin/SuperAdminFacilities"
+import SuperAdminDispatches from "./Dashboard/SuperAdmin/SuperAdminDispatches"
+import SuperAdminInventory from "./Dashboard/SuperAdmin/SuperAdminInventory";
 
 import UserDashboard from "./User/UserDashboard";
 import UserRequisitions from "./User/UserRequisitions";
@@ -68,6 +78,16 @@ function App() {
             
 
 
+              <Route path="/profile" element={<Profile/>}/>
+              <Route path="/superadmin/dashboard"element={<SuperAdminDashboard/>}/>
+              <Route path="/superadmin/inventory"element={<SuperAdminInventory/>}/>
+               <Route path="/superadmin/dispatches"element={<SuperAdminDispatches/>}/>
+               <Route path="/superadmin/facilities"element={<SuperAdminFacilities/>}/>
+               <Route path="/superadmin/reports"element={<SuperAdminReports/>}/>
+                <Route path="/superadmin/requisitions"element={<SuperAdminRequisitions/>}/>
+                 <Route path="/superadmin/settings"element={<SuperAdminSettings/>}/>
+                  <Route path="/superadmin/users"element={<SuperAdminUsers/>}/>
+                   <Route path="/superadmin/assets"element={<SuperAdminAssets/>}/>
 
              
               </Routes>
