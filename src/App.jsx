@@ -25,6 +25,10 @@ import UserDashboard from "./User/UserDashboard";
 import UserRequisitions from "./User/UserRequisitions";
 import FacilityDashboard from "./Facility/FacilityDashboard";
 import FacilityRequisitions from "./Facility/FacilityRequisitions";
+import FacilityReports from "./Facility/FacilityReports";
+import FacilityAssets from "./Facility/FacilityAssets";
+import FacilityUser from "./Facility/FaciltyUser";
+import FacilitySettings from "./Facility/FacilitySettings";
 
 
 function App() {
@@ -81,6 +85,10 @@ function App() {
               
                 <Route path="/facility/dashboard" element= {<FacilityDashboard/>}/>'
                 <Route path="/facility/requisitions" element={<FacilityRequisitions/>}/>'
+                <Route path="/facility/reports" element={<FacilityReports/>}/>'
+                <Route path="/facility/assets" element={<FacilityAssets/>}/>'
+                <Route path="/Facility/users" element={<FacilityUser/>}/>'
+                <Route path="/facility/settings" element={<FacilitySettings />}/>'
 
             
 
