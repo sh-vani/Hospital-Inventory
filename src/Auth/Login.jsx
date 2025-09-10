@@ -23,12 +23,12 @@ const Login = () => {
     "Facility Admin": {
       username: "facility",
       password: "facility123",
-      redirect: "/facility/dashboard",
+      redirect: "/facility-admin/dashboard",
     },
     "Facility User": {
       username: "user",
       password: "user123",
-      redirect: "/user/dashboard",
+      redirect: "/facility-user/dashboard",
     },
   };
 
