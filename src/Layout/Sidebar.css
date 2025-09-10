@@ -1,10 +1,16 @@
 .sidebar-container {
   width: 260px;
-  background-color: #168376;
+  /* background-color: rgba(255, 0, 0, 0.1); Transparent red background */
+  background-color: rgba(171, 134, 134, 0.1);
   min-height: 100vh;
-  color: white;
+  /* color: #333333; Dark text color for better visibility */
   transition: all 0.3s ease;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  /* box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);  */
+   
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+ 
 }
 
 .sidebar-container.collapsed {
@@ -14,12 +20,49 @@
 .sidebar {
   padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.logo-section {
+  padding: 20px;
+  /* border-bottom: 1px solid rgba(255, 0, 0, 0.2); Light red border */
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+}
+
+.logo-icon {
+  width: 40px;
+  /* height: 40px;
+  background-color: rgba(255, 0, 0, 0.8); Solid red for logo background */
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+}
+
+.logo-icon svg {
+  font-size: 20px;
+  color: white; /* White icon on red background */
+}
+
+.logo-text {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  /* color: #800000; Dark red text */
 }
 
 .menu {
   list-style: none;
   margin: 0;
-  padding: 10px 0;
+  padding: 15px 0;
+  flex-grow: 1;
 }
 
 .menu-item {
@@ -30,53 +73,49 @@
 .menu-link {
   display: flex;
   align-items: center;
-  padding: 15px 20px; /* This creates the gap on both sides */
-  color: white;
+  padding: 15px 20px;
+  color: red;
   transition: all 0.3s ease;
-  border-radius: 8px;
-  font-size: 14px;
+  border-radius: 0;
+  font-size: 15px;
   font-weight: 500;
   background: none;
   position: relative;
 }
 
-/* Hover Effect - Only add background when hovered/active */
-.menu-link:hover::before,
-.menu-item.active > .menu-link::before {
-  content: '';
-  position: absolute;
-  left: 10px; /* Start after left padding */
-  top: 0;
-  bottom: 0;
-  width: 240px; 
-  background-color: #24584bff;
-  border-radius: 8px;
-  z-index: -1;
-  color: white;
-
-
+/* Active/Hover Effect - Changed to transparent blue */
+.menu-link:hover,
+.menu-link.active {
+  background-color: rgba(0, 123, 255, 0.1); /* Transparent blue background */
+  color: #0056b3; /* Dark blue text */
 }
 
-
-
-/* Active State */
-.menu-item.active > .menu-link {
-  /* background-color: transparent; */
-  color: white;
-  font-weight: 600;
+/* Active State - Left border indicator - Changed to blue */
+.menu-link.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: #007bff; /* Blue for active indicator */
 }
 
 .menu-icon {
-  font-size: 16px;
-  margin-right: 12px;
+  font-size: 18px;
+  margin-right: 15px;
   min-width: 20px;
-  opacity: 0.9;
+  /* color: #800000; Dark red icon color */
+}
+
+.menu-link:hover .menu-icon,
+.menu-link.active .menu-icon {
+  color: #0056b3; /* Dark blue icon on hover/active */
 }
 
 .menu-text {
   flex-grow: 1;
   font-weight: 500;
-  font-size: 17px;
   transition: all 0.3s ease;
 }
 
@@ -84,6 +123,12 @@
   transition: transform 0.3s ease;
   margin-left: auto;
   font-size: 14px;
+  color: #800000; /* Dark red arrow color */
+}
+
+.menu-link:hover .arrow-icon,
+.menu-link.active .arrow-icon {
+  color: #0056b3; /* Dark blue arrow on hover/active */
 }
 
 .arrow-icon.rotate {
@@ -91,49 +136,72 @@
 }
 
 .submenu {
-  /* background-color: #0e182c; */
-  padding-left: 45px;
+  padding-left: 0;
   margin-top: 5px;
   margin-bottom: 5px;
-  border-radius: 6px;
+  border-radius: 0;
   overflow: hidden;
 }
 
 .submenu-item {
-  padding: 10px 0;
-  font-size: 16px;
+  padding: 12px 20px 12px 55px;
+  font-size: 14px;
   font-weight: 400;
-  color: #fff;
+  /* color: #a00000;  */
   cursor: pointer;
   display: flex;
   align-items: center;
   transition: all 0.3s ease;
   position: relative;
-  
 }
 
-.submenu-item:hover::before,
-.submenu-item.active-sub::before {
-  content: '';
-  position: absolute;
-  /* padding: 15px 20px; */
-  right:  10px;
-  top: 0;
-  bottom: 0;
-  /* margin-bottom: 10px; */
-  width: 220px; 
-  background-color: #6EB2CC;
-  border-radius: 4px;
-  z-index: -1;
-  
-
-}
-
+/* Submenu hover/active effect - Changed to transparent blue */
 .submenu-item:hover,
 .submenu-item.active-sub {
-  color: #ffffff;
+  background-color: rgba(0, 123, 255, 0.08); /* Lighter transparent blue */
+  color: #0056b3; /* Dark blue text */
   font-weight: 500;
-  background-color: transparent;
-  border-radius: 4px;
 }
 
+.admin-footer {
+  padding: 20px;
+  border-top: 1px solid rgba(255, 0, 0, 0.2); /* Light red border */
+  font-size: 14px;
+  /* color: #a00000;  */
+  text-align: center;
+}
+
+/* Collapsed state adjustments */
+.sidebar-container.collapsed .logo-section {
+  padding: 15px;
+}
+
+.sidebar-container.collapsed .logo-icon {
+  margin-right: 0;
+}
+
+.sidebar-container.collapsed .logo-text {
+  display: none;
+}
+
+.sidebar-container.collapsed .menu-link {
+  padding: 15px 10px;
+  justify-content: center;
+}
+
+.sidebar-container.collapsed .menu-icon {
+  margin-right: 0;
+}
+
+.sidebar-container.collapsed .menu-text,
+.sidebar-container.collapsed .arrow-icon {
+  display: none;
+}
+
+.sidebar-container.collapsed .submenu {
+  display: none;
+}
+
+.sidebar-container.collapsed .admin-footer {
+  display: none;
+}

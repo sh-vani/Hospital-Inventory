@@ -2,19 +2,14 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faChartBar,
-  faUsers,
-  faFileAlt,
-  faGear,
-  faChevronDown,
-  faBoxes,
-  faTruck,
-  faChartLine,
-  faArchive,
+  faHome,
+  faInfoCircle,
+  faStethoscope,
+  faUserMd,
   faBuilding,
-  faUserGear,
-  faClipboardList,
-  faWarehouse
+  faCalendarAlt,
+  faPhoneAlt,
+  faChevronDown
 } from "@fortawesome/free-solid-svg-icons";
 import "./Sidebar.css";
 
@@ -22,11 +17,11 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeMenu, setActiveMenu] = useState(null);
-  const [userRole, setUserRole] = useState("Super Admin");
+  const [userRole, setUserRole] = useState("Admin");
   
   // Load user role from localStorage
   useEffect(() => {
-    const role = localStorage.getItem("userRole") || "Super Admin";
+    const role = localStorage.getItem("userRole") || "Admin";
     setUserRole(role);
   }, []);
   
@@ -41,147 +36,97 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
     if (window.innerWidth <= 768) setCollapsed(true);
   };
   
-  // Define menus for each role based on the provided images
+  // Define menus for hospital staff based on the screenshot
   const allMenus = {
-    "Super Admin": [
+    "Admin": [
       {
-        name: "Dashboard",
-        icon: faChartBar,
-        path: "/superadmin/dashboard",
+        name: "Home",
+        icon: faHome,
+        path: "/admin/home",
       },
       {
-        name: "Inventory",
-        icon: faBoxes,
-        path: "/superadmin/inventory",
+        name: "About Us",
+        icon: faInfoCircle,
+        path: "/admin/about",
       },
       {
-        name: "Requisitions",
-        icon: faClipboardList,
-        path: "/superadmin/requisitions",
+        name: "Services",
+        icon: faStethoscope,
+        path: "/admin/services",
       },
       {
-        name: "Dispatches",
-        icon: faTruck,
-        path: "/superadmin/dispatches",
+        name: "Our Doctors",
+        icon: faUserMd,
+        path: "/admin/doctors",
       },
       {
-        name: "Reports",
-        icon: faChartLine,
-        path: "/superadmin/reports",
-      },
-      {
-        name: "Assets",
-        icon: faArchive,
-        path: "/superadmin/assets",
-      },
-      {
-        name: "Facilities",
+        name: "Departments",
         icon: faBuilding,
-        path: "/superadmin/facilities",
+        path: "/admin/departments",
       },
       {
-        name: "Users",
-        icon: faUsers,
-        path: "/superadmin/users",
+        name: "Appointments",
+        icon: faCalendarAlt,
+        path: "/admin/appointments",
       },
       {
-        name: "Settings",
-        icon: faGear,
-        path: "/superadmin/settings",
-      },
-    ],
-
-    "Warehouse Admin": [
-      {
-        name: "Dashboard",
-        icon: faChartBar,
-        path: "/warehouse/dashboard",
+        name: "Emergency",
+        icon: faPhoneAlt,
+        path: "/admin/emergency",
       },
       {
-        name: "Inventory",
-        icon: faWarehouse,
-        path: "/warehouse/inventory",
-      },
-      {
-        name: "Requisitions",
-        icon: faClipboardList,
-        path: "/warehouse/requisitions",
-      },
-      {
-        name: "Dispatches",
-        icon: faTruck,
-        path: "/warehouse/dispatches",
-      },
-      {
-        name: "Reports",
-        icon: faChartLine,
-        path: "/warehouse/reports",
-      },
-      {
-        name: "Assets",
-        icon: faArchive,
-        path: "/warehouse/assets",
-      },
-      {
-        name: "Settings",
-        icon: faGear,
-        path: "/warehouse/settings",
+        name: "Contact Us",
+        icon: faPhoneAlt,
+        path: "/admin/contact",
       },
     ],
-
-    "Facility Admin": [
+    "Doctor": [
       {
         name: "Dashboard",
-        icon: faChartBar,
-        path: "/facility/dashboard",
+        icon: faHome,
+        path: "/doctor/dashboard",
       },
       {
-        name: "Requisitions",
-        icon: faClipboardList,
-        path: "/facility/requisitions",
+        name: "Appointments",
+        icon: faCalendarAlt,
+        path: "/doctor/appointments",
       },
       {
-        name: "Reports",
-        icon: faChartLine,
-        path: "/facility/reports",
+        name: "Patients",
+        icon: faUserMd,
+        path: "/doctor/patients",
       },
       {
-        name: "Assets",
-        icon: faArchive,
-        path: "/facility/assets",
-      },
-      {
-        name: "Users",
-        icon: faUsers,
-        path: "/facility/users",
-      },
-      {
-        name: "Settings",
-        icon: faGear,
-        path: "/facility/settings",
+        name: "Schedule",
+        icon: faCalendarAlt,
+        path: "/doctor/schedule",
       },
     ],
-
-    "Facility User": [
+    "Staff": [
       {
         name: "Dashboard",
-        icon: faChartBar,
-        path: "/user/dashboard",
+        icon: faHome,
+        path: "/staff/dashboard",
       },
       {
-        name: "Requisitions",
-        icon: faClipboardList,
-        path: "/user/requisitions",
+        name: "Appointments",
+        icon: faCalendarAlt,
+        path: "/staff/appointments",
+      },
+      {
+        name: "Patients",
+        icon: faUserMd,
+        path: "/staff/patients",
       },
     ],
   };
-
-  const userMenus = allMenus[userRole] || allMenus["Super Admin"];
+  
+  const userMenus = allMenus[userRole] || allMenus["Admin"];
   
   return (
     <div className={`sidebar-container ${collapsed ? "collapsed" : ""}`}>
       <div className="sidebar">
-       
+        
         
         <ul className="menu">
           {userMenus.map((menu, index) => {
@@ -236,6 +181,12 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
             );
           })}
         </ul>
+        
+        {!collapsed && (
+          <div className="admin-footer">
+            <span>Admin (Hospital Staff)</span>
+          </div>
+        )}
       </div>
     </div>
   );

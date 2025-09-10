@@ -19,7 +19,8 @@ const Navbar = ({ toggleSidebar }) => {
     <nav
       className="navbar navbar-expand px-3 py-2 d-flex justify-content-between align-items-center fixed-top"
       style={{
-        backgroundColor: "  #168376", // ✅ Set your desired color
+        backgroundColor: "rgba(171, 134, 134, 0.1)",
+        // backgroundColor: "  #168376", // ✅ Set your desired color
         boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)", // Optional: soft shadow
       }}
     >
@@ -28,9 +29,9 @@ const Navbar = ({ toggleSidebar }) => {
   <button
     className="btn p-2"
     style={{
-      backgroundColor: 'transparent',
-      borderColor: 'white',
-      color: 'white',
+      backgroundColor: 'blue',
+      borderColor: 'blue',
+      color: 'blue',
       borderRadius: '6px',
       border: '2px solid white',
       transition: 'all 0.3s ease',
@@ -54,11 +55,11 @@ const Navbar = ({ toggleSidebar }) => {
   <span style={{
     fontSize: '1.5rem',
     fontWeight: '700',
-    color: 'white',
+    color: 'red',
     letterSpacing: '-0.5px',
     fontFamily: "'Poppins', sans-serif",
   }}>
-    Hospital <span style={{ color: '#24584bff', fontWeight: '800' }}>Management</span>
+    Hospital <span style={{ color: 'blue', fontWeight: '800' }}>Management</span>
   </span>
 </div>
 
