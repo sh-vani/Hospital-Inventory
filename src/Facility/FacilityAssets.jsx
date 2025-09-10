@@ -116,7 +116,7 @@ const FacilityAssets = () => {
       {/* Header with H1 and Button */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1 className="mb-0">Assets Management</h1>
-        <button className="btn btn-primary btn-sm fs-5" onClick={handleShowModal}>
+        <button className="btn btn-primary btn-sm fs-6" onClick={handleShowModal}>
           <i className="bi bi-plus me-1"></i> Add New Asset
         </button>
       </div>
