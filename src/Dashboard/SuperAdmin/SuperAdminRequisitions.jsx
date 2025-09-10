@@ -30,6 +30,9 @@ const SuperAdminRequisitions = () => {
   // State for rejection reason
   const [rejectionReason, setRejectionReason] = useState('');
   
+  // State for active tab
+  const [activeTab, setActiveTab] = useState('Pending');
+  
   // Mock data for requisitions
   const [requisitions, setRequisitions] = useState([
     { 
@@ -74,8 +77,51 @@ const SuperAdminRequisitions = () => {
         { name: 'Test Tubes', quantity: 100, unit: 'Pieces' },
         { name: 'Gloves', quantity: 20, unit: 'Pairs' }
       ]
+    },
+    // Add more mock data for testing tabs
+    { 
+      id: '#REQ-0035', 
+      facility: 'Tamale General Hospital', 
+      department: 'Pediatrics', 
+      requestedBy: 'Dr. Kofi', 
+      date: '18 Oct 2023', 
+      items: '8 items', 
+      priority: 'High', 
+      status: 'Approved',
+      details: [
+        { name: 'Pediatric Syringes', quantity: 150, unit: 'Pieces' },
+        { name: 'Children\'s Masks', quantity: 100, unit: 'Pieces' }
+      ]
+    },
+    { 
+      id: '#REQ-0032', 
+      facility: 'Cape Coast Hospital', 
+      department: 'Surgery', 
+      requestedBy: 'Dr. Yaa', 
+      date: '15 Oct 2023', 
+      items: '10 items', 
+      priority: 'Medium', 
+      status: 'Rejected',
+      details: [
+        { name: 'Surgical Blades', quantity: 50, unit: 'Pieces' },
+        { name: 'Sterile Gauze', quantity: 200, unit: 'Pieces' }
+      ],
+      rejectionReason: 'Budget constraints for this quarter'
     }
   ]);
+  
+  // Filter requisitions based on active tab
+  const filteredRequisitions = requisitions.filter(req => {
+    if (activeTab === 'Pending') {
+      return req.status === 'Pending Review' || req.status === 'Partially Approved';
+    } else if (activeTab === 'Approved') {
+      return req.status === 'Approved';
+    } else if (activeTab === 'Rejected') {
+      return req.status === 'Rejected';
+    } else {
+      return true; // All Requisitions
+    }
+  });
   
   // Priority badge component
   const PriorityBadge = ({ priority }) => {
@@ -267,16 +313,36 @@ const SuperAdminRequisitions = () => {
         <div className="card-header bg-white border-0 pt-3">
           <ul className="nav nav-tabs card-header-tabs">
             <li className="nav-item">
-              <button className="nav-link active">Pending</button>
+              <button 
+                className={`nav-link ${activeTab === 'Pending' ? 'active' : ''}`}
+                onClick={() => setActiveTab('Pending')}
+              >
+                Pending
+              </button>
             </li>
             <li className="nav-item">
-              <button className="nav-link">Approved</button>
+              <button 
+                className={`nav-link ${activeTab === 'Approved' ? 'active' : ''}`}
+                onClick={() => setActiveTab('Approved')}
+              >
+                Approved
+              </button>
             </li>
             <li className="nav-item">
-              <button className="nav-link">Rejected</button>
+              <button 
+                className={`nav-link ${activeTab === 'Rejected' ? 'active' : ''}`}
+                onClick={() => setActiveTab('Rejected')}
+              >
+                Rejected
+              </button>
             </li>
             <li className="nav-item">
-              <button className="nav-link">All Requisitions</button>
+              <button 
+                className={`nav-link ${activeTab === 'All' ? 'active' : ''}`}
+                onClick={() => setActiveTab('All')}
+              >
+                All Requisitions
+              </button>
             </li>
           </ul>
         </div>
@@ -297,7 +363,7 @@ const SuperAdminRequisitions = () => {
                 </tr>
               </thead>
               <tbody>
-                {requisitions.map((req, index) => (
+                {filteredRequisitions.map((req, index) => (
                   <tr key={index}>
                     <td><span className="fw-bold">{req.id}</span></td>
                     <td>{req.facility}</td>
@@ -338,7 +404,8 @@ const SuperAdminRequisitions = () => {
           </div>
         </div>
       </div>
-
+      
+      {/* Modals remain unchanged */}
       {/* Create Requisition Modal */}
       {showCreateModal && (
         <div className="modal show d-block" tabIndex="-1">
@@ -433,7 +500,7 @@ const SuperAdminRequisitions = () => {
           </div>
         </div>
       )}
-
+      
       {/* View Requisition Modal */}
       {showViewModal && currentRequisition && (
         <div className="modal show d-block" tabIndex="-1">
@@ -494,7 +561,7 @@ const SuperAdminRequisitions = () => {
           </div>
         </div>
       )}
-
+      
       {/* Approve Requisition Modal */}
       {showApproveModal && currentRequisition && (
         <div className="modal show d-block" tabIndex="-1">
@@ -530,7 +597,7 @@ const SuperAdminRequisitions = () => {
           </div>
         </div>
       )}
-
+      
       {/* Reject Requisition Modal */}
       {showRejectModal && currentRequisition && (
         <div className="modal show d-block" tabIndex="-1">
@@ -581,7 +648,7 @@ const SuperAdminRequisitions = () => {
           </div>
         </div>
       )}
-
+      
       {/* Modal Backdrop */}
       {(showCreateModal || showViewModal || showApproveModal || showRejectModal) && (
         <div className="modal-backdrop show"></div>
