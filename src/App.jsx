@@ -10,6 +10,15 @@ import Signup from "./Auth/Signup";
 import ForgotPassword from "./Auth/ForgotPassword";
 import Sidebar from "./Layout/Sidebar";
 import Profile from "./Profile/Profile"
+import SuperAdminDashboard from "./Dashboard/SuperAdmin/SuperAdminDashboard";
+// import InventoryManagement from "./Dashboard/SuperAdmin/InventoryManagement"
+import SuperAdminAssets from "./Dashboard/SuperAdmin/SuperAdminAssets"
+import SuperAdminUsers from "./Dashboard/SuperAdmin/SuperAdminUsers"
+import SuperAdminSettings from "./Dashboard/SuperAdmin/SuperAdminSettings"
+import SuperAdminRequisitions from "./Dashboard/SuperAdmin/SuperAdminRequisitions"
+import SuperAdminReports from "./Dashboard/SuperAdmin/SuperAdminReports"
+import SuperAdminFacilities from "./Dashboard/SuperAdmin/SuperAdminFacilities"
+import SuperAdminDispatches from "./Dashboard/SuperAdmin/SuperAdminDispatches"
 
 function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -58,10 +67,15 @@ function App() {
                 {/* <Route path="okrs/departmentokrs" element={<DepartmentOKRs />} /> */}
 
               <Route path="/profile" element={<Profile/>}/>
-
-
-
-
+              <Route path="/SuperAdminDashboard"element={<SuperAdminDashboard/>}/>
+              {/* <Route path="/InventoryManagement"element={<InventoryManagement/>}/> */}
+               <Route path="/SuperAdminDispatches"element={<SuperAdminDispatches/>}/>
+               <Route path="/SuperAdminFacilities"element={<SuperAdminFacilities/>}/>
+               <Route path="/SuperAdminReports"element={<SuperAdminReports/>}/>
+                <Route path="/SuperAdminRequisitions"element={<SuperAdminRequisitions/>}/>
+                 <Route path="/SuperAdminSettings"element={<SuperAdminSettings/>}/>
+                  <Route path="/SuperAdminUsers"element={<SuperAdminUsers/>}/>
+                   <Route path="/SuperAdminAssets"element={<SuperAdminAssets/>}/>
 
              
               </Routes>

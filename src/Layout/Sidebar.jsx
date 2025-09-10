@@ -27,23 +27,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
   const [activeMenu, setActiveMenu] = useState(null);
   const [userRole, setUserRole] = useState("Admin");
   
-  // Load user role from localStorage
-  useEffect(() => {
-    const role = localStorage.getItem("userRole") || "Admin";
-    setUserRole(role);
-  }, []);
-  
-  const toggleMenu = (menuKey) => {
-    setActiveMenu(activeMenu === menuKey ? null : menuKey);
-  };
-  
-  const isActive = (path) => location.pathname === path;
-  
-  const handleNavigate = (path) => {
-    navigate(path);
-    if (window.innerWidth <= 768) setCollapsed(true);
-  };
-  
+  // Define all menus first
   const allMenus = {
     "Admin": [
       {
@@ -170,19 +154,59 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
     ]
   };
   
-  const userMenus = allMenus[userRole] || allMenus["Admin"];
+  // Load user role from localStorage
+  useEffect(() => {
+    const role = localStorage.getItem("userRole");
+    if (role && allMenus[role]) {
+      setUserRole(role);
+    } else {
+      // Default to Admin if role is invalid or not found
+      setUserRole("Admin");
+      localStorage.setItem("userRole", "Admin");
+    }
+  }, []);
+  
+  const toggleMenu = (menuKey) => {
+    setActiveMenu(activeMenu === menuKey ? null : menuKey);
+  };
+  
+  const isActive = (path) => location.pathname === path;
+  
+  const handleNavigate = (path) => {
+    navigate(path);
+    if (window.innerWidth <= 768) setCollapsed(true);
+  };
+  
+  // Role-based menu assignment using switch case
+  let userMenus;
+  switch(userRole) {
+    case "Admin":
+      userMenus = allMenus["Admin"];
+      break;
+    case "Warehouse":
+      userMenus = allMenus["Warehouse"];
+      break;
+    case "FacilityAdmin":
+      userMenus = allMenus["FacilityAdmin"];
+      break;
+    case "FacilityUser":
+      userMenus = allMenus["FacilityUser"];
+      break;
+    default:
+      userMenus = allMenus["Admin"]; // Default to Admin if role doesn't match
+      break;
+  }
   
   return (
     <div className={`sidebar-container ${collapsed ? "collapsed" : ""}`}>
       <div className="sidebar">
-        {/* Optional: Show current role for clarity */}
+        {/* Show current role for clarity */}
         {!collapsed && (
           <div className="sidebar-role-indicator p-3 mb-3 bg-light border rounded">
             <small className="text-muted">Logged in as:</small>
             <div className="fw-bold text-primary">{userRole}</div>
           </div>
         )}
-
         <ul className="menu">
           {userMenus.map((menu, index) => {
             if (!menu.subItems) {
@@ -199,7 +223,6 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
                 </li>
               );
             }
-
             return (
               <li key={index} className="menu-item">
                 <div
