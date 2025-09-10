@@ -14,7 +14,10 @@ import {
   faBuilding,
   faUserGear,
   faClipboardList,
-  faWarehouse
+  faWarehouse,
+  faUserShield,
+  faListAlt,
+  faBell,     
 } from "@fortawesome/free-solid-svg-icons";
 import "./Sidebar.css";
 
@@ -89,6 +92,11 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         icon: faGear,
         path: "/superadmin/settings",
       },
+      {
+        name: "Roles & Permissions",
+        icon: faUserShield,
+        path: "/superadmin/role"
+      }
     ],
 
     "Warehouse Admin": [
@@ -136,9 +144,24 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         path: "/facility/dashboard",
       },
       {
+        name: "Facility Inventory",
+        icon: faWarehouse,
+        path: "/facility/facilityinventory"
+      },
+      {
         name: "Requisitions",
         icon: faClipboardList,
         path: "/facility/requisitions",
+      },
+      {
+        name: "Departments & Categories",
+        icon: faBuilding,
+        path: "/facility/departmentsCategories"
+      },
+      {
+         name: "Users & Roles",
+         icon: faUserShield,
+         path: "/facility/usersRoles"
       },
       {
         name: "Reports",
@@ -169,9 +192,24 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         path: "/user/dashboard",
       },
       {
+        name: "Facility Inventory",
+        icon:  faWarehouse,
+        path: "/user/facilityInventory"
+      },
+      {
         name: "Requisitions",
         icon: faClipboardList,
         path: "/user/requisitions",
+      },
+      {
+        name: "My Requests",
+        icon: faListAlt,
+        path: "/user/myRequests",
+      },
+      {
+        name: "Notification",
+        icon: faBell,
+        path: "/user/notification",
       },
     ],
   };

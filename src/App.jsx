@@ -37,6 +37,12 @@ import FacilityReports from "./Facility/FacilityReports";
 import FacilityAssets from "./Facility/FacilityAssets";
 import FacilityUser from "./Facility/FaciltyUser";
 import FacilitySettings from "./Facility/FacilitySettings";
+import FacilityInventory from "./Facility/FacilityInventory";
+import FacilityDepartmentsCategories from "./Facility/FacilityDepartmentsCategories";
+import FacilityUsersRoles from "./Facility/FacilityUsersRoles";
+import FacilityUserMyRequests from "./Dashboard/FacilityUser/FacilityUserMyRequests";
+import FacilityUserNotifications from "./Dashboard/FacilityUser/FacilityUserNotifications";
+import FacilityUserInventory from "./Dashboard/FacilityUser/FacilityUserInventory";
 
 
 function App() {
@@ -97,11 +103,15 @@ function App() {
                 <Route path="/facility/assets" element={<FacilityAssets/>}/>'
                 <Route path="/Facility/users" element={<FacilityUser/>}/>'
                 <Route path="/facility/settings" element={<FacilitySettings />}/>'
-
+                <Route path="/facility/facilityinventory" element={<FacilityInventory/>}/>'
+                <Route path="/facility/departmentsCategories" element={<FacilityDepartmentsCategories/>}/>'
+                <Route path="//facility/usersRoles" element={<FacilityUsersRoles/>}/>'
             
 
 
               <Route path="/profile" element={<Profile/>}/>
+
+              {/* SuperAdmin */}
               <Route path="/superadmin/dashboard"element={<SuperAdminDashboard/>}/>
               <Route path="/superadmin/inventory"element={<SuperAdminInventory/>}/>
                <Route path="/superadmin/dispatches"element={<SuperAdminDispatches/>}/>
@@ -111,6 +121,12 @@ function App() {
                  <Route path="/superadmin/settings"element={<SuperAdminSettings/>}/>
                   <Route path="/superadmin/users"element={<SuperAdminUsers/>}/>
                    <Route path="/superadmin/assets"element={<SuperAdminAssets/>}/>
+                   <Route path="/superadmin/role"element={<SuperAdminRoles/>}/>
+
+
+                  <Route path="/user/facilityInventory"element={<FacilityUserInventory/>}/>
+                  <Route path="/user/myRequests"element={<FacilityUserMyRequests/>}/>
+                  <Route path="/user/notification"element={<FacilityUserNotifications/>}/>
 
 
 
