@@ -22,6 +22,12 @@ import SuperAdminDispatches from "./Dashboard/SuperAdmin/SuperAdminDispatches"
 import SuperAdminInventory from "./Dashboard/SuperAdmin/SuperAdminInventory";
 import SuperAdminRoles from "./Dashboard/SuperAdmin/SuperAdminRoles";
 
+import UserDashboard from "./User/UserDashboard";
+import UserRequisitions from "./User/UserRequisitions";
+import FacilityDashboard from "./Facility/FacilityDashboard";
+import FacilityRequisitions from "./Facility/FacilityRequisitions";
+
+
 function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -67,6 +73,18 @@ function App() {
               
               <Routes>
                 {/* <Route path="okrs/departmentokrs" element={<DepartmentOKRs />} /> */}
+
+           
+              <Route path="/user/dashboard" element={<UserDashboard/>}/>'
+              <Route path="/user/requisitions" element={<UserRequisitions/>}/>'
+
+
+              
+                <Route path="/facility/dashboard" element= {<FacilityDashboard/>}/>'
+                <Route path="/facility/requisitions" element={<FacilityRequisitions/>}/>'
+
+            
+
 
               <Route path="/profile" element={<Profile/>}/>
               <Route path="/superadmin/dashboard"element={<SuperAdminDashboard/>}/>
