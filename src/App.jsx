@@ -20,7 +20,14 @@ import SuperAdminReports from "./Dashboard/SuperAdmin/SuperAdminReports"
 import SuperAdminFacilities from "./Dashboard/SuperAdmin/SuperAdminFacilities"
 import SuperAdminDispatches from "./Dashboard/SuperAdmin/SuperAdminDispatches"
 import SuperAdminInventory from "./Dashboard/SuperAdmin/SuperAdminInventory";
-import SuperAdminRoles from "./Dashboard/SuperAdmin/SuperAdminRoles";
+import WarehouseDashbaord from "./Dashboard/Warehouse/WarehouseDashbaord";
+import AdminInventory from "./Dashboard/Warehouse/WarehouseInventory";
+import WarehouseInventory from "./Dashboard/Warehouse/WarehouseInventory";
+import WareHouseAssets from "./Dashboard/Warehouse/WareHouseAssets";
+import WarehouseReports from "./Dashboard/Warehouse/WarehouseReports";
+import WarehouseDispatches from "./Dashboard/Warehouse/WarehouseDispatches";
+import WarehouseSettings from "./Dashboard/Warehouse/WarehouseSettings";
+import WarehouseRequisitions from "./Dashboard/Warehouse/WarehouseRequisitions";
 
 import UserDashboard from "./User/UserDashboard";
 import UserRequisitions from "./User/UserRequisitions";
@@ -121,7 +128,19 @@ function App() {
                   <Route path="/user/myRequests"element={<FacilityUserMyRequests/>}/>
                   <Route path="/user/notification"element={<FacilityUserNotifications/>}/>
 
-             
+
+
+                   {/*Warehouse Dashbaord  */}
+
+
+
+                   <Route path="/warehouse/dashboard"element={<WarehouseDashbaord/>}/>
+   <Route path="/warehouse/inventory"element={<WarehouseInventory/>}/>
+   <Route path="/warehouse/assets"element={<WareHouseAssets/>}/>
+<Route path="/warehouse/reports"element={<WarehouseReports/>}/>
+    <Route path="/warehouse/dispatches"element={<WarehouseDispatches/>}/>   
+    <Route path="/warehouse/settings"element={<WarehouseSettings/>}/>   
+        <Route path="/warehouse/requisitions"element={<WarehouseRequisitions/>}/>      
               </Routes>
 
 
