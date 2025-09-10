@@ -28,6 +28,7 @@ import WarehouseReports from "./Dashboard/Warehouse/WarehouseReports";
 import WarehouseDispatches from "./Dashboard/Warehouse/WarehouseDispatches";
 import WarehouseSettings from "./Dashboard/Warehouse/WarehouseSettings";
 import WarehouseRequisitions from "./Dashboard/Warehouse/WarehouseRequisitions";
+import SuperAdminRoles from "./Dashboard/SuperAdmin/SuperAdminRoles"
 
 import UserDashboard from "./User/UserDashboard";
 import UserRequisitions from "./User/UserRequisitions";

@@ -38,6 +38,7 @@ const Login = () => {
     setSelectedRole(role);
     setUsername(roleCredentials[role].username);
     setPassword(roleCredentials[role].password);
+    setShowPassword(true); // ✅ autofill hone ke baad password visible ho jaye
   };
 
   const handleSubmit = (e) => {
@@ -85,7 +86,11 @@ const Login = () => {
               src="https://www.shutterstock.com/image-illustration/online-consultation-doctor-on-smartphone-600nw-2150820867.jpg"
               alt="Hospital Warehouse"
               className="img-fluid h-100"
-              style={{ objectFit: "cover", borderTopLeftRadius: "16px", borderBottomLeftRadius: "16px" }}
+              style={{
+                objectFit: "cover",
+                borderTopLeftRadius: "16px",
+                borderBottomLeftRadius: "16px",
+              }}
             />
           </div>
 
@@ -93,21 +98,28 @@ const Login = () => {
           <div className="col-md-6 d-flex flex-column p-5 bg-white">
             <div className="text-center mb-5">
               <div className="d-flex align-items-center justify-content-center mb-3">
-            
-                <h2 className="fw-bold ms-3 mb-0" style={{ color: "#0056b3", fontSize: "1.8rem" }}>
+                <h2
+                  className="fw-bold ms-3 mb-0"
+                  style={{ color: "#0056b3", fontSize: "1.8rem" }}
+                >
                   FRANCIS FOSU GROUP
                 </h2>
               </div>
-              <h3 className="fw-bold mb-2" style={{ color: "#0056b3", fontSize: "1.4rem" }}>
+              <h3
+                className="fw-bold mb-2"
+                style={{ color: "#0056b3", fontSize: "1.4rem" }}
+              >
                 Hospital Warehouse Management
               </h3>
-          
             </div>
 
             <form onSubmit={handleSubmit}>
               {/* Role Selector */}
               <div className="mb-4 rounded">
-                <label className="form-label fw-semibold d-block" style={{ color: "#0056b3", fontSize: "1.05rem" }}>
+                <label
+                  className="form-label fw-semibold d-block"
+                  style={{ color: "#0056b3", fontSize: "1.05rem" }}
+                >
                   Select Your Role
                 </label>
                 <select
@@ -121,8 +133,12 @@ const Login = () => {
                     borderRadius: "0",
                     transition: "background-color 0.3s ease",
                   }}
-                  onFocus={(e) => (e.target.style.backgroundColor = "#eef5ff")}
-                  onBlur={(e) => (e.target.style.backgroundColor = "#f8fbff")}
+                  onFocus={(e) =>
+                    (e.target.style.backgroundColor = "#eef5ff")
+                  }
+                  onBlur={(e) =>
+                    (e.target.style.backgroundColor = "#f8fbff")
+                  }
                 >
                   {Object.keys(roleCredentials).map((role) => (
                     <option key={role} value={role}>
@@ -134,7 +150,10 @@ const Login = () => {
 
               {/* Username Field */}
               <div className="mb-4">
-                <label className="form-label fw-semibold" style={{ color: "#0056b3", fontSize: "1.05rem" }}>
+                <label
+                  className="form-label fw-semibold"
+                  style={{ color: "#0056b3", fontSize: "1.05rem" }}
+                >
                   Username
                 </label>
                 <div className="input-group">
@@ -145,7 +164,10 @@ const Login = () => {
                       backgroundColor: "#f8fbff",
                     }}
                   >
-                    <i className="bi bi-person-fill" style={{ color: "#0056b3", fontSize: "1.2rem" }}></i>
+                    <i
+                      className="bi bi-person-fill"
+                      style={{ color: "#0056b3", fontSize: "1.2rem" }}
+                    ></i>
                   </span>
                   <input
                     type="text"
@@ -166,7 +188,10 @@ const Login = () => {
 
               {/* Password Field */}
               <div className="mb-4">
-                <label className="form-label fw-semibold" style={{ color: "#0056b3", fontSize: "1.05rem" }}>
+                <label
+                  className="form-label fw-semibold"
+                  style={{ color: "#0056b3", fontSize: "1.05rem" }}
+                >
                   Password
                 </label>
                 <div className="input-group">
@@ -177,7 +202,10 @@ const Login = () => {
                       backgroundColor: "#f8fbff",
                     }}
                   >
-                    <i className="bi bi-lock-fill" style={{ color: "#0056b3", fontSize: "1.2rem" }}></i>
+                    <i
+                      className="bi bi-lock-fill"
+                      style={{ color: "#0056b3", fontSize: "1.2rem" }}
+                    ></i>
                   </span>
                   <input
                     type={showPassword ? "text" : "password"}
@@ -204,9 +232,15 @@ const Login = () => {
                     }}
                   >
                     {showPassword ? (
-                      <i className="bi bi-eye-slash" style={{ color: "#0056b3", fontSize: "1.2rem" }}></i>
+                      <i
+                        className="bi bi-eye-slash"
+                        style={{ color: "#0056b3", fontSize: "1.2rem" }}
+                      ></i>
                     ) : (
-                      <i className="bi bi-eye" style={{ color: "#0056b3", fontSize: "1.2rem" }}></i>
+                      <i
+                        className="bi bi-eye"
+                        style={{ color: "#0056b3", fontSize: "1.2rem" }}
+                      ></i>
                     )}
                   </button>
                 </div>
@@ -221,14 +255,22 @@ const Login = () => {
                     id="remember"
                     style={{ borderColor: "#0056b3", accentColor: "#0056b3" }}
                   />
-                  <label className="form-check-label ms-2" htmlFor="remember" style={{ color: "#0056b3", fontSize: "0.95rem" }}>
+                  <label
+                    className="form-check-label ms-2"
+                    htmlFor="remember"
+                    style={{ color: "#0056b3", fontSize: "0.95rem" }}
+                  >
                     Remember me
                   </label>
                 </div>
                 <a
                   href="#"
                   className="text-decoration-none"
-                  style={{ color: "#0056b3", fontSize: "0.95rem", fontWeight: "500" }}
+                  style={{
+                    color: "#0056b3",
+                    fontSize: "0.95rem",
+                    fontWeight: "500",
+                  }}
                 >
                   Forgot Password?
                 </a>
@@ -250,21 +292,28 @@ const Login = () => {
                 onMouseOver={(e) => {
                   e.target.style.backgroundColor = "#004494";
                   e.target.style.transform = "translateY(-2px)";
-                  e.target.style.boxShadow = "0 6px 16px rgba(0, 86, 179, 0.4)";
+                  e.target.style.boxShadow =
+                    "0 6px 16px rgba(0, 86, 179, 0.4)";
                 }}
                 onMouseOut={(e) => {
                   if (!isLoading) {
                     e.target.style.backgroundColor = "#0056b3";
                     e.target.style.transform = "translateY(0)";
-                    e.target.style.boxShadow = "0 4px 12px rgba(0, 86, 179, 0.3)";
+                    e.target.style.boxShadow =
+                      "0 4px 12px rgba(0, 86, 179, 0.3)";
                   }
                 }}
               >
                 {isLoading ? (
-                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  <span
+                    className="spinner-border spinner-border-sm"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
                 ) : (
                   <>
-                    <i className="bi bi-box-arrow-in-right me-2"></i> Login to System
+                    <i className="bi bi-box-arrow-in-right me-2"></i> Login to
+                    System
                   </>
                 )}
               </button>
