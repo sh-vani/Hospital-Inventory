@@ -1,5 +1,24 @@
 import React, { useState } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const ReportsAnalytics = () => {
   const [reportType, setReportType] = useState('Inventory Report');
@@ -86,38 +105,74 @@ const ReportsAnalytics = () => {
             <div className="card-body">
               <h6 className="mb-4">Quarterly Inventory Value</h6>
               
-              {/* Chart Container */}
-              <div className="chart-wrapper">
-                {/* Y-axis labels */}
-                <div className="y-axis">
-                  <div className="y-label">90</div>
-                  <div className="y-label">70</div>
-                  <div className="y-label">50</div>
-                  <div className="y-label">30</div>
-                  <div className="y-label">10</div>
-                  <div className="y-label">0</div>
-                </div>
-                
-                {/* Bars Container */}
-                <div className="bars-container">
-                  {inventoryData.map((item, index) => (
-                    <div key={index} className="bar-wrapper">
-                      <div 
-                        className="bar" 
-                        style={{ 
-                          height: `${(item.value / maxValue) * 100}%`,
-                        }}
-                      ></div>
-                      <div className="x-label">{item.quarter}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Legend */}
-              <div className="d-flex align-items-center justify-content-center mt-4">
-                <div className="legend-color"></div>
-                <span className="legend-text">Inventory Value</span>
+              {/* Chart.js Bar Chart */}
+              <div style={{ height: '300px', position: 'relative' }}>
+                <Bar
+                  data={{
+                    labels: inventoryData.map(item => item.quarter),
+                    datasets: [
+                      {
+                        label: 'Inventory Value',
+                        data: inventoryData.map(item => item.value),
+                        backgroundColor: '#0d6efd',
+                        borderColor: '#0d6efd',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        borderSkipped: false,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                          usePointStyle: true,
+                          padding: 20,
+                        },
+                      },
+                      title: {
+                        display: false,
+                      },
+                      tooltip: {
+                        callbacks: {
+                          label: function(context) {
+                            return `Value: ${context.parsed.y}`;
+                          },
+                        },
+                      },
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        max: 90,
+                        grid: {
+                          color: 'rgba(0, 0, 0, 0.05)',
+                        },
+                        ticks: {
+                          stepSize: 10,
+                          font: {
+                            size: 12,
+                          },
+                        },
+                      },
+                      x: {
+                        grid: {
+                          display: false,
+                        },
+                        ticks: {
+                          font: {
+                            size: 12,
+                            weight: '500',
+                          },
+                        },
+                      },
+                    },
+                  }}
+                />
               </div>
             </div>
           </div>
