@@ -142,9 +142,9 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         path: "/facility/dashboard",
       },
       {
-        name: "Requisitions",
+        name: "Inventory",
         icon: faClipboardList,
-        path: "/facility/requisitions",
+        path: "/facility/inventory",
       },
       {
         name: "Reports",
