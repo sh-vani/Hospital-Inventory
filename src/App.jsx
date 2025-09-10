@@ -89,7 +89,7 @@ function App() {
               <Route path="/user/requisitions" element={<UserRequisitions/>}/>'
 
 
-              
+                 <Route path="/facility-admin/dashboard" element= {<FacilityDashboard/>}/>'
                 <Route path="/facility/dashboard" element= {<FacilityDashboard/>}/>'
                 <Route path="/facility/requisitions" element={<FacilityRequisitions/>}/>'
                 <Route path="/facility/reports" element={<FacilityReports/>}/>'
