@@ -11,6 +11,10 @@ import ForgotPassword from "./Auth/ForgotPassword";
 import Sidebar from "./Layout/Sidebar";
 import Profile from "./Profile/Profile"
 
+import UserDashboard from "./User/UserDashboard";
+import UserRequisitions from "./User/UserRequisitions";
+
+
 function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -57,9 +61,11 @@ function App() {
               <Routes>
                 {/* <Route path="okrs/departmentokrs" element={<DepartmentOKRs />} /> */}
 
-              <Route path="/profile" element={<Profile/>}/>
+           
+              <Route path="/user/dashboard" element={<UserDashboard/>}/>'
+              <Route path="/user/requisitions" element={<UserRequisitions/>}/>'
 
-
+            
 
 
 
