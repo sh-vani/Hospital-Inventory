@@ -29,6 +29,16 @@ import WarehouseDispatches from "./Dashboard/Warehouse/WarehouseDispatches";
 import WarehouseSettings from "./Dashboard/Warehouse/WarehouseSettings";
 import WarehouseRequisitions from "./Dashboard/Warehouse/WarehouseRequisitions";
 
+import UserDashboard from "./User/UserDashboard";
+import UserRequisitions from "./User/UserRequisitions";
+import FacilityDashboard from "./Facility/FacilityDashboard";
+import FacilityRequisitions from "./Facility/FacilityRequisitions";
+import FacilityReports from "./Facility/FacilityReports";
+import FacilityAssets from "./Facility/FacilityAssets";
+import FacilityUser from "./Facility/FaciltyUser";
+import FacilitySettings from "./Facility/FacilitySettings";
+
+
 function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -74,6 +84,22 @@ function App() {
               
               <Routes>
                 {/* <Route path="okrs/departmentokrs" element={<DepartmentOKRs />} /> */}
+
+           
+              <Route path="/user/dashboard" element={<UserDashboard/>}/>'
+              <Route path="/user/requisitions" element={<UserRequisitions/>}/>'
+
+
+              
+                <Route path="/facility/dashboard" element= {<FacilityDashboard/>}/>'
+                <Route path="/facility/requisitions" element={<FacilityRequisitions/>}/>'
+                <Route path="/facility/reports" element={<FacilityReports/>}/>'
+                <Route path="/facility/assets" element={<FacilityAssets/>}/>'
+                <Route path="/Facility/users" element={<FacilityUser/>}/>'
+                <Route path="/facility/settings" element={<FacilitySettings />}/>'
+
+            
+
 
               <Route path="/profile" element={<Profile/>}/>
               <Route path="/superadmin/dashboard"element={<SuperAdminDashboard/>}/>

@@ -63,6 +63,7 @@
   margin: 0;
   padding: 15px 0;
   flex-grow: 1;
+  margin-bottom: 10px;
 }
 
 .menu-item {
@@ -75,7 +76,7 @@
   align-items: center;
   padding: 15px 20px;
   color: #495057; /* Dark gray for text */
-  transition: all 0.3s ease;
+
   border-radius: 0;
   font-size: 15px;
   font-weight: 500;
@@ -91,6 +92,7 @@
   color: #0056b3; /* Blue text */
   width: 240px;
  left: 10px;
+ margin-bottom: 5px;
 
   border-radius: 8px;
 
@@ -128,7 +130,7 @@
 .menu-text {
   flex-grow: 1;
   font-weight: 500;
-  transition: all 0.3s ease;
+  /* transition: all 0.3s ease; */
 }
 
 .arrow-icon {
