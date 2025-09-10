@@ -14,7 +14,8 @@ import {
   faBuilding,
   faUserGear,
   faClipboardList,
-  faWarehouse
+  faWarehouse,
+  faUserShield,
 } from "@fortawesome/free-solid-svg-icons";
 import "./Sidebar.css";
 
@@ -89,6 +90,11 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         icon: faGear,
         path: "/superadmin/settings",
       },
+      {
+        name: "Roles & Permissions",
+        icon: faUserShield,
+        path: "/superadmin/role"
+      }
     ],
 
     "Warehouse Admin": [

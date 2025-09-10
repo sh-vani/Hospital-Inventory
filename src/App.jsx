@@ -20,6 +20,7 @@ import SuperAdminReports from "./Dashboard/SuperAdmin/SuperAdminReports"
 import SuperAdminFacilities from "./Dashboard/SuperAdmin/SuperAdminFacilities"
 import SuperAdminDispatches from "./Dashboard/SuperAdmin/SuperAdminDispatches"
 import SuperAdminInventory from "./Dashboard/SuperAdmin/SuperAdminInventory";
+import SuperAdminRoles from "./Dashboard/SuperAdmin/SuperAdminRoles";
 
 function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -77,6 +78,7 @@ function App() {
                  <Route path="/superadmin/settings"element={<SuperAdminSettings/>}/>
                   <Route path="/superadmin/users"element={<SuperAdminUsers/>}/>
                    <Route path="/superadmin/assets"element={<SuperAdminAssets/>}/>
+                   <Route path="/superadmin/role"element={<SuperAdminRoles/>}/>
 
              
               </Routes>
