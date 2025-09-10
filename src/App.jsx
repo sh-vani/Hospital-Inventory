@@ -19,6 +19,7 @@ import SuperAdminRequisitions from "./Dashboard/SuperAdmin/SuperAdminRequisition
 import SuperAdminReports from "./Dashboard/SuperAdmin/SuperAdminReports"
 import SuperAdminFacilities from "./Dashboard/SuperAdmin/SuperAdminFacilities"
 import SuperAdminDispatches from "./Dashboard/SuperAdmin/SuperAdminDispatches"
+import SuperAdminInventory from "./Dashboard/SuperAdmin/SuperAdminInventory";
 
 function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -67,15 +68,15 @@ function App() {
                 {/* <Route path="okrs/departmentokrs" element={<DepartmentOKRs />} /> */}
 
               <Route path="/profile" element={<Profile/>}/>
-              <Route path="/SuperAdminDashboard"element={<SuperAdminDashboard/>}/>
-              {/* <Route path="/InventoryManagement"element={<InventoryManagement/>}/> */}
-               <Route path="/SuperAdminDispatches"element={<SuperAdminDispatches/>}/>
-               <Route path="/SuperAdminFacilities"element={<SuperAdminFacilities/>}/>
-               <Route path="/SuperAdminReports"element={<SuperAdminReports/>}/>
-                <Route path="/SuperAdminRequisitions"element={<SuperAdminRequisitions/>}/>
-                 <Route path="/SuperAdminSettings"element={<SuperAdminSettings/>}/>
-                  <Route path="/SuperAdminUsers"element={<SuperAdminUsers/>}/>
-                   <Route path="/SuperAdminAssets"element={<SuperAdminAssets/>}/>
+              <Route path="/superadmin/dashboard"element={<SuperAdminDashboard/>}/>
+              <Route path="/superadmin/inventory"element={<SuperAdminInventory/>}/>
+               <Route path="/superadmin/dispatches"element={<SuperAdminDispatches/>}/>
+               <Route path="/superadmin/facilities"element={<SuperAdminFacilities/>}/>
+               <Route path="/superadmin/reports"element={<SuperAdminReports/>}/>
+                <Route path="/superadmin/requisitions"element={<SuperAdminRequisitions/>}/>
+                 <Route path="/superadmin/settings"element={<SuperAdminSettings/>}/>
+                  <Route path="/superadmin/users"element={<SuperAdminUsers/>}/>
+                   <Route path="/superadmin/assets"element={<SuperAdminAssets/>}/>
 
              
               </Routes>

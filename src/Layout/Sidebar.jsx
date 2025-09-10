@@ -2,22 +2,19 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faHome,
-  faInfoCircle,
-  faStethoscope,
-  faUserMd,
-  faBuilding,
-  faCalendarAlt,
-  faPhoneAlt,
+  faChartBar,
+  faUsers,
+  faFileAlt,
+  faGear,
   faChevronDown,
-  faClock,
-  faCubes,
-  faArrowRightFromBracket,
+  faBoxes,
   faTruck,
   faChartLine,
-  faLaptopCode,
-  faCog,
-  faUsers
+  faArchive,
+  faBuilding,
+  faUserGear,
+  faClipboardList,
+  faWarehouse
 } from "@fortawesome/free-solid-svg-icons";
 import "./Sidebar.css";
 
@@ -25,66 +22,89 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeMenu, setActiveMenu] = useState(null);
-  const [userRole, setUserRole] = useState("Admin");
+  const [userRole, setUserRole] = useState("Super Admin");
   
-  // Define all menus first
+  // Load user role from localStorage
+  useEffect(() => {
+    const role = localStorage.getItem("userRole") || "Super Admin";
+    setUserRole(role);
+  }, []);
+  
+  const toggleMenu = (menuKey) => {
+    setActiveMenu(activeMenu === menuKey ? null : menuKey);
+  };
+  
+  const isActive = (path) => location.pathname === path;
+  
+  const handleNavigate = (path) => {
+    navigate(path);
+    if (window.innerWidth <= 768) setCollapsed(true);
+  };
+  
+  // Define menus for each role based on the provided images
   const allMenus = {
-    "Admin": [
-      {
-        name: "Home",
-        icon: faHome,
-        path: "/admin/home",
-      },
-      {
-        name: "About Us",
-        icon: faInfoCircle,
-        path: "/admin/about",
-      },
-      {
-        name: "Services",
-        icon: faStethoscope,
-        path: "/admin/services",
-      },
-      {
-        name: "Our Doctors",
-        icon: faUserMd,
-        path: "/admin/doctors",
-      },
-      {
-        name: "Departments",
-        icon: faBuilding,
-        path: "/admin/departments",
-      },
-      {
-        name: "Appointments",
-        icon: faCalendarAlt,
-        path: "/admin/appointments",
-      },
-      {
-        name: "Emergency",
-        icon: faPhoneAlt,
-        path: "/admin/emergency",
-      },
-      {
-        name: "Contact Us",
-        icon: faPhoneAlt,
-        path: "/admin/contact",
-      },
-    ],
-    "Warehouse": [
+    "Super Admin": [
       {
         name: "Dashboard",
-        icon: faClock,
+        icon: faChartBar,
+        path: "/superadmin/dashboard",
+      },
+      {
+        name: "Inventory",
+        icon: faBoxes,
+        path: "/superadmin/inventory",
+      },
+      {
+        name: "Requisitions",
+        icon: faClipboardList,
+        path: "/superadmin/requisitions",
+      },
+      {
+        name: "Dispatches",
+        icon: faTruck,
+        path: "/superadmin/dispatches",
+      },
+      {
+        name: "Reports",
+        icon: faChartLine,
+        path: "/superadmin/reports",
+      },
+      {
+        name: "Assets",
+        icon: faArchive,
+        path: "/superadmin/assets",
+      },
+      {
+        name: "Facilities",
+        icon: faBuilding,
+        path: "/superadmin/facilities",
+      },
+      {
+        name: "Users",
+        icon: faUsers,
+        path: "/superadmin/users",
+      },
+      {
+        name: "Settings",
+        icon: faGear,
+        path: "/superadmin/settings",
+      },
+    ],
+
+    "Warehouse Admin": [
+      {
+        name: "Dashboard",
+        icon: faChartBar,
         path: "/warehouse/dashboard",
       },
       {
         name: "Inventory",
-        icon: faCubes,
+        icon: faWarehouse,
         path: "/warehouse/inventory",
       },
       {
         name: "Requisitions",
-        icon: faArrowRightFromBracket,
+        icon: faClipboardList,
         path: "/warehouse/requisitions",
       },
       {
@@ -99,116 +119,73 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       },
       {
         name: "Assets",
-        icon: faLaptopCode,
+        icon: faArchive,
         path: "/warehouse/assets",
       },
       {
         name: "Settings",
-        icon: faCog,
+        icon: faGear,
         path: "/warehouse/settings",
       },
     ],
-    "FacilityAdmin": [
+
+    "Facility Admin": [
       {
         name: "Dashboard",
-        icon: faClock,
-        path: "/facility-admin/dashboard",
+        icon: faChartBar,
+        path: "/facility/dashboard",
       },
       {
         name: "Requisitions",
-        icon: faArrowRightFromBracket,
-        path: "/facility-admin/requisitions",
+        icon: faClipboardList,
+        path: "/facility/requisitions",
       },
       {
         name: "Reports",
         icon: faChartLine,
-        path: "/facility-admin/reports",
+        path: "/facility/reports",
       },
       {
         name: "Assets",
-        icon: faLaptopCode,
-        path: "/facility-admin/assets",
+        icon: faArchive,
+        path: "/facility/assets",
       },
       {
         name: "Users",
         icon: faUsers,
-        path: "/facility-admin/users",
+        path: "/facility/users",
       },
       {
         name: "Settings",
-        icon: faCog,
-        path: "/facility-admin/settings",
+        icon: faGear,
+        path: "/facility/settings",
       },
     ],
-    "FacilityUser": [
+
+    "Facility User": [
       {
         name: "Dashboard",
-        icon: faClock,
-        path: "/facility-user/dashboard",
+        icon: faChartBar,
+        path: "/user/dashboard",
       },
       {
         name: "Requisitions",
-        icon: faArrowRightFromBracket,
-        path: "/facility-user/requisitions",
-      }
-    ]
+        icon: faClipboardList,
+        path: "/user/requisitions",
+      },
+    ],
   };
-  
-  // Load user role from localStorage
-  useEffect(() => {
-    const role = localStorage.getItem("userRole");
-    if (role && allMenus[role]) {
-      setUserRole(role);
-    } else {
-      // Default to Admin if role is invalid or not found
-      setUserRole("Admin");
-      localStorage.setItem("userRole", "Admin");
-    }
-  }, []);
-  
-  const toggleMenu = (menuKey) => {
-    setActiveMenu(activeMenu === menuKey ? null : menuKey);
-  };
-  
-  const isActive = (path) => location.pathname === path;
-  
-  const handleNavigate = (path) => {
-    navigate(path);
-    if (window.innerWidth <= 768) setCollapsed(true);
-  };
-  
-  // Role-based menu assignment using switch case
-  let userMenus;
-  switch(userRole) {
-    case "Admin":
-      userMenus = allMenus["Admin"];
-      break;
-    case "Warehouse":
-      userMenus = allMenus["Warehouse"];
-      break;
-    case "FacilityAdmin":
-      userMenus = allMenus["FacilityAdmin"];
-      break;
-    case "FacilityUser":
-      userMenus = allMenus["FacilityUser"];
-      break;
-    default:
-      userMenus = allMenus["Admin"]; // Default to Admin if role doesn't match
-      break;
-  }
+
+  const userMenus = allMenus[userRole] || allMenus["Super Admin"];
   
   return (
     <div className={`sidebar-container ${collapsed ? "collapsed" : ""}`}>
       <div className="sidebar">
-        {/* Show current role for clarity */}
-        {!collapsed && (
-          <div className="sidebar-role-indicator p-3 mb-3 bg-light border rounded">
-            <small className="text-muted">Logged in as:</small>
-            <div className="fw-bold text-primary">{userRole}</div>
-          </div>
-        )}
+       
+        
         <ul className="menu">
           {userMenus.map((menu, index) => {
+            // If no subItems → direct link
             if (!menu.subItems) {
               return (
                 <li key={index} className="menu-item">
@@ -223,6 +200,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
                 </li>
               );
             }
+            // If has subItems → show dropdown
             return (
               <li key={index} className="menu-item">
                 <div
@@ -239,6 +217,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
                     />
                   )}
                 </div>
+                {/* Show submenu only if menu is active and not collapsed */}
                 {!collapsed && activeMenu === menu.key && (
                   <ul className="submenu">
                     {menu.subItems.map((sub, subIndex) => (
@@ -257,12 +236,6 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
             );
           })}
         </ul>
-        
-        {!collapsed && (
-          <div className="admin-footer">
-            <span>© 2023 F. Alpha and Omega Specialist Hospital</span>
-          </div>
-        )}
       </div>
     </div>
   );
