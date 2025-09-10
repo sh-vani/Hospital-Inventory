@@ -9,7 +9,15 @@ import {
   faBuilding,
   faCalendarAlt,
   faPhoneAlt,
-  faChevronDown
+  faChevronDown,
+  faClock,
+  faCubes,
+  faArrowRightFromBracket,
+  faTruck,
+  faChartLine,
+  faLaptopCode,
+  faCog,
+  faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import "./Sidebar.css";
 
@@ -36,7 +44,6 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
     if (window.innerWidth <= 768) setCollapsed(true);
   };
   
-  // Define menus for hospital staff based on the screenshot
   const allMenus = {
     "Admin": [
       {
@@ -80,45 +87,87 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         path: "/admin/contact",
       },
     ],
-    "Doctor": [
+    "Warehouse": [
       {
         name: "Dashboard",
-        icon: faHome,
-        path: "/doctor/dashboard",
+        icon: faClock,
+        path: "/warehouse/dashboard",
       },
       {
-        name: "Appointments",
-        icon: faCalendarAlt,
-        path: "/doctor/appointments",
+        name: "Inventory",
+        icon: faCubes,
+        path: "/warehouse/inventory",
       },
       {
-        name: "Patients",
-        icon: faUserMd,
-        path: "/doctor/patients",
+        name: "Requisitions",
+        icon: faArrowRightFromBracket,
+        path: "/warehouse/requisitions",
       },
       {
-        name: "Schedule",
-        icon: faCalendarAlt,
-        path: "/doctor/schedule",
+        name: "Dispatches",
+        icon: faTruck,
+        path: "/warehouse/dispatches",
+      },
+      {
+        name: "Reports",
+        icon: faChartLine,
+        path: "/warehouse/reports",
+      },
+      {
+        name: "Assets",
+        icon: faLaptopCode,
+        path: "/warehouse/assets",
+      },
+      {
+        name: "Settings",
+        icon: faCog,
+        path: "/warehouse/settings",
       },
     ],
-    "Staff": [
+    "FacilityAdmin": [
       {
         name: "Dashboard",
-        icon: faHome,
-        path: "/staff/dashboard",
+        icon: faClock,
+        path: "/facility-admin/dashboard",
       },
       {
-        name: "Appointments",
-        icon: faCalendarAlt,
-        path: "/staff/appointments",
+        name: "Requisitions",
+        icon: faArrowRightFromBracket,
+        path: "/facility-admin/requisitions",
       },
       {
-        name: "Patients",
-        icon: faUserMd,
-        path: "/staff/patients",
+        name: "Reports",
+        icon: faChartLine,
+        path: "/facility-admin/reports",
+      },
+      {
+        name: "Assets",
+        icon: faLaptopCode,
+        path: "/facility-admin/assets",
+      },
+      {
+        name: "Users",
+        icon: faUsers,
+        path: "/facility-admin/users",
+      },
+      {
+        name: "Settings",
+        icon: faCog,
+        path: "/facility-admin/settings",
       },
     ],
+    "FacilityUser": [
+      {
+        name: "Dashboard",
+        icon: faClock,
+        path: "/facility-user/dashboard",
+      },
+      {
+        name: "Requisitions",
+        icon: faArrowRightFromBracket,
+        path: "/facility-user/requisitions",
+      }
+    ]
   };
   
   const userMenus = allMenus[userRole] || allMenus["Admin"];
@@ -126,12 +175,16 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
   return (
     <div className={`sidebar-container ${collapsed ? "collapsed" : ""}`}>
       <div className="sidebar">
-        {/* Hospital Logo Section */}
-        
-        
+        {/* Optional: Show current role for clarity */}
+        {!collapsed && (
+          <div className="sidebar-role-indicator p-3 mb-3 bg-light border rounded">
+            <small className="text-muted">Logged in as:</small>
+            <div className="fw-bold text-primary">{userRole}</div>
+          </div>
+        )}
+
         <ul className="menu">
           {userMenus.map((menu, index) => {
-            // If no subItems → direct link
             if (!menu.subItems) {
               return (
                 <li key={index} className="menu-item">
@@ -146,7 +199,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
                 </li>
               );
             }
-            // If has subItems → show dropdown
+
             return (
               <li key={index} className="menu-item">
                 <div
@@ -163,7 +216,6 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
                     />
                   )}
                 </div>
-                {/* Show submenu only if menu is active and not collapsed */}
                 {!collapsed && activeMenu === menu.key && (
                   <ul className="submenu">
                     {menu.subItems.map((sub, subIndex) => (
