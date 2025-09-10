@@ -1,6 +1,5 @@
-// src/components/Dashboard.jsx
 import React, { useState } from 'react';
-import { Container, Row, Col, Card, Button, Alert, Table, Dropdown } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Alert, Table, Dropdown, Modal, Form } from 'react-bootstrap';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -14,6 +13,7 @@ import {
   ArcElement,
   BarElement,
 } from 'chart.js';
+import { FaPlus, FaTimes } from 'react-icons/fa';
 
 // Register Chart.js components
 ChartJS.register(
@@ -31,7 +31,7 @@ ChartJS.register(
 const FacilityDashboard = () => {
   // State for inventory type
   const [inventoryType, setInventoryType] = useState('pharmaceuticals');
-  
+
   // State for inventory data
   const [inventoryData, setInventoryData] = useState([
     { id: 1, name: 'Paracetamol', category: 'Pharmaceuticals', quantity: 120, status: 'In Stock', expiry: '2024-12-31' },
@@ -173,7 +173,6 @@ const FacilityDashboard = () => {
   const handleInventoryTypeChange = (type) => {
     setInventoryType(type);
     
-    // Update inventory data based on type
     if (type === 'pharmaceuticals') {
       setInventoryData([
         { id: 1, name: 'Paracetamol', category: 'Pharmaceuticals', quantity: 120, status: 'In Stock', expiry: '2024-12-31' },
@@ -220,6 +219,11 @@ const FacilityDashboard = () => {
     document.body.removeChild(link);
   };
 
+  // Modal state
+  const [showModal, setShowModal] = useState(false);
+  const handleShowModal = () => setShowModal(true);
+  const handleCloseModal = () => setShowModal(false);
+
   return (
     <Container fluid className="p-4">
       {/* Header */}
@@ -228,7 +232,9 @@ const FacilityDashboard = () => {
           <h1 className="mb-0">Facility Dashboard</h1>
         </Col>
         <Col className="text-end">
-          <Button variant="primary">+ New Requisition</Button>
+          <Button variant="primary" onClick={handleShowModal}>
+            + New Requisition
+          </Button>
         </Col>
       </Row>
 
@@ -372,12 +378,15 @@ const FacilityDashboard = () => {
                       <td>{item.name}</td>
                       <td>{item.category}</td>
                       <td>{item.quantity}</td>
-                      <td>{item.status === 'In Stock' ? 
-                        <span className="badge bg-success">In Stock</span> : 
-                        item.status === 'Low Stock' ? 
-                        <span className="badge bg-warning text-dark">Low Stock</span> :
-                        <span className="badge bg-danger">Out of Stock</span>
-                      }</td>
+                      <td>
+                        {item.status === 'In Stock' ? (
+                          <span className="badge bg-success">In Stock</span>
+                        ) : item.status === 'Low Stock' ? (
+                          <span className="badge bg-warning text-dark">Low Stock</span>
+                        ) : (
+                          <span className="badge bg-danger">Out of Stock</span>
+                        )}
+                      </td>
                       <td>{item.expiry}</td>
                     </tr>
                   ))}
@@ -387,8 +396,6 @@ const FacilityDashboard = () => {
           </Card>
         </Col>
       </Row>
-
-    
 
       {/* Reports & Analytics */}
       <Row>
@@ -454,6 +461,115 @@ const FacilityDashboard = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* New Requisition Modal */}
+      <Modal show={showModal} onHide={handleCloseModal} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title>New Requisition</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Row className="mb-3">
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label>Facility</Form.Label>
+                  <Form.Select>
+                    <option>Select Facility</option>
+                    <option>Kumasi Branch Hospital</option>
+                    <option>Accra Medical Center</option>
+                    <option>Tamale General Hospital</option>
+                    <option>Cape Coast Clinic</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label>Requested By</Form.Label>
+                  <Form.Control type="text" placeholder="Your Name" defaultValue="Dr. John Smith" />
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Items</Form.Label>
+              <Table bordered size="sm">
+                <thead>
+                  <tr>
+                    <th>Item Name</th>
+                    <th>Quantity</th>
+                    <th>Unit</th>
+                    <th>Urgency</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <Form.Control type="text" placeholder="e.g., Paracetamol" />
+                    </td>
+                    <td>
+                      <Form.Control type="number" placeholder="Qty" min="1" />
+                    </td>
+                    <td>
+                      <Form.Select>
+                        <option>Pieces</option>
+                        <option>Boxes</option>
+                        <option>Packs</option>
+                      </Form.Select>
+                    </td>
+                    <td>
+                      <Form.Select>
+                        <option>Normal</option>
+                        <option>Urgent</option>
+                        <option>Critical</option>
+                      </Form.Select>
+                    </td>
+                    <td>
+                      <Button variant="outline-danger" size="sm">
+                        <FaTimes />
+                      </Button>
+                    </td>
+                  </tr>
+                </tbody>
+              </Table>
+              <Button variant="outline-primary" size="sm" className="mt-2">
+                <FaPlus className="me-1" /> Add Item
+              </Button>
+            </Form.Group>
+
+            <Row className="mb-3">
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label>Estimated Duration</Form.Label>
+                  <Form.Control type="text" placeholder="e.g., 3 days" />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label>Required By Date</Form.Label>
+                  <Form.Control type="date" />
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Additional Notes</Form.Label>
+              <Form.Control as="textarea" rows={3} placeholder="Any special instructions..." />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseModal}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={() => {
+            alert('Requisition Submitted!');
+            handleCloseModal();
+          }}>
+            Submit Requisition
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 };

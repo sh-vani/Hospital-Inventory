@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
+import { Modal, Form, Row, Col, Button } from 'react-bootstrap'; // ✅ Import required components
 
 const FacilityUser = () => {
   const [users, setUsers] = useState([
@@ -46,7 +47,6 @@ const FacilityUser = () => {
     alert(`Action: ${action} for User ID: ${userId}`);
     
     if (action === 'Deactivate' || action === 'Activate') {
-      // Toggle user status
       setUsers(users.map(user => {
         if (user.id === userId) {
           return {
@@ -76,12 +76,55 @@ const FacilityUser = () => {
     }
   };
 
+  // Modal state
+  const [showModal, setShowModal] = useState(false);
+  const handleShowModal = () => setShowModal(true);
+  const handleCloseModal = () => setShowModal(false);
+
+  // Form state
+  const [newUser, setNewUser] = useState({
+    name: '',
+    role: 'Facility User',
+    facility: '',
+    department: '',
+    status: 'Active'
+  });
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewUser(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!newUser.name || !newUser.facility || !newUser.department) {
+      alert('Please fill all required fields');
+      return;
+    }
+
+    const newUserEntry = {
+      ...newUser,
+      id: `USR-${String(users.length + 1).padStart(3, '0')}`,
+      lastLogin: 'Never'
+    };
+
+    setUsers([...users, newUserEntry]);
+    setNewUser({
+      name: '',
+      role: 'Facility User',
+      facility: '',
+      department: '',
+      status: 'Active'
+    });
+    handleCloseModal();
+  };
+
   return (
     <div className="container-fluid p-4" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
       {/* Header with H1 and Button */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
         <h1 className="mb-3 mb-md-0">Facility User Management</h1>
-        <button className="btn btn-primary">
+        <button className="btn btn-primary" onClick={handleShowModal}>
           <i className="bi bi-plus me-1"></i> Add New User
         </button>
       </div>
@@ -215,6 +258,101 @@ const FacilityUser = () => {
           ))}
         </div>
       </div>
+
+      {/* Add New User Modal */}
+      <Modal show={showModal} onHide={handleCloseModal} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Add New User</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form onSubmit={handleSubmit}>
+            <Row className="mb-3">
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label>Full Name *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="e.g., John Mensah"
+                    name="name"
+                    value={newUser.name}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label>Role *</Form.Label>
+                  <Form.Select
+                    name="role"
+                    value={newUser.role}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="Super Admin">Super Admin</option>
+                    <option value="Warehouse Admin">Warehouse Admin</option>
+                    <option value="Facility Admin">Facility Admin</option>
+                    <option value="Facility User">Facility User</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Row className="mb-3">
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label>Facility *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="e.g., Main Hospital"
+                    name="facility"
+                    value={newUser.facility}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label>Department *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    placeholder="e.g., Emergency"
+                    name="department"
+                    value={newUser.department}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Row className="mb-3">
+              <Col md={6}>
+                <Form.Group>
+                  <Form.Label>Status</Form.Label>
+                  <Form.Select
+                    name="status"
+                    value={newUser.status}
+                    onChange={handleInputChange}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseModal}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleSubmit}>
+            Add User
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };
