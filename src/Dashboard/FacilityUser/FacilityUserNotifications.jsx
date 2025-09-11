@@ -102,24 +102,10 @@ const FacilityUserNotifications = () => {
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
   
-  // Filter notifications based on selected type
-  const filteredNotifications = notifications.filter(notification => {
-    if (filterType === 'all') return true;
-    return notification.type === filterType;
-  });
+  // State for search term
+  const [searchTerm, setSearchTerm] = useState('');
   
-  // Function to open notification details modal
-  const openNotificationDetails = (notification) => {
-    // Mark notification as read
-    const updatedNotifications = notifications.map(n => 
-      n.id === notification.id ? { ...n, read: true } : n
-    );
-    setNotifications(updatedNotifications);
-    
-    setSelectedNotification(notification);
-    setShowNotificationModal(true);
-  };
-  
+  // Helper functions - MOVED HERE BEFORE THEY ARE USED
   // Function to get notification icon
   const getNotificationIcon = (type) => {
     switch(type) {
@@ -168,6 +154,32 @@ const FacilityUserNotifications = () => {
     }
   };
   
+  // Filter notifications based on selected type and search term
+  const filteredNotifications = notifications.filter(notification => {
+    // First apply type filter
+    const typeMatch = filterType === 'all' || notification.type === filterType;
+    
+    // Then apply search filter if search term is not empty
+    const searchMatch = searchTerm === '' || 
+      notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      notification.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getNotificationTypeLabel(notification.type).toLowerCase().includes(searchTerm.toLowerCase());
+    
+    return typeMatch && searchMatch;
+  });
+  
+  // Function to open notification details modal
+  const openNotificationDetails = (notification) => {
+    // Mark notification as read
+    const updatedNotifications = notifications.map(n => 
+      n.id === notification.id ? { ...n, read: true } : n
+    );
+    setNotifications(updatedNotifications);
+    
+    setSelectedNotification(notification);
+    setShowNotificationModal(true);
+  };
+  
   // Count unread notifications
   const unreadCount = notifications.filter(n => !n.read).length;
   
@@ -203,7 +215,13 @@ const FacilityUserNotifications = () => {
             <div className="d-flex flex-column flex-md-row gap-2 w-100 w-md-auto">
               <div className="input-group input-group-sm">
                 <span className="input-group-text"><FaSearch /></span>
-                <input type="text" className="form-control" placeholder="Search notifications..." />
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="Search notifications..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
               <select 
                 className="form-select form-select-sm" 

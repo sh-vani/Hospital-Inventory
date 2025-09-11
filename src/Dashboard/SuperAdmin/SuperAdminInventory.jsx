@@ -247,7 +247,7 @@ const [viewItem, setViewItem] = useState(null);
     <div className="container-fluid py-4">
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="text-primary mb-0">Inventory Management</h2>
+        <h2 className="text-black mb-0">Inventory Management</h2>
         <button className="btn btn-primary d-flex align-items-center" onClick={openAddModal}>
           <FaPlusCircle className="me-2" /> Add New Item
         </button>

@@ -10,6 +10,9 @@ const FacilityUserMyRequests = () => {
   const [showRequestDetailsModal, setShowRequestDetailsModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   
+  // State for search term
+  const [searchTerm, setSearchTerm] = useState('');
+  
   // Sample data for requests
   const requests = [
     { 
@@ -65,6 +68,15 @@ const FacilityUserMyRequests = () => {
     }
   ];
   
+  // Filter requests based on search term
+  const filteredRequests = requests.filter(request => {
+    return (
+      request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.status.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
+  
   // Function to open request details modal
   const openRequestDetails = (request) => {
     setSelectedRequest(request);
@@ -98,7 +110,7 @@ const FacilityUserMyRequests = () => {
         return 'bg-secondary';
     }
   };
-
+  
   return (
     <div className="container-fluid py-4 px-3 px-md-4">
       {/* Header Section - Responsive */}
@@ -126,7 +138,13 @@ const FacilityUserMyRequests = () => {
             <div className="d-flex flex-column flex-md-row gap-2 w-100 w-md-auto">
               <div className="input-group input-group-sm">
                 <span className="input-group-text"><FaSearch /></span>
-                <input type="text" className="form-control" placeholder="Search requests..." />
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="Search requests..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
               <button className="btn btn-sm btn-outline-secondary flex-shrink-0">
                 <FaFilter />
@@ -148,7 +166,7 @@ const FacilityUserMyRequests = () => {
                 </tr>
               </thead>
               <tbody>
-                {requests.map(request => (
+                {filteredRequests.map(request => (
                   <tr key={request.id}>
                     <td>{request.id}</td>
                     <td>{request.title}</td>
