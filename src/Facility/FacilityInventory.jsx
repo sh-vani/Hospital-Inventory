@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   FaBox, FaPlus, FaEdit, FaTrash, FaSearch, FaFilter, 
@@ -19,21 +18,68 @@ const FacilityInventory = () => {
   // State for selected item
   const [selectedItem, setSelectedItem] = useState(null);
   
-  // Sample data for Facility Inventory
-  const facilityInventory = [
-    { id: 'DRG-0421', name: 'Paracetamol 500mg', category: 'Pharmaceutical', stock: 8, unit: 'Tablets', minLevel: 20, maxLevel: 100, expiryDate: '2025-06-30', status: 'Low Stock' },
-    { id: 'MS-0876', name: 'Surgical Gloves (Large)', category: 'Medical Supply', stock: 0, unit: 'Pairs', minLevel: 50, maxLevel: 200, expiryDate: '2024-12-31', status: 'Out of Stock' },
-    { id: 'CON-1543', name: 'Syringe 5ml', category: 'Consumable', stock: 142, unit: 'Pieces', minLevel: 30, maxLevel: 150, expiryDate: '2026-03-15', status: 'In Stock' },
-    { id: 'DRG-2087', name: 'Amoxicillin 250mg', category: 'Pharmaceutical', stock: 45, unit: 'Capsules', minLevel: 25, maxLevel: 120, expiryDate: '2024-09-20', status: 'In Stock' },
-  ];
+  // State for form data
+  const [formData, setFormData] = useState({
+    id: '',
+    name: '',
+    category: 'Pharmaceutical',
+    stock: '',
+    unit: 'Tablets',
+    minLevel: '',
+    maxLevel: '',
+    expiryDate: ''
+  });
   
-  // Sample data for Warehouse Inventory
-  const warehouseInventory = [
-    { id: 'DRG-0421', name: 'Paracetamol 500mg', category: 'Pharmaceutical', stock: 150, unit: 'Tablets', minLevel: 100, maxLevel: 500, expiryDate: '2025-06-30', status: 'In Stock' },
-    { id: 'MS-0876', name: 'Surgical Gloves (Large)', category: 'Medical Supply', stock: 80, unit: 'Pairs', minLevel: 50, maxLevel: 300, expiryDate: '2024-12-31', status: 'In Stock' },
-    { id: 'CON-1543', name: 'Syringe 5ml', category: 'Consumable', stock: 200, unit: 'Pieces', minLevel: 100, maxLevel: 400, expiryDate: '2026-03-15', status: 'In Stock' },
-    { id: 'DRG-2087', name: 'Amoxicillin 250mg', category: 'Pharmaceutical', stock: 120, unit: 'Capsules', minLevel: 100, maxLevel: 300, expiryDate: '2024-09-20', status: 'In Stock' },
-  ];
+  // State for update stock form
+  const [stockUpdateData, setStockUpdateData] = useState({
+    updateType: 'add',
+    quantity: '',
+    reason: ''
+  });
+  
+  // State for search and filter
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  
+  // State for inventory data
+  const [facilityInventory, setFacilityInventory] = useState([
+    { id: 'DRG-0421', name: 'Paracetamol 500mg', category: 'Pharmaceutical', stock: 8, unit: 'Tablets', minLevel: 20, maxLevel: 100, expiryDate: '2025-06-30' },
+    { id: 'MS-0876', name: 'Surgical Gloves (Large)', category: 'Medical Supply', stock: 0, unit: 'Pairs', minLevel: 50, maxLevel: 200, expiryDate: '2024-12-31' },
+    { id: 'CON-1543', name: 'Syringe 5ml', category: 'Consumable', stock: 142, unit: 'Pieces', minLevel: 30, maxLevel: 150, expiryDate: '2026-03-15' },
+    { id: 'DRG-2087', name: 'Amoxicillin 250mg', category: 'Pharmaceutical', stock: 45, unit: 'Capsules', minLevel: 25, maxLevel: 120, expiryDate: '2024-09-20' },
+  ]);
+  
+  const [warehouseInventory, setWarehouseInventory] = useState([
+    { id: 'DRG-0421', name: 'Paracetamol 500mg', category: 'Pharmaceutical', stock: 150, unit: 'Tablets', minLevel: 100, maxLevel: 500, expiryDate: '2025-06-30' },
+    { id: 'MS-0876', name: 'Surgical Gloves (Large)', category: 'Medical Supply', stock: 80, unit: 'Pairs', minLevel: 50, maxLevel: 300, expiryDate: '2024-12-31' },
+    { id: 'CON-1543', name: 'Syringe 5ml', category: 'Consumable', stock: 200, unit: 'Pieces', minLevel: 100, maxLevel: 400, expiryDate: '2026-03-15' },
+    { id: 'DRG-2087', name: 'Amoxicillin 250mg', category: 'Pharmaceutical', stock: 120, unit: 'Capsules', minLevel: 100, maxLevel: 300, expiryDate: '2024-09-20' },
+  ]);
+  
+  // Calculate status dynamically
+  const calculateStatus = (stock, minLevel) => {
+    if (stock === 0) return 'Out of Stock';
+    if (stock < minLevel) return 'Low Stock';
+    return 'In Stock';
+  };
+  
+  // Get inventory data based on active tab
+  const getInventoryData = () => {
+    const data = activeTab === 'facility' ? [...facilityInventory] : [...warehouseInventory];
+    
+    // Apply search filter
+    const filteredData = data.filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           item.id.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = filterCategory ? item.category === filterCategory : true;
+      return matchesSearch && matchesCategory;
+    });
+    
+    return filteredData.map(item => ({
+      ...item,
+      status: calculateStatus(item.stock, item.minLevel)
+    }));
+  };
   
   // Check if any modal is open
   const isAnyModalOpen = () => {
@@ -45,16 +91,36 @@ const FacilityInventory = () => {
   useEffect(() => {
     if (isAnyModalOpen()) {
       document.body.classList.add('modal-open');
+      // Add event listener for escape key
+      document.addEventListener('keydown', handleEscapeKey);
     } else {
       document.body.classList.remove('modal-open');
+      document.removeEventListener('keydown', handleEscapeKey);
     }
     
     // Cleanup on unmount
     return () => {
       document.body.classList.remove('modal-open');
+      document.removeEventListener('keydown', handleEscapeKey);
     };
   }, [showAddItemModal, showUpdateItemModal, showRemoveItemModal, 
       showViewItemModal, showUpdateStockModal]);
+  
+  // Handle escape key to close modals
+  const handleEscapeKey = (e) => {
+    if (e.key === 'Escape') {
+      closeAllModals();
+    }
+  };
+  
+  // Close all modals
+  const closeAllModals = () => {
+    setShowAddItemModal(false);
+    setShowUpdateItemModal(false);
+    setShowRemoveItemModal(false);
+    setShowViewItemModal(false);
+    setShowUpdateStockModal(false);
+  };
   
   // Handle view item
   const handleViewItem = (item) => {
@@ -65,12 +131,27 @@ const FacilityInventory = () => {
   // Handle update stock
   const handleUpdateStock = (item) => {
     setSelectedItem(item);
+    setStockUpdateData({
+      updateType: 'add',
+      quantity: '',
+      reason: ''
+    });
     setShowUpdateStockModal(true);
   };
   
   // Handle edit item
   const handleEditItem = (item) => {
     setSelectedItem(item);
+    setFormData({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      stock: item.stock,
+      unit: item.unit,
+      minLevel: item.minLevel,
+      maxLevel: item.maxLevel,
+      expiryDate: item.expiryDate
+    });
     setShowUpdateItemModal(true);
   };
   
@@ -80,9 +161,163 @@ const FacilityInventory = () => {
     setShowRemoveItemModal(true);
   };
   
+  // Handle form input changes
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  // Handle stock update form changes
+  const handleStockUpdateChange = (e) => {
+    const { name, value } = e.target;
+    setStockUpdateData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  // Handle add item form submission
+  const handleAddItemSubmit = (e) => {
+    e.preventDefault();
+    
+    // Basic validation
+    if (!formData.id || !formData.name || !formData.stock || !formData.minLevel || !formData.maxLevel) {
+      alert('Please fill all required fields');
+      return;
+    }
+    
+    const newItem = {
+      ...formData,
+      stock: parseInt(formData.stock),
+      minLevel: parseInt(formData.minLevel),
+      maxLevel: parseInt(formData.maxLevel)
+    };
+    
+    if (activeTab === 'facility') {
+      setFacilityInventory(prev => [...prev, newItem]);
+    } else {
+      setWarehouseInventory(prev => [...prev, newItem]);
+    }
+    
+    // Reset form and close modal
+    setFormData({
+      id: '',
+      name: '',
+      category: 'Pharmaceutical',
+      stock: '',
+      unit: 'Tablets',
+      minLevel: '',
+      maxLevel: '',
+      expiryDate: ''
+    });
+    setShowAddItemModal(false);
+  };
+  
+  // Handle update item form submission
+  const handleUpdateItemSubmit = (e) => {
+    e.preventDefault();
+    
+    // Basic validation
+    if (!formData.name || !formData.stock || !formData.minLevel || !formData.maxLevel) {
+      alert('Please fill all required fields');
+      return;
+    }
+    
+    const updatedItem = {
+      ...formData,
+      stock: parseInt(formData.stock),
+      minLevel: parseInt(formData.minLevel),
+      maxLevel: parseInt(formData.maxLevel)
+    };
+    
+    if (activeTab === 'facility') {
+      setFacilityInventory(prev => 
+        prev.map(item => item.id === selectedItem.id ? updatedItem : item)
+      );
+    } else {
+      setWarehouseInventory(prev => 
+        prev.map(item => item.id === selectedItem.id ? updatedItem : item)
+      );
+    }
+    
+    // Close modal
+    setShowUpdateItemModal(false);
+  };
+  
+  // Handle update stock form submission
+  const handleUpdateStockSubmit = (e) => {
+    e.preventDefault();
+    
+    // Basic validation
+    if (!stockUpdateData.quantity) {
+      alert('Please enter a quantity');
+      return;
+    }
+    
+    const quantity = parseInt(stockUpdateData.quantity);
+    let newStock = selectedItem.stock;
+    
+    switch (stockUpdateData.updateType) {
+      case 'add':
+        newStock += quantity;
+        break;
+      case 'subtract':
+        newStock = Math.max(0, newStock - quantity);
+        break;
+      case 'set':
+        newStock = quantity;
+        break;
+      default:
+        break;
+    }
+    
+    const updatedItem = {
+      ...selectedItem,
+      stock: newStock
+    };
+    
+    if (activeTab === 'facility') {
+      setFacilityInventory(prev => 
+        prev.map(item => item.id === selectedItem.id ? updatedItem : item)
+      );
+    } else {
+      setWarehouseInventory(prev => 
+        prev.map(item => item.id === selectedItem.id ? updatedItem : item)
+      );
+    }
+    
+    // Close modal
+    setShowUpdateStockModal(false);
+  };
+  
+  // Handle delete item confirmation
+  const handleDeleteConfirm = () => {
+    if (activeTab === 'facility') {
+      setFacilityInventory(prev => prev.filter(item => item.id !== selectedItem.id));
+    } else {
+      setWarehouseInventory(prev => prev.filter(item => item.id !== selectedItem.id));
+    }
+    
+    // Close modal
+    setShowRemoveItemModal(false);
+  };
+  
+  // Reset form when modals are closed
+  useEffect(() => {
+    if (!showAddItemModal) {
+      setFormData({
+        id: '',
+        name: '',
+        category: 'Pharmaceutical',
+        stock: '',
+        unit: 'Tablets',
+        minLevel: '',
+        maxLevel: '',
+        expiryDate: ''
+      });
+    }
+  }, [showAddItemModal]);
+  
   // Render the active tab content
   const renderActiveTab = () => {
-    const inventoryData = activeTab === 'facility' ? facilityInventory : warehouseInventory;
+    const inventoryData = getInventoryData();
     const isReadOnly = activeTab === 'warehouse';
     
     return (
@@ -102,11 +337,24 @@ const FacilityInventory = () => {
             <div className="d-flex gap-2">
               <div className="input-group input-group-sm">
                 <span className="input-group-text"><FaSearch /></span>
-                <input type="text" className="form-control" placeholder="Search items..." />
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="Search items..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
-              <button className="btn btn-sm btn-outline-secondary">
-                <FaFilter />
-              </button>
+              <select 
+                className="form-select form-select-sm" 
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+              >
+                <option value="">All Categories</option>
+                <option value="Pharmaceutical">Pharmaceutical</option>
+                <option value="Medical Supply">Medical Supply</option>
+                <option value="Consumable">Consumable</option>
+              </select>
             </div>
           </div>
           <div className="card-body">
@@ -127,67 +375,75 @@ const FacilityInventory = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {inventoryData.map(item => (
-                    <tr key={item.id} className={
-                      item.status === 'Low Stock' ? 'table-warning' : 
-                      item.status === 'Out of Stock' ? 'table-danger' : 
-                      item.status === 'In Stock' ? 'table-success' : ''
-                    }>
-                      <td>{item.id}</td>
-                      <td>{item.name}</td>
-                      <td>{item.category}</td>
-                      <td>{item.stock}</td>
-                      <td>{item.expiryDate}</td>
-                      <td>{item.minLevel}</td>
-                      <td>{item.maxLevel}</td>
-                      <td>{item.unit}</td>
-                      <td>
-                        <span className={`badge ${
-                          item.status === 'In Stock' ? 'bg-success' : 
-                          item.status === 'Low Stock' ? 'bg-warning text-dark' : 
-                          'bg-danger'
-                        }`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="btn-group" role="group">
-                          <button 
-                            className="btn btn-sm btn-outline-primary" 
-                            onClick={() => handleViewItem(item)}
-                            title="View"
-                          >
-                            <FaEye />
-                          </button>
-                          {!isReadOnly && (
-                            <>
-                              <button 
-                                className="btn btn-sm btn-outline-success" 
-                                onClick={() => handleUpdateStock(item)}
-                                title="Update Stock"
-                              >
-                                <FaPlus />
-                              </button>
-                              <button 
-                                className="btn btn-sm btn-outline-secondary" 
-                                onClick={() => handleEditItem(item)}
-                                title="Edit"
-                              >
-                                <FaEdit />
-                              </button>
-                              <button 
-                                className="btn btn-sm btn-outline-danger" 
-                                onClick={() => handleDeleteItem(item)}
-                                title="Delete"
-                              >
-                                <FaTrash />
-                              </button>
-                            </>
-                          )}
-                        </div>
+                  {inventoryData.length > 0 ? (
+                    inventoryData.map(item => (
+                      <tr key={item.id} className={
+                        item.status === 'Low Stock' ? 'table-warning' : 
+                        item.status === 'Out of Stock' ? 'table-danger' : 
+                        'table-success'
+                      }>
+                        <td>{item.id}</td>
+                        <td>{item.name}</td>
+                        <td>{item.category}</td>
+                        <td>{item.stock}</td>
+                        <td>{item.expiryDate}</td>
+                        <td>{item.minLevel}</td>
+                        <td>{item.maxLevel}</td>
+                        <td>{item.unit}</td>
+                        <td>
+                          <span className={`badge ${
+                            item.status === 'In Stock' ? 'bg-success' : 
+                            item.status === 'Low Stock' ? 'bg-warning text-dark' : 
+                            'bg-danger'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="btn-group" role="group">
+                            <button 
+                              className="btn btn-sm btn-outline-primary" 
+                              onClick={() => handleViewItem(item)}
+                              title="View"
+                            >
+                              <FaEye />
+                            </button>
+                            {!isReadOnly && (
+                              <>
+                                <button 
+                                  className="btn btn-sm btn-outline-success" 
+                                  onClick={() => handleUpdateStock(item)}
+                                  title="Update Stock"
+                                >
+                                  <FaPlus />
+                                </button>
+                                <button 
+                                  className="btn btn-sm btn-outline-secondary" 
+                                  onClick={() => handleEditItem(item)}
+                                  title="Edit"
+                                >
+                                  <FaEdit />
+                                </button>
+                                <button 
+                                  className="btn btn-sm btn-outline-danger" 
+                                  onClick={() => handleDeleteItem(item)}
+                                  title="Delete"
+                                >
+                                  <FaTrash />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="10" className="text-center py-3">
+                        No items found
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -240,44 +496,101 @@ const FacilityInventory = () => {
               <button type="button" className="btn-close" onClick={() => setShowAddItemModal(false)}></button>
             </div>
             <div className="modal-body">
-              <form>
+              <form onSubmit={handleAddItemSubmit}>
                 <div className="mb-3">
-                  <label className="form-label">Item Code</label>
-                  <input type="text" className="form-control" placeholder="Enter item code" />
+                  <label className="form-label">Item Code <span className="text-danger">*</span></label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    name="id"
+                    value={formData.id}
+                    onChange={handleInputChange}
+                    placeholder="Enter item code" 
+                    required
+                  />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Item Name</label>
-                  <input type="text" className="form-control" placeholder="Enter item name" />
+                  <label className="form-label">Item Name <span className="text-danger">*</span></label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="Enter item name" 
+                    required
+                  />
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Category</label>
-                  <select className="form-select">
-                    <option value="">Select category</option>
+                  <select 
+                    className="form-select"
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                  >
                     <option value="Pharmaceutical">Pharmaceutical</option>
                     <option value="Medical Supply">Medical Supply</option>
                     <option value="Consumable">Consumable</option>
                   </select>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Stock Quantity</label>
-                  <input type="number" className="form-control" placeholder="Enter stock quantity" />
+                  <label className="form-label">Stock Quantity <span className="text-danger">*</span></label>
+                  <input 
+                    type="number" 
+                    className="form-control" 
+                    name="stock"
+                    value={formData.stock}
+                    onChange={handleInputChange}
+                    placeholder="Enter stock quantity" 
+                    min="0"
+                    required
+                  />
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Expiry Date</label>
-                  <input type="date" className="form-control" />
+                  <input 
+                    type="date" 
+                    className="form-control"
+                    name="expiryDate"
+                    value={formData.expiryDate}
+                    onChange={handleInputChange}
+                  />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Min Quantity</label>
-                  <input type="number" className="form-control" placeholder="Enter minimum quantity" />
+                  <label className="form-label">Min Quantity <span className="text-danger">*</span></label>
+                  <input 
+                    type="number" 
+                    className="form-control" 
+                    name="minLevel"
+                    value={formData.minLevel}
+                    onChange={handleInputChange}
+                    placeholder="Enter minimum quantity" 
+                    min="0"
+                    required
+                  />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Max Quantity</label>
-                  <input type="number" className="form-control" placeholder="Enter maximum quantity" />
+                  <label className="form-label">Max Quantity <span className="text-danger">*</span></label>
+                  <input 
+                    type="number" 
+                    className="form-control" 
+                    name="maxLevel"
+                    value={formData.maxLevel}
+                    onChange={handleInputChange}
+                    placeholder="Enter maximum quantity" 
+                    min="0"
+                    required
+                  />
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Unit of Measure</label>
-                  <select className="form-select">
-                    <option value="">Select unit</option>
+                  <select 
+                    className="form-select"
+                    name="unit"
+                    value={formData.unit}
+                    onChange={handleInputChange}
+                  >
                     <option value="Tablets">Tablets</option>
                     <option value="Capsules">Capsules</option>
                     <option value="Pieces">Pieces</option>
@@ -285,11 +598,11 @@ const FacilityInventory = () => {
                     <option value="Bottles">Bottles</option>
                   </select>
                 </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowAddItemModal(false)}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">Add Item</button>
+                </div>
               </form>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowAddItemModal(false)}>Cancel</button>
-              <button type="button" className="btn btn-primary">Add Item</button>
             </div>
           </div>
         </div>
@@ -370,37 +683,68 @@ const FacilityInventory = () => {
             </div>
             <div className="modal-body">
               {selectedItem && (
-                <form>
+                <form onSubmit={handleUpdateStockSubmit}>
                   <div className="mb-3">
                     <label className="form-label">Item</label>
-                    <input type="text" className="form-control" defaultValue={`${selectedItem.id} - ${selectedItem.name}`} readOnly />
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      defaultValue={`${selectedItem.id} - ${selectedItem.name}`} 
+                      readOnly 
+                    />
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Current Stock</label>
-                    <input type="text" className="form-control" defaultValue={`${selectedItem.stock} ${selectedItem.unit}`} readOnly />
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      defaultValue={`${selectedItem.stock} ${selectedItem.unit}`} 
+                      readOnly 
+                    />
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Update Type</label>
-                    <select className="form-select">
+                    <select 
+                      className="form-select"
+                      name="updateType"
+                      value={stockUpdateData.updateType}
+                      onChange={handleStockUpdateChange}
+                    >
                       <option value="add">Add Stock</option>
                       <option value="subtract">Subtract Stock</option>
                       <option value="set">Set New Stock Level</option>
                     </select>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label">Quantity</label>
-                    <input type="number" className="form-control" placeholder="Enter quantity" />
+                    <label className="form-label">Quantity <span className="text-danger">*</span></label>
+                    <input 
+                      type="number" 
+                      className="form-control" 
+                      name="quantity"
+                      value={stockUpdateData.quantity}
+                      onChange={handleStockUpdateChange}
+                      placeholder="Enter quantity" 
+                      min="0"
+                      required
+                    />
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Reason</label>
-                    <textarea className="form-control" rows="3" placeholder="Enter reason for stock update"></textarea>
+                    <textarea 
+                      className="form-control" 
+                      rows="3" 
+                      name="reason"
+                      value={stockUpdateData.reason}
+                      onChange={handleStockUpdateChange}
+                      placeholder="Enter reason for stock update"
+                    ></textarea>
+                  </div>
+                  <div className="modal-footer">
+                    <button type="button" className="btn btn-secondary" onClick={() => setShowUpdateStockModal(false)}>Cancel</button>
+                    <button type="submit" className="btn btn-primary">Update Stock</button>
                   </div>
                 </form>
               )}
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowUpdateStockModal(false)}>Cancel</button>
-              <button type="button" className="btn btn-primary">Update Stock</button>
             </div>
           </div>
         </div>
@@ -416,42 +760,96 @@ const FacilityInventory = () => {
             </div>
             <div className="modal-body">
               {selectedItem && (
-                <form>
+                <form onSubmit={handleUpdateItemSubmit}>
                   <div className="mb-3">
                     <label className="form-label">Item Code</label>
-                    <input type="text" className="form-control" defaultValue={selectedItem.id} />
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      name="id"
+                      value={formData.id}
+                      onChange={handleInputChange}
+                      readOnly
+                    />
                   </div>
                   <div className="mb-3">
-                    <label className="form-label">Item Name</label>
-                    <input type="text" className="form-control" defaultValue={selectedItem.name} />
+                    <label className="form-label">Item Name <span className="text-danger">*</span></label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      required
+                    />
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Category</label>
-                    <select className="form-select" defaultValue={selectedItem.category}>
+                    <select 
+                      className="form-select"
+                      name="category"
+                      value={formData.category}
+                      onChange={handleInputChange}
+                    >
                       <option value="Pharmaceutical">Pharmaceutical</option>
                       <option value="Medical Supply">Medical Supply</option>
                       <option value="Consumable">Consumable</option>
                     </select>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label">Stock Quantity</label>
-                    <input type="number" className="form-control" defaultValue={selectedItem.stock} />
+                    <label className="form-label">Stock Quantity <span className="text-danger">*</span></label>
+                    <input 
+                      type="number" 
+                      className="form-control" 
+                      name="stock"
+                      value={formData.stock}
+                      onChange={handleInputChange}
+                      min="0"
+                      required
+                    />
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Expiry Date</label>
-                    <input type="date" className="form-control" defaultValue={selectedItem.expiryDate} />
+                    <input 
+                      type="date" 
+                      className="form-control"
+                      name="expiryDate"
+                      value={formData.expiryDate}
+                      onChange={handleInputChange}
+                    />
                   </div>
                   <div className="mb-3">
-                    <label className="form-label">Min Quantity</label>
-                    <input type="number" className="form-control" defaultValue={selectedItem.minLevel} />
+                    <label className="form-label">Min Quantity <span className="text-danger">*</span></label>
+                    <input 
+                      type="number" 
+                      className="form-control" 
+                      name="minLevel"
+                      value={formData.minLevel}
+                      onChange={handleInputChange}
+                      min="0"
+                      required
+                    />
                   </div>
                   <div className="mb-3">
-                    <label className="form-label">Max Quantity</label>
-                    <input type="number" className="form-control" defaultValue={selectedItem.maxLevel} />
+                    <label className="form-label">Max Quantity <span className="text-danger">*</span></label>
+                    <input 
+                      type="number" 
+                      className="form-control" 
+                      name="maxLevel"
+                      value={formData.maxLevel}
+                      onChange={handleInputChange}
+                      min="0"
+                      required
+                    />
                   </div>
                   <div className="mb-3">
                     <label className="form-label">Unit of Measure</label>
-                    <select className="form-select" defaultValue={selectedItem.unit}>
+                    <select 
+                      className="form-select"
+                      name="unit"
+                      value={formData.unit}
+                      onChange={handleInputChange}
+                    >
                       <option value="Tablets">Tablets</option>
                       <option value="Capsules">Capsules</option>
                       <option value="Pieces">Pieces</option>
@@ -459,12 +857,12 @@ const FacilityInventory = () => {
                       <option value="Bottles">Bottles</option>
                     </select>
                   </div>
+                  <div className="modal-footer">
+                    <button type="button" className="btn btn-secondary" onClick={() => setShowUpdateItemModal(false)}>Cancel</button>
+                    <button type="submit" className="btn btn-primary">Update Item</button>
+                  </div>
                 </form>
               )}
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowUpdateItemModal(false)}>Cancel</button>
-              <button type="button" className="btn btn-primary">Update Item</button>
             </div>
           </div>
         </div>
@@ -488,14 +886,16 @@ const FacilityInventory = () => {
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={() => setShowRemoveItemModal(false)}>Cancel</button>
-              <button type="button" className="btn btn-danger">Remove Item</button>
+              <button type="button" className="btn btn-danger" onClick={handleDeleteConfirm}>Remove Item</button>
             </div>
           </div>
         </div>
       </div>
       
       {/* Modal Backdrop */}
-      {isAnyModalOpen() && <div className="modal-backdrop fade show"></div>}
+      {isAnyModalOpen() && (
+        <div className="modal-backdrop fade show" onClick={closeAllModals}></div>
+      )}
     </div>
   );
 };
