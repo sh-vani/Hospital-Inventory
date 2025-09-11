@@ -30,11 +30,13 @@ import WarehouseSettings from "./Dashboard/Warehouse/WarehouseSettings";
 import WarehouseRequisitions from "./Dashboard/Warehouse/WarehouseRequisitions";
 import SuperAdminRoles from "./Dashboard/SuperAdmin/SuperAdminRoles"
 
+
 import UserDashboard from "./User/UserDashboard";
 import UserRequisitions from "./User/UserRequisitions";
 import FacilityDashboard from "./Facility/FacilityDashboard";
 import FacilityRequisitions from "./Facility/FacilityRequisitions";
 import FacilityReports from "./Facility/FacilityReports";
+import GoodReceipt from "./Facility/GoodReceipt";
 import FacilityAssets from "./Facility/FacilityAssets";
 import FacilityUser from "./Facility/FaciltyUser";
 import FacilitySettings from "./Facility/FacilitySettings";
@@ -109,8 +111,8 @@ function App() {
                 <Route path="/facility/settings" element={<FacilitySettings />}/>'
                 <Route path="/facility/facilityinventory" element={<FacilityInventory/>}/>'
                 <Route path="/facility/departmentsCategories" element={<FacilityDepartmentsCategories/>}/>'
-                <Route path="//facility/usersRoles" element={<FacilityUsersRoles/>}/>'
-            
+                <Route path="/facility/usersRoles" element={<FacilityUsersRoles/>}/>'
+                  <Route path="/facility/goodreceipt" element={<GoodReceipt/>}/>'
 
 
               <Route path="/profile" element={<Profile/>}/>

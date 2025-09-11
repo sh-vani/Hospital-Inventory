@@ -160,6 +160,23 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         icon: faClipboardList,
         path: "/facility/requisitions",
       },
+       {
+        name: "Assets",
+        icon: faArchive,
+        path: "/facility/assets",
+      },
+
+       {
+        name: "Good Receipt",
+        icon: faArchive,
+        path: "/facility/goodreceipt",
+      },
+
+       {
+        name: "Reports",
+        icon: faChartLine,
+        path: "/facility/reports",
+      },
       {
         name: "Departments & Categories",
         icon: faBuilding,
@@ -170,16 +187,8 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
          icon: faUserShield,
          path: "/facility/usersRoles"
       },
-      {
-        name: "Reports",
-        icon: faChartLine,
-        path: "/facility/reports",
-      },
-      {
-        name: "Assets",
-        icon: faArchive,
-        path: "/facility/assets",
-      },
+     
+     
       {
         name: "Users",
         icon: faUsers,
