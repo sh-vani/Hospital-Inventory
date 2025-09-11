@@ -1,63 +1,44 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   FaBox, FaPlus, FaEdit, FaTrash, FaSearch, FaFilter, 
-  FaEye, FaCalendarAlt, FaArrowUp, FaArrowDown 
+  FaEye, FaCalendarAlt, FaArrowUp, FaArrowDown, FaWarehouse
 } from 'react-icons/fa';
 
 const FacilityInventory = () => {
-  // State for active tab - changed to match new requirements
+  // State for active tab
   const [activeTab, setActiveTab] = useState('facility');
   
   // State for modals
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [showUpdateItemModal, setShowUpdateItemModal] = useState(false);
   const [showRemoveItemModal, setShowRemoveItemModal] = useState(false);
+  const [showViewItemModal, setShowViewItemModal] = useState(false);
+  const [showUpdateStockModal, setShowUpdateStockModal] = useState(false);
   
-  // State for inline editing
-  const [editingItemId, setEditingItemId] = useState(null);
-  const [editingField, setEditingField] = useState(null);
-  const [tempValue, setTempValue] = useState('');
+  // State for selected item
+  const [selectedItem, setSelectedItem] = useState(null);
   
-  // Sample data - updated to match required columns
+  // Sample data for Facility Inventory
   const facilityInventory = [
-    { id: 1, itemCode: 'MG-001', itemName: 'Medical Gloves', stockQty: 500, expiryDate: '2025-06-30', minQty: 100, maxQty: 1000, uom: 'boxes', status: 'OK' },
-    { id: 2, itemCode: 'FM-002', itemName: 'Face Masks', stockQty: 1200, expiryDate: '2024-12-31', minQty: 200, maxQty: 1500, uom: 'pieces', status: 'OK' },
-    { id: 3, itemCode: 'SZ-003', itemName: 'Sanitizer', stockQty: 50, expiryDate: '2024-09-15', minQty: 100, maxQty: 500, uom: 'bottles', status: 'Low' },
-    { id: 4, itemCode: 'SY-004', itemName: 'Syringes', stockQty: 0, expiryDate: '2024-08-01', minQty: 50, maxQty: 500, uom: 'pieces', status: 'Out of Stock' },
+    { id: 'DRG-0421', name: 'Paracetamol 500mg', category: 'Pharmaceutical', stock: 8, unit: 'Tablets', minLevel: 20, maxLevel: 100, expiryDate: '2025-06-30', status: 'Low Stock' },
+    { id: 'MS-0876', name: 'Surgical Gloves (Large)', category: 'Medical Supply', stock: 0, unit: 'Pairs', minLevel: 50, maxLevel: 200, expiryDate: '2024-12-31', status: 'Out of Stock' },
+    { id: 'CON-1543', name: 'Syringe 5ml', category: 'Consumable', stock: 142, unit: 'Pieces', minLevel: 30, maxLevel: 150, expiryDate: '2026-03-15', status: 'In Stock' },
+    { id: 'DRG-2087', name: 'Amoxicillin 250mg', category: 'Pharmaceutical', stock: 45, unit: 'Capsules', minLevel: 25, maxLevel: 120, expiryDate: '2024-09-20', status: 'In Stock' },
   ];
   
+  // Sample data for Warehouse Inventory
   const warehouseInventory = [
-    { id: 1, itemCode: 'MG-001', itemName: 'Medical Gloves', stockQty: 1500, expiryDate: '2025-06-30', minQty: 500, maxQty: 2000, uom: 'boxes', status: 'OK' },
-    { id: 2, itemCode: 'FM-002', itemName: 'Face Masks', stockQty: 3200, expiryDate: '2024-12-31', minQty: 1000, maxQty: 5000, uom: 'pieces', status: 'OK' },
-    { id: 3, itemCode: 'SZ-003', itemName: 'Sanitizer', stockQty: 150, expiryDate: '2024-09-15', minQty: 200, maxQty: 1000, uom: 'bottles', status: 'Low' },
-    { id: 4, itemCode: 'SY-004', itemName: 'Syringes', stockQty: 0, expiryDate: '2024-08-01', minQty: 300, maxQty: 2000, uom: 'pieces', status: 'Out of Stock' },
+    { id: 'DRG-0421', name: 'Paracetamol 500mg', category: 'Pharmaceutical', stock: 150, unit: 'Tablets', minLevel: 100, maxLevel: 500, expiryDate: '2025-06-30', status: 'In Stock' },
+    { id: 'MS-0876', name: 'Surgical Gloves (Large)', category: 'Medical Supply', stock: 80, unit: 'Pairs', minLevel: 50, maxLevel: 300, expiryDate: '2024-12-31', status: 'In Stock' },
+    { id: 'CON-1543', name: 'Syringe 5ml', category: 'Consumable', stock: 200, unit: 'Pieces', minLevel: 100, maxLevel: 400, expiryDate: '2026-03-15', status: 'In Stock' },
+    { id: 'DRG-2087', name: 'Amoxicillin 250mg', category: 'Pharmaceutical', stock: 120, unit: 'Capsules', minLevel: 100, maxLevel: 300, expiryDate: '2024-09-20', status: 'In Stock' },
   ];
-  
-  // Function to handle inline edit start
-  const startInlineEdit = (id, field, currentValue) => {
-    setEditingItemId(id);
-    setEditingField(field);
-    setTempValue(currentValue);
-  };
-  
-  // Function to save inline edit
-  const saveInlineEdit = () => {
-    // Here you would normally update the data in your state or API
-    setEditingItemId(null);
-    setEditingField(null);
-    setTempValue('');
-  };
-  
-  // Function to cancel inline edit
-  const cancelInlineEdit = () => {
-    setEditingItemId(null);
-    setEditingField(null);
-    setTempValue('');
-  };
   
   // Check if any modal is open
   const isAnyModalOpen = () => {
-    return showAddItemModal || showUpdateItemModal || showRemoveItemModal;
+    return showAddItemModal || showUpdateItemModal || showRemoveItemModal || 
+           showViewItemModal || showUpdateStockModal;
   };
   
   // Effect to handle body class when modal is open
@@ -72,256 +53,148 @@ const FacilityInventory = () => {
     return () => {
       document.body.classList.remove('modal-open');
     };
-  }, [showAddItemModal, showUpdateItemModal, showRemoveItemModal]);
+  }, [showAddItemModal, showUpdateItemModal, showRemoveItemModal, 
+      showViewItemModal, showUpdateStockModal]);
   
-  // Function to get status color
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'OK':
-        return 'bg-success';
-      case 'Low':
-        return 'bg-warning text-dark';
-      case 'Out of Stock':
-        return 'bg-danger';
-      default:
-        return 'bg-secondary';
-    }
+  // Handle view item
+  const handleViewItem = (item) => {
+    setSelectedItem(item);
+    setShowViewItemModal(true);
   };
   
-  // Function to get row color based on status
-  const getRowColor = (status) => {
-    switch(status) {
-      case 'OK':
-        return '';
-      case 'Low':
-        return 'table-warning';
-      case 'Out of Stock':
-        return 'table-danger';
-      default:
-        return '';
-    }
+  // Handle update stock
+  const handleUpdateStock = (item) => {
+    setSelectedItem(item);
+    setShowUpdateStockModal(true);
+  };
+  
+  // Handle edit item
+  const handleEditItem = (item) => {
+    setSelectedItem(item);
+    setShowUpdateItemModal(true);
+  };
+  
+  // Handle delete item
+  const handleDeleteItem = (item) => {
+    setSelectedItem(item);
+    setShowRemoveItemModal(true);
   };
   
   // Render the active tab content
   const renderActiveTab = () => {
-    switch(activeTab) {
-      case 'facility':
-        return (
-          <div className="p-3">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <h2>Facility Inventory</h2>
-              <button className="btn btn-primary" onClick={() => setShowAddItemModal(true)}>
-                <FaPlus className="me-2" /> Add Item
+    const inventoryData = activeTab === 'facility' ? facilityInventory : warehouseInventory;
+    const isReadOnly = activeTab === 'warehouse';
+    
+    return (
+      <div className="p-3">
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h2>{activeTab === 'facility' ? 'Facility Inventory' : 'Warehouse Inventory'}</h2>
+          {!isReadOnly && (
+            <button className="btn btn-primary" onClick={() => setShowAddItemModal(true)}>
+              <FaPlus className="me-2" /> Add Item
+            </button>
+          )}
+        </div>
+        
+        <div className={`card ${isReadOnly ? 'bg-light' : ''}`}>
+          <div className="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 className="mb-0">All Items</h5>
+            <div className="d-flex gap-2">
+              <div className="input-group input-group-sm">
+                <span className="input-group-text"><FaSearch /></span>
+                <input type="text" className="form-control" placeholder="Search items..." />
+              </div>
+              <button className="btn btn-sm btn-outline-secondary">
+                <FaFilter />
               </button>
             </div>
-            
-            <div className="card">
-              <div className="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">Facility Inventory Items</h5>
-                <div className="d-flex gap-2">
-                  <div className="input-group input-group-sm">
-                    <span className="input-group-text"><FaSearch /></span>
-                    <input type="text" className="form-control" placeholder="Search items..." />
-                  </div>
-                  <button className="btn btn-sm btn-outline-secondary">
-                    <FaFilter />
-                  </button>
-                </div>
-              </div>
-              <div className="card-body">
-                <div className="table-responsive">
-                  <table className="table table-hover">
-                    <thead>
-                      <tr>
-                        <th>Item Code</th>
-                        <th>Item Name</th>
-                        <th>Stock Qty</th>
-                        <th>Expiry Date</th>
-                        <th>Min Qty</th>
-                        <th>Max Qty</th>
-                        <th>UoM</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {facilityInventory.map(item => (
-                        <tr key={item.id} className={getRowColor(item.status)}>
-                          <td>{item.itemCode}</td>
-                          <td>{item.itemName}</td>
-                          <td>
-                            {editingItemId === item.id && editingField === 'stockQty' ? (
-                              <div className="input-group input-group-sm">
-                                <input 
-                                  type="number" 
-                                  className="form-control" 
-                                  value={tempValue}
-                                  onChange={(e) => setTempValue(e.target.value)}
-                                />
-                                <button className="btn btn-sm btn-success" onClick={saveInlineEdit}>✓</button>
-                                <button className="btn btn-sm btn-secondary" onClick={cancelInlineEdit}>✗</button>
-                              </div>
-                            ) : (
-                              <div className="d-flex justify-content-between align-items-center">
-                                {item.stockQty}
-                                <button 
-                                  className="btn btn-sm btn-outline-secondary ms-2" 
-                                  onClick={() => startInlineEdit(item.id, 'stockQty', item.stockQty)}
-                                >
-                                  <FaEdit />
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                          <td>{item.expiryDate}</td>
-                          <td>
-                            {editingItemId === item.id && editingField === 'minQty' ? (
-                              <div className="input-group input-group-sm">
-                                <input 
-                                  type="number" 
-                                  className="form-control" 
-                                  value={tempValue}
-                                  onChange={(e) => setTempValue(e.target.value)}
-                                />
-                                <button className="btn btn-sm btn-success" onClick={saveInlineEdit}>✓</button>
-                                <button className="btn btn-sm btn-secondary" onClick={cancelInlineEdit}>✗</button>
-                              </div>
-                            ) : (
-                              <div className="d-flex justify-content-between align-items-center">
-                                {item.minQty}
-                                <button 
-                                  className="btn btn-sm btn-outline-secondary ms-2" 
-                                  onClick={() => startInlineEdit(item.id, 'minQty', item.minQty)}
-                                >
-                                  <FaEdit />
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                          <td>
-                            {editingItemId === item.id && editingField === 'maxQty' ? (
-                              <div className="input-group input-group-sm">
-                                <input 
-                                  type="number" 
-                                  className="form-control" 
-                                  value={tempValue}
-                                  onChange={(e) => setTempValue(e.target.value)}
-                                />
-                                <button className="btn btn-sm btn-success" onClick={saveInlineEdit}>✓</button>
-                                <button className="btn btn-sm btn-secondary" onClick={cancelInlineEdit}>✗</button>
-                              </div>
-                            ) : (
-                              <div className="d-flex justify-content-between align-items-center">
-                                {item.maxQty}
-                                <button 
-                                  className="btn btn-sm btn-outline-secondary ms-2" 
-                                  onClick={() => startInlineEdit(item.id, 'maxQty', item.maxQty)}
-                                >
-                                  <FaEdit />
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                          <td>{item.uom}</td>
-                          <td>
-                            <span className={`badge ${getStatusColor(item.status)}`}>
-                              {item.status}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="btn-group" role="group">
-                              <button className="btn btn-sm btn-outline-primary" onClick={() => setShowUpdateItemModal(true)}>
+          </div>
+          <div className="card-body">
+            <div className="table-responsive">
+              <table className="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Item Code</th>
+                    <th>Item Name</th>
+                    <th>Category</th>
+                    <th>Stock Qty</th>
+                    <th>Expiry Date</th>
+                    <th>Min Qty</th>
+                    <th>Max Qty</th>
+                    <th>UoM</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inventoryData.map(item => (
+                    <tr key={item.id} className={
+                      item.status === 'Low Stock' ? 'table-warning' : 
+                      item.status === 'Out of Stock' ? 'table-danger' : 
+                      item.status === 'In Stock' ? 'table-success' : ''
+                    }>
+                      <td>{item.id}</td>
+                      <td>{item.name}</td>
+                      <td>{item.category}</td>
+                      <td>{item.stock}</td>
+                      <td>{item.expiryDate}</td>
+                      <td>{item.minLevel}</td>
+                      <td>{item.maxLevel}</td>
+                      <td>{item.unit}</td>
+                      <td>
+                        <span className={`badge ${
+                          item.status === 'In Stock' ? 'bg-success' : 
+                          item.status === 'Low Stock' ? 'bg-warning text-dark' : 
+                          'bg-danger'
+                        }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="btn-group" role="group">
+                          <button 
+                            className="btn btn-sm btn-outline-primary" 
+                            onClick={() => handleViewItem(item)}
+                            title="View"
+                          >
+                            <FaEye />
+                          </button>
+                          {!isReadOnly && (
+                            <>
+                              <button 
+                                className="btn btn-sm btn-outline-success" 
+                                onClick={() => handleUpdateStock(item)}
+                                title="Update Stock"
+                              >
+                                <FaPlus />
+                              </button>
+                              <button 
+                                className="btn btn-sm btn-outline-secondary" 
+                                onClick={() => handleEditItem(item)}
+                                title="Edit"
+                              >
                                 <FaEdit />
                               </button>
-                              <button className="btn btn-sm btn-outline-danger" onClick={() => setShowRemoveItemModal(true)}>
+                              <button 
+                                className="btn btn-sm btn-outline-danger" 
+                                onClick={() => handleDeleteItem(item)}
+                                title="Delete"
+                              >
                                 <FaTrash />
                               </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-        );
-        
-      case 'warehouse':
-        return (
-          <div className="p-3">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <h2>Warehouse Inventory</h2>
-            </div>
-            
-            <div className="card bg-light">
-              <div className="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">Warehouse Inventory Items</h5>
-                <div className="d-flex gap-2">
-                  <div className="input-group input-group-sm">
-                    <span className="input-group-text"><FaSearch /></span>
-                    <input type="text" className="form-control" placeholder="Search items..." />
-                  </div>
-                  <button className="btn btn-sm btn-outline-secondary">
-                    <FaFilter />
-                  </button>
-                </div>
-              </div>
-              <div className="card-body">
-                <div className="table-responsive">
-                  <table className="table table-hover">
-                    <thead>
-                      <tr>
-                        <th>Item Code</th>
-                        <th>Item Name</th>
-                        <th>Stock Qty</th>
-                        <th>Expiry Date</th>
-                        <th>Min Qty</th>
-                        <th>Max Qty</th>
-                        <th>UoM</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {warehouseInventory.map(item => (
-                        <tr key={item.id} className={getRowColor(item.status)}>
-                          <td>{item.itemCode}</td>
-                          <td>{item.itemName}</td>
-                          <td>{item.stockQty}</td>
-                          <td>{item.expiryDate}</td>
-                          <td>{item.minQty}</td>
-                          <td>{item.maxQty}</td>
-                          <td>{item.uom}</td>
-                          <td>
-                            <span className={`badge ${getStatusColor(item.status)}`}>
-                              {item.status}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="btn-group" role="group">
-                              <button className="btn btn-sm btn-outline-primary" disabled>
-                                <FaEdit />
-                              </button>
-                              <button className="btn btn-sm btn-outline-danger" disabled>
-                                <FaTrash />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-        
-      default:
-        return null;
-    }
+        </div>
+      </div>
+    );
   };
   
   return (
@@ -347,7 +220,7 @@ const FacilityInventory = () => {
                 className={`nav-link ${activeTab === 'warehouse' ? 'active' : ''}`}
                 onClick={() => setActiveTab('warehouse')}
               >
-                <FaBox className="me-2" />
+                <FaWarehouse className="me-2" />
                 Warehouse Inventory
               </button>
             </li>
@@ -377,29 +250,39 @@ const FacilityInventory = () => {
                   <input type="text" className="form-control" placeholder="Enter item name" />
                 </div>
                 <div className="mb-3">
+                  <label className="form-label">Category</label>
+                  <select className="form-select">
+                    <option value="">Select category</option>
+                    <option value="Pharmaceutical">Pharmaceutical</option>
+                    <option value="Medical Supply">Medical Supply</option>
+                    <option value="Consumable">Consumable</option>
+                  </select>
+                </div>
+                <div className="mb-3">
                   <label className="form-label">Stock Quantity</label>
-                  <input type="number" className="form-control" placeholder="Enter quantity" />
+                  <input type="number" className="form-control" placeholder="Enter stock quantity" />
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Expiry Date</label>
                   <input type="date" className="form-control" />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Minimum Quantity</label>
+                  <label className="form-label">Min Quantity</label>
                   <input type="number" className="form-control" placeholder="Enter minimum quantity" />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Maximum Quantity</label>
+                  <label className="form-label">Max Quantity</label>
                   <input type="number" className="form-control" placeholder="Enter maximum quantity" />
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Unit of Measure</label>
                   <select className="form-select">
                     <option value="">Select unit</option>
-                    <option value="pieces">Pieces</option>
-                    <option value="boxes">Boxes</option>
-                    <option value="bottles">Bottles</option>
-                    <option value="kits">Kits</option>
+                    <option value="Tablets">Tablets</option>
+                    <option value="Capsules">Capsules</option>
+                    <option value="Pieces">Pieces</option>
+                    <option value="Pairs">Pairs</option>
+                    <option value="Bottles">Bottles</option>
                   </select>
                 </div>
               </form>
@@ -407,6 +290,117 @@ const FacilityInventory = () => {
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={() => setShowAddItemModal(false)}>Cancel</button>
               <button type="button" className="btn btn-primary">Add Item</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* View Item Modal */}
+      <div className={`modal fade ${showViewItemModal ? 'show' : ''}`} style={{ display: showViewItemModal ? 'block' : 'none' }} tabIndex="-1">
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">Item Details</h5>
+              <button type="button" className="btn-close" onClick={() => setShowViewItemModal(false)}></button>
+            </div>
+            <div className="modal-body">
+              {selectedItem && (
+                <div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Item Code:</div>
+                    <div className="col-sm-8">{selectedItem.id}</div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Item Name:</div>
+                    <div className="col-sm-8">{selectedItem.name}</div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Category:</div>
+                    <div className="col-sm-8">{selectedItem.category}</div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Stock Quantity:</div>
+                    <div className="col-sm-8">{selectedItem.stock} {selectedItem.unit}</div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Expiry Date:</div>
+                    <div className="col-sm-8">{selectedItem.expiryDate}</div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Min Quantity:</div>
+                    <div className="col-sm-8">{selectedItem.minLevel} {selectedItem.unit}</div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Max Quantity:</div>
+                    <div className="col-sm-8">{selectedItem.maxLevel} {selectedItem.unit}</div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Unit of Measure:</div>
+                    <div className="col-sm-8">{selectedItem.unit}</div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Status:</div>
+                    <div className="col-sm-8">
+                      <span className={`badge ${
+                        selectedItem.status === 'In Stock' ? 'bg-success' : 
+                        selectedItem.status === 'Low Stock' ? 'bg-warning text-dark' : 
+                        'bg-danger'
+                      }`}>
+                        {selectedItem.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowViewItemModal(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Update Stock Modal */}
+      <div className={`modal fade ${showUpdateStockModal ? 'show' : ''}`} style={{ display: showUpdateStockModal ? 'block' : 'none' }} tabIndex="-1">
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">Update Stock</h5>
+              <button type="button" className="btn-close" onClick={() => setShowUpdateStockModal(false)}></button>
+            </div>
+            <div className="modal-body">
+              {selectedItem && (
+                <form>
+                  <div className="mb-3">
+                    <label className="form-label">Item</label>
+                    <input type="text" className="form-control" defaultValue={`${selectedItem.id} - ${selectedItem.name}`} readOnly />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Current Stock</label>
+                    <input type="text" className="form-control" defaultValue={`${selectedItem.stock} ${selectedItem.unit}`} readOnly />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Update Type</label>
+                    <select className="form-select">
+                      <option value="add">Add Stock</option>
+                      <option value="subtract">Subtract Stock</option>
+                      <option value="set">Set New Stock Level</option>
+                    </select>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Quantity</label>
+                    <input type="number" className="form-control" placeholder="Enter quantity" />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Reason</label>
+                    <textarea className="form-control" rows="3" placeholder="Enter reason for stock update"></textarea>
+                  </div>
+                </form>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowUpdateStockModal(false)}>Cancel</button>
+              <button type="button" className="btn btn-primary">Update Stock</button>
             </div>
           </div>
         </div>
@@ -421,41 +415,52 @@ const FacilityInventory = () => {
               <button type="button" className="btn-close" onClick={() => setShowUpdateItemModal(false)}></button>
             </div>
             <div className="modal-body">
-              <form>
-                <div className="mb-3">
-                  <label className="form-label">Item Code</label>
-                  <input type="text" className="form-control" defaultValue="MG-001" />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Item Name</label>
-                  <input type="text" className="form-control" defaultValue="Medical Gloves" />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Stock Quantity</label>
-                  <input type="number" className="form-control" defaultValue="500" />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Expiry Date</label>
-                  <input type="date" className="form-control" defaultValue="2025-06-30" />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Minimum Quantity</label>
-                  <input type="number" className="form-control" defaultValue="100" />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Maximum Quantity</label>
-                  <input type="number" className="form-control" defaultValue="1000" />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Unit of Measure</label>
-                  <select className="form-select" defaultValue="boxes">
-                    <option value="pieces">Pieces</option>
-                    <option value="boxes">Boxes</option>
-                    <option value="bottles">Bottles</option>
-                    <option value="kits">Kits</option>
-                  </select>
-                </div>
-              </form>
+              {selectedItem && (
+                <form>
+                  <div className="mb-3">
+                    <label className="form-label">Item Code</label>
+                    <input type="text" className="form-control" defaultValue={selectedItem.id} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Item Name</label>
+                    <input type="text" className="form-control" defaultValue={selectedItem.name} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Category</label>
+                    <select className="form-select" defaultValue={selectedItem.category}>
+                      <option value="Pharmaceutical">Pharmaceutical</option>
+                      <option value="Medical Supply">Medical Supply</option>
+                      <option value="Consumable">Consumable</option>
+                    </select>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Stock Quantity</label>
+                    <input type="number" className="form-control" defaultValue={selectedItem.stock} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Expiry Date</label>
+                    <input type="date" className="form-control" defaultValue={selectedItem.expiryDate} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Min Quantity</label>
+                    <input type="number" className="form-control" defaultValue={selectedItem.minLevel} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Max Quantity</label>
+                    <input type="number" className="form-control" defaultValue={selectedItem.maxLevel} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Unit of Measure</label>
+                    <select className="form-select" defaultValue={selectedItem.unit}>
+                      <option value="Tablets">Tablets</option>
+                      <option value="Capsules">Capsules</option>
+                      <option value="Pieces">Pieces</option>
+                      <option value="Pairs">Pairs</option>
+                      <option value="Bottles">Bottles</option>
+                    </select>
+                  </div>
+                </form>
+              )}
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={() => setShowUpdateItemModal(false)}>Cancel</button>
@@ -474,8 +479,12 @@ const FacilityInventory = () => {
               <button type="button" className="btn-close" onClick={() => setShowRemoveItemModal(false)}></button>
             </div>
             <div className="modal-body">
-              <p>Are you sure you want to remove <strong>Medical Gloves</strong> from inventory?</p>
-              <p className="text-muted">This action cannot be undone.</p>
+              {selectedItem && (
+                <>
+                  <p>Are you sure you want to remove <strong>{selectedItem.name}</strong> from inventory?</p>
+                  <p className="text-muted">This action cannot be undone.</p>
+                </>
+              )}
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={() => setShowRemoveItemModal(false)}>Cancel</button>
