@@ -44,6 +44,9 @@ import FacilityUsersRoles from "./Facility/FacilityUsersRoles";
 import FacilityUserMyRequests from "./Dashboard/FacilityUser/FacilityUserMyRequests";
 import FacilityUserNotifications from "./Dashboard/FacilityUser/FacilityUserNotifications";
 import FacilityUserInventory from "./Dashboard/FacilityUser/FacilityUserInventory";
+import FacilityUserRequisition from "./Dashboard/FacilityUser/FacilityUserRequisition"
+import FacilityUserDashboard from "./Dashboard/FacilityUser/FacilityUserDashboard"
+import AcknowledgementOfReceipts from "./Dashboard/FacilityUser/AcknowledgementOfReceipts"
 
 
 function App() {
@@ -93,8 +96,7 @@ function App() {
                 {/* <Route path="okrs/departmentokrs" element={<DepartmentOKRs />} /> */}
 
            
-              <Route path="/user/dashboard" element={<UserDashboard/>}/>'
-              <Route path="/user/requisitions" element={<UserRequisitions/>}/>'
+              
 
 
                  <Route path="/facility-admin/dashboard" element= {<FacilityDashboard/>}/>'
@@ -125,9 +127,14 @@ function App() {
                    <Route path="/superadmin/role"element={<SuperAdminRoles/>}/>
 
 
+                
+                  <Route path="/user/dashboard" element={<FacilityUserDashboard/>}/>'
+              <Route path="/user/requisitions" element={<FacilityUserRequisition/>}/>'
                   <Route path="/user/facilityInventory"element={<FacilityUserInventory/>}/>
                   <Route path="/user/myRequests"element={<FacilityUserMyRequests/>}/>
                   <Route path="/user/notification"element={<FacilityUserNotifications/>}/>
+                  <Route path="/user/receipts"element={<AcknowledgementOfReceipts/>}/>
+
 
 
 

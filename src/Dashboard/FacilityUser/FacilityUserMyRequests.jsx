@@ -3,6 +3,7 @@ import {
   FaClipboardList, FaEye, FaSearch, FaFilter, FaPaperPlane, 
   FaCheck, FaTimes, FaExclamationTriangle, FaClock, FaCalendarAlt
 } from 'react-icons/fa';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const FacilityUserMyRequests = () => {
   // State for modals
@@ -97,71 +98,83 @@ const FacilityUserMyRequests = () => {
         return 'bg-secondary';
     }
   };
-  
+
   return (
-    <div className="container-fluid">
-      <div className="row">
-        <div className="col-12">
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <h1 className="h3">My Requests</h1>
+    <div className="container-fluid py-4 px-3 px-md-4">
+      {/* Header Section - Responsive */}
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+        <div className="mb-3 mb-md-0">
+          <h1 className="h3 mb-1">My Requests</h1>
+          <p className="text-muted mb-0">Track and manage your requisition requests</p>
+        </div>
+        <div className="d-flex align-items-center">
+          <div className="text-end me-3">
+            <div className="text-muted small">Department: Pharmacy</div>
+            <div>User: Dr. Sharma</div>
           </div>
-          
-          <div className="card">
-            <div className="card-header bg-white d-flex justify-content-between align-items-center">
-              <h5 className="mb-0">Request Status Timeline</h5>
-              <div className="d-flex gap-2">
-                <div className="input-group input-group-sm">
-                  <span className="input-group-text"><FaSearch /></span>
-                  <input type="text" className="form-control" placeholder="Search requests..." />
-                </div>
-                <button className="btn btn-sm btn-outline-secondary">
-                  <FaFilter />
-                </button>
-              </div>
-            </div>
-            <div className="card-body">
-              <div className="table-responsive">
-                <table className="table table-hover">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Title</th>
-                      <th>Description</th>
-                      <th>Submitted Date</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {requests.map(request => (
-                      <tr key={request.id}>
-                        <td>{request.id}</td>
-                        <td>{request.title}</td>
-                        <td>{request.description}</td>
-                        <td>{request.submittedDate}</td>
-                        <td>
-                          <span className={`badge ${getStatusBadgeClass(request.status)}`}>
-                            {getStatusIcon(request.status)} {request.status}
-                          </span>
-                        </td>
-                        <td>
-                          <button className="btn btn-sm btn-outline-primary" onClick={() => openRequestDetails(request)}>
-                            <FaEye /> View Details
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+          <div className="bg-light rounded-circle p-2 flex-shrink-0">
+            <FaClipboardList size={24} className="text-primary" />
           </div>
         </div>
       </div>
       
-      {/* Request Details Modal */}
+      {/* Main Card - Responsive */}
+      <div className="card border-0 shadow-sm">
+        <div className="card-header bg-white border-0 p-3 p-md-4">
+          <div className="flex-column flex-md-row d-flex justify-content-between align-items-md-center gap-3">
+            <h5 className="mb-0">Request Status Timeline</h5>
+            <div className="d-flex flex-column flex-md-row gap-2 w-100 w-md-auto">
+              <div className="input-group input-group-sm">
+                <span className="input-group-text"><FaSearch /></span>
+                <input type="text" className="form-control" placeholder="Search requests..." />
+              </div>
+              <button className="btn btn-sm btn-outline-secondary flex-shrink-0">
+                <FaFilter />
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Title</th>
+                  <th className="d-none d-md-table-cell">Description</th>
+                  <th>Submitted Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {requests.map(request => (
+                  <tr key={request.id}>
+                    <td>{request.id}</td>
+                    <td>{request.title}</td>
+                    <td className="d-none d-md-table-cell">{request.description}</td>
+                    <td>{request.submittedDate}</td>
+                    <td>
+                      <span className={`badge ${getStatusBadgeClass(request.status)}`}>
+                        {getStatusIcon(request.status)} {request.status}
+                      </span>
+                    </td>
+                    <td>
+                      <button className="btn btn-sm btn-outline-primary" onClick={() => openRequestDetails(request)}>
+                        <FaEye /> <span className="d-none d-md-inline-block ms-1">View Details</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
+      {/* Request Details Modal - Responsive */}
       <div className={`modal fade ${showRequestDetailsModal ? 'show' : ''}`} style={{ display: showRequestDetailsModal ? 'block' : 'none' }} tabIndex="-1">
-        <div className="modal-dialog modal-lg">
+        <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
           <div className="modal-content">
             <div className="modal-header">
               <h5 className="modal-title">Request Details</h5>
@@ -171,11 +184,11 @@ const FacilityUserMyRequests = () => {
               {selectedRequest && (
                 <>
                   <div className="row mb-4">
-                    <div className="col-md-6">
-                      <h4>{selectedRequest.title}</h4>
+                    <div className="col-12 col-md-6">
+                      <h4 className="mb-2">{selectedRequest.title}</h4>
                       <p className="text-muted">{selectedRequest.description}</p>
                     </div>
-                    <div className="col-md-6 text-md-end">
+                    <div className="col-12 col-md-6 text-md-end">
                       <span className={`badge ${getStatusBadgeClass(selectedRequest.status)} fs-6`}>
                         {getStatusIcon(selectedRequest.status)} {selectedRequest.status}
                       </span>
@@ -183,7 +196,7 @@ const FacilityUserMyRequests = () => {
                   </div>
                   
                   <div className="row mb-4">
-                    <div className="col-md-6">
+                    <div className="col-12 col-md-6 mb-4 mb-md-0">
                       <h5>Requested Items</h5>
                       <div className="table-responsive">
                         <table className="table table-sm">
@@ -218,18 +231,18 @@ const FacilityUserMyRequests = () => {
                         </table>
                       </div>
                     </div>
-                    <div className="col-md-6">
+                    <div className="col-12 col-md-6">
                       <h5>Status Timeline</h5>
                       <div className="timeline">
                         {/* Submitted Step */}
                         <div className="d-flex align-items-start mb-4">
-                          <div className="bg-primary rounded-circle p-2 me-3">
+                          <div className="bg-primary rounded-circle p-2 me-3 flex-shrink-0">
                             <FaPaperPlane className="text-white" />
                           </div>
                           <div>
                             <h6>Submitted</h6>
                             <div className="d-flex align-items-center text-muted">
-                              <FaCalendarAlt className="me-2" />
+                              <FaCalendarAlt className="me-2 flex-shrink-0" />
                               <span>{selectedRequest.submittedDate}</span>
                             </div>
                           </div>
@@ -237,7 +250,7 @@ const FacilityUserMyRequests = () => {
                         
                         {/* Status Step */}
                         <div className="d-flex align-items-start">
-                          <div className={`rounded-circle p-2 me-3 ${
+                          <div className={`rounded-circle p-2 me-3 flex-shrink-0 ${
                             selectedRequest.status === 'Approved' ? 'bg-success' : 
                             selectedRequest.status === 'Partially Approved' ? 'bg-warning' : 
                             selectedRequest.status === 'Rejected' ? 'bg-danger' : 'bg-secondary'
@@ -251,7 +264,7 @@ const FacilityUserMyRequests = () => {
                             <h6>{selectedRequest.status}</h6>
                             {selectedRequest.status !== 'Pending' && (
                               <div className="d-flex align-items-center text-muted">
-                                <FaCalendarAlt className="me-2" />
+                                <FaCalendarAlt className="me-2 flex-shrink-0" />
                                 <span>
                                   {selectedRequest.status === 'Approved' && selectedRequest.approvedDate}
                                   {selectedRequest.status === 'Partially Approved' && selectedRequest.approvedDate}
@@ -279,7 +292,7 @@ const FacilityUserMyRequests = () => {
               )}
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowRequestDetailsModal(false)}>Close</button>
+              <button type="button" className="btn btn-secondary w-100 w-md-auto" onClick={() => setShowRequestDetailsModal(false)}>Close</button>
             </div>
           </div>
         </div>
