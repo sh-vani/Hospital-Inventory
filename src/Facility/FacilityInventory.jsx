@@ -1,47 +1,44 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   FaBox, FaPlus, FaEdit, FaTrash, FaSearch, FaFilter, 
-  FaEye, FaCalendarAlt, FaArrowUp, FaArrowDown 
+  FaEye, FaCalendarAlt, FaArrowUp, FaArrowDown, FaWarehouse
 } from 'react-icons/fa';
 
 const FacilityInventory = () => {
   // State for active tab
-  const [activeTab, setActiveTab] = useState('items');
+  const [activeTab, setActiveTab] = useState('facility');
   
   // State for modals
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [showUpdateItemModal, setShowUpdateItemModal] = useState(false);
   const [showRemoveItemModal, setShowRemoveItemModal] = useState(false);
-  const [showAddBatchModal, setShowAddBatchModal] = useState(false);
-  const [showUpdateBatchModal, setShowUpdateBatchModal] = useState(false);
-  const [showRemoveBatchModal, setShowRemoveBatchModal] = useState(false);
-  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
+  const [showViewItemModal, setShowViewItemModal] = useState(false);
+  const [showUpdateStockModal, setShowUpdateStockModal] = useState(false);
   
-  // Sample data
-  const inventoryItems = [
-    { id: 1, name: 'Medical Gloves', sku: 'MG-001', quantity: 500, unit: 'boxes', location: 'A1-B2', status: 'In Stock' },
-    { id: 2, name: 'Face Masks', sku: 'FM-002', quantity: 1200, unit: 'pieces', location: 'A1-B3', status: 'In Stock' },
-    { id: 3, name: 'Sanitizer', sku: 'SZ-003', quantity: 50, unit: 'bottles', location: 'A2-C1', status: 'Low Stock' },
-    { id: 4, name: 'Syringes', sku: 'SY-004', quantity: 0, unit: 'pieces', location: 'A2-C2', status: 'Out of Stock' },
+  // State for selected item
+  const [selectedItem, setSelectedItem] = useState(null);
+  
+  // Sample data for Facility Inventory
+  const facilityInventory = [
+    { id: 'DRG-0421', name: 'Paracetamol 500mg', category: 'Pharmaceutical', stock: 8, unit: 'Tablets', minLevel: 20, maxLevel: 100, expiryDate: '2025-06-30', status: 'Low Stock' },
+    { id: 'MS-0876', name: 'Surgical Gloves (Large)', category: 'Medical Supply', stock: 0, unit: 'Pairs', minLevel: 50, maxLevel: 200, expiryDate: '2024-12-31', status: 'Out of Stock' },
+    { id: 'CON-1543', name: 'Syringe 5ml', category: 'Consumable', stock: 142, unit: 'Pieces', minLevel: 30, maxLevel: 150, expiryDate: '2026-03-15', status: 'In Stock' },
+    { id: 'DRG-2087', name: 'Amoxicillin 250mg', category: 'Pharmaceutical', stock: 45, unit: 'Capsules', minLevel: 25, maxLevel: 120, expiryDate: '2024-09-20', status: 'In Stock' },
   ];
   
-  const batches = [
-    { id: 1, item: 'Medical Gloves', batchNumber: 'BG-2023-001', quantity: 200, expiryDate: '2025-06-30', status: 'Active' },
-    { id: 2, item: 'Face Masks', batchNumber: 'BF-2023-015', quantity: 500, expiryDate: '2024-12-31', status: 'Active' },
-    { id: 3, item: 'Sanitizer', batchNumber: 'BS-2023-008', quantity: 30, expiryDate: '2024-09-15', status: 'Expiring Soon' },
-  ];
-  
-  const adjustments = [
-    { id: 1, item: 'Medical Gloves', type: 'Increase', quantity: 50, reason: 'Restock', date: '2023-07-10', by: 'Admin' },
-    { id: 2, item: 'Face Masks', type: 'Decrease', quantity: 100, reason: 'Damaged items', date: '2023-07-12', by: 'J. Smith' },
-    { id: 3, item: 'Sanitizer', type: 'Increase', quantity: 20, reason: 'New stock', date: '2023-07-15', by: 'Admin' },
+  // Sample data for Warehouse Inventory
+  const warehouseInventory = [
+    { id: 'DRG-0421', name: 'Paracetamol 500mg', category: 'Pharmaceutical', stock: 150, unit: 'Tablets', minLevel: 100, maxLevel: 500, expiryDate: '2025-06-30', status: 'In Stock' },
+    { id: 'MS-0876', name: 'Surgical Gloves (Large)', category: 'Medical Supply', stock: 80, unit: 'Pairs', minLevel: 50, maxLevel: 300, expiryDate: '2024-12-31', status: 'In Stock' },
+    { id: 'CON-1543', name: 'Syringe 5ml', category: 'Consumable', stock: 200, unit: 'Pieces', minLevel: 100, maxLevel: 400, expiryDate: '2026-03-15', status: 'In Stock' },
+    { id: 'DRG-2087', name: 'Amoxicillin 250mg', category: 'Pharmaceutical', stock: 120, unit: 'Capsules', minLevel: 100, maxLevel: 300, expiryDate: '2024-09-20', status: 'In Stock' },
   ];
   
   // Check if any modal is open
   const isAnyModalOpen = () => {
     return showAddItemModal || showUpdateItemModal || showRemoveItemModal || 
-           showAddBatchModal || showUpdateBatchModal || showRemoveBatchModal || 
-           showAdjustmentModal;
+           showViewItemModal || showUpdateStockModal;
   };
   
   // Effect to handle body class when modal is open
@@ -57,224 +54,147 @@ const FacilityInventory = () => {
       document.body.classList.remove('modal-open');
     };
   }, [showAddItemModal, showUpdateItemModal, showRemoveItemModal, 
-      showAddBatchModal, showUpdateBatchModal, showRemoveBatchModal, 
-      showAdjustmentModal]);
+      showViewItemModal, showUpdateStockModal]);
+  
+  // Handle view item
+  const handleViewItem = (item) => {
+    setSelectedItem(item);
+    setShowViewItemModal(true);
+  };
+  
+  // Handle update stock
+  const handleUpdateStock = (item) => {
+    setSelectedItem(item);
+    setShowUpdateStockModal(true);
+  };
+  
+  // Handle edit item
+  const handleEditItem = (item) => {
+    setSelectedItem(item);
+    setShowUpdateItemModal(true);
+  };
+  
+  // Handle delete item
+  const handleDeleteItem = (item) => {
+    setSelectedItem(item);
+    setShowRemoveItemModal(true);
+  };
   
   // Render the active tab content
   const renderActiveTab = () => {
-    switch(activeTab) {
-      case 'items':
-        return (
-          <div className="p-3">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <h2>Inventory Items</h2>
-              <button className="btn btn-primary" onClick={() => setShowAddItemModal(true)}>
-                <FaPlus className="me-2" /> Add Item
+    const inventoryData = activeTab === 'facility' ? facilityInventory : warehouseInventory;
+    const isReadOnly = activeTab === 'warehouse';
+    
+    return (
+      <div className="p-3">
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h2>{activeTab === 'facility' ? 'Facility Inventory' : 'Warehouse Inventory'}</h2>
+          {!isReadOnly && (
+            <button className="btn btn-primary" onClick={() => setShowAddItemModal(true)}>
+              <FaPlus className="me-2" /> Add Item
+            </button>
+          )}
+        </div>
+        
+        <div className={`card ${isReadOnly ? 'bg-light' : ''}`}>
+          <div className="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 className="mb-0">All Items</h5>
+            <div className="d-flex gap-2">
+              <div className="input-group input-group-sm">
+                <span className="input-group-text"><FaSearch /></span>
+                <input type="text" className="form-control" placeholder="Search items..." />
+              </div>
+              <button className="btn btn-sm btn-outline-secondary">
+                <FaFilter />
               </button>
             </div>
-            
-            <div className="card">
-              <div className="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">All Items</h5>
-                <div className="d-flex gap-2">
-                  <div className="input-group input-group-sm">
-                    <span className="input-group-text"><FaSearch /></span>
-                    <input type="text" className="form-control" placeholder="Search items..." />
-                  </div>
-                  <button className="btn btn-sm btn-outline-secondary">
-                    <FaFilter />
-                  </button>
-                </div>
-              </div>
-              <div className="card-body">
-                <div className="table-responsive">
-                  <table className="table table-hover">
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>Item Name</th>
-                        <th>SKU</th>
-                        <th>Quantity</th>
-                        <th>Unit</th>
-                        <th>Location</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {inventoryItems.map(item => (
-                        <tr key={item.id}>
-                          <td>{item.id}</td>
-                          <td>{item.name}</td>
-                          <td>{item.sku}</td>
-                          <td>{item.quantity}</td>
-                          <td>{item.unit}</td>
-                          <td>{item.location}</td>
-                          <td>
-                            <span className={`badge ${item.status === 'In Stock' ? 'bg-success' : item.status === 'Low Stock' ? 'bg-warning text-dark' : 'bg-danger'}`}>
-                              {item.status}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="btn-group" role="group">
-                              <button className="btn btn-sm btn-outline-primary" onClick={() => setShowUpdateItemModal(true)}>
+          </div>
+          <div className="card-body">
+            <div className="table-responsive">
+              <table className="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Item Code</th>
+                    <th>Item Name</th>
+                    <th>Category</th>
+                    <th>Stock Qty</th>
+                    <th>Expiry Date</th>
+                    <th>Min Qty</th>
+                    <th>Max Qty</th>
+                    <th>UoM</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inventoryData.map(item => (
+                    <tr key={item.id} className={
+                      item.status === 'Low Stock' ? 'table-warning' : 
+                      item.status === 'Out of Stock' ? 'table-danger' : 
+                      item.status === 'In Stock' ? 'table-success' : ''
+                    }>
+                      <td>{item.id}</td>
+                      <td>{item.name}</td>
+                      <td>{item.category}</td>
+                      <td>{item.stock}</td>
+                      <td>{item.expiryDate}</td>
+                      <td>{item.minLevel}</td>
+                      <td>{item.maxLevel}</td>
+                      <td>{item.unit}</td>
+                      <td>
+                        <span className={`badge ${
+                          item.status === 'In Stock' ? 'bg-success' : 
+                          item.status === 'Low Stock' ? 'bg-warning text-dark' : 
+                          'bg-danger'
+                        }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="btn-group" role="group">
+                          <button 
+                            className="btn btn-sm btn-outline-primary" 
+                            onClick={() => handleViewItem(item)}
+                            title="View"
+                          >
+                            <FaEye />
+                          </button>
+                          {!isReadOnly && (
+                            <>
+                              <button 
+                                className="btn btn-sm btn-outline-success" 
+                                onClick={() => handleUpdateStock(item)}
+                                title="Update Stock"
+                              >
+                                <FaPlus />
+                              </button>
+                              <button 
+                                className="btn btn-sm btn-outline-secondary" 
+                                onClick={() => handleEditItem(item)}
+                                title="Edit"
+                              >
                                 <FaEdit />
                               </button>
-                              <button className="btn btn-sm btn-outline-danger" onClick={() => setShowRemoveItemModal(true)}>
+                              <button 
+                                className="btn btn-sm btn-outline-danger" 
+                                onClick={() => handleDeleteItem(item)}
+                                title="Delete"
+                              >
                                 <FaTrash />
                               </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-        );
-        
-      case 'batches':
-        return (
-          <div className="p-3">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <h2>Batch Management</h2>
-              <button className="btn btn-primary" onClick={() => setShowAddBatchModal(true)}>
-                <FaPlus className="me-2" /> Add Batch
-              </button>
-            </div>
-            
-            <div className="card">
-              <div className="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">All Batches</h5>
-                <div className="d-flex gap-2">
-                  <div className="input-group input-group-sm">
-                    <span className="input-group-text"><FaSearch /></span>
-                    <input type="text" className="form-control" placeholder="Search batches..." />
-                  </div>
-                  <button className="btn btn-sm btn-outline-secondary">
-                    <FaFilter />
-                  </button>
-                </div>
-              </div>
-              <div className="card-body">
-                <div className="table-responsive">
-                  <table className="table table-hover">
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>Item</th>
-                        <th>Batch Number</th>
-                        <th>Quantity</th>
-                        <th>Expiry Date</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {batches.map(batch => (
-                        <tr key={batch.id}>
-                          <td>{batch.id}</td>
-                          <td>{batch.item}</td>
-                          <td>{batch.batchNumber}</td>
-                          <td>{batch.quantity}</td>
-                          <td>{batch.expiryDate}</td>
-                          <td>
-                            <span className={`badge ${batch.status === 'Active' ? 'bg-success' : 'bg-warning text-dark'}`}>
-                              {batch.status}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="btn-group" role="group">
-                              <button className="btn btn-sm btn-outline-primary" onClick={() => setShowUpdateBatchModal(true)}>
-                                <FaEdit />
-                              </button>
-                              <button className="btn btn-sm btn-outline-danger" onClick={() => setShowRemoveBatchModal(true)}>
-                                <FaTrash />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-        
-      case 'adjustments':
-        return (
-          <div className="p-3">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <h2>Stock Adjustments</h2>
-              <button className="btn btn-primary" onClick={() => setShowAdjustmentModal(true)}>
-                <FaPlus className="me-2" /> New Adjustment
-              </button>
-            </div>
-            
-            <div className="card">
-              <div className="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">Adjustment History</h5>
-                <div className="d-flex gap-2">
-                  <div className="input-group input-group-sm">
-                    <span className="input-group-text"><FaSearch /></span>
-                    <input type="text" className="form-control" placeholder="Search adjustments..." />
-                  </div>
-                  <button className="btn btn-sm btn-outline-secondary">
-                    <FaFilter />
-                  </button>
-                </div>
-              </div>
-              <div className="card-body">
-                <div className="table-responsive">
-                  <table className="table table-hover">
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>Item</th>
-                        <th>Type</th>
-                        <th>Quantity</th>
-                        <th>Reason</th>
-                        <th>Date</th>
-                        <th>By</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {adjustments.map(adj => (
-                        <tr key={adj.id}>
-                          <td>{adj.id}</td>
-                          <td>{adj.item}</td>
-                          <td>
-                            <span className={`badge ${adj.type === 'Increase' ? 'bg-success' : 'bg-danger'}`}>
-                              {adj.type}
-                            </span>
-                          </td>
-                          <td>{adj.quantity}</td>
-                          <td>{adj.reason}</td>
-                          <td>{adj.date}</td>
-                          <td>{adj.by}</td>
-                          <td>
-                            <button className="btn btn-sm btn-outline-primary">
-                              <FaEye />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-        
-      default:
-        return null;
-    }
+        </div>
+      </div>
+    );
   };
   
   return (
@@ -282,35 +202,26 @@ const FacilityInventory = () => {
       <div className="row">
         <div className="col-12">
           <div className="d-flex justify-content-between align-items-center mb-4">
-            <h1 className="h3">Facility Inventory</h1>
+            <h1 className="h3">Inventory Management</h1>
           </div>
           
           <ul className="nav nav-tabs mb-4">
             <li className="nav-item">
               <button 
-                className={`nav-link ${activeTab === 'items' ? 'active' : ''}`}
-                onClick={() => setActiveTab('items')}
+                className={`nav-link ${activeTab === 'facility' ? 'active' : ''}`}
+                onClick={() => setActiveTab('facility')}
               >
                 <FaBox className="me-2" />
-                Items
+                Facility Inventory
               </button>
             </li>
             <li className="nav-item">
               <button 
-                className={`nav-link ${activeTab === 'batches' ? 'active' : ''}`}
-                onClick={() => setActiveTab('batches')}
+                className={`nav-link ${activeTab === 'warehouse' ? 'active' : ''}`}
+                onClick={() => setActiveTab('warehouse')}
               >
-                <FaCalendarAlt className="me-2" />
-                Batches
-              </button>
-            </li>
-            <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'adjustments' ? 'active' : ''}`}
-                onClick={() => setActiveTab('adjustments')}
-              >
-                <FaArrowUp className="me-2" />
-                Adjustments
+                <FaWarehouse className="me-2" />
+                Warehouse Inventory
               </button>
             </li>
           </ul>
@@ -331,36 +242,165 @@ const FacilityInventory = () => {
             <div className="modal-body">
               <form>
                 <div className="mb-3">
+                  <label className="form-label">Item Code</label>
+                  <input type="text" className="form-control" placeholder="Enter item code" />
+                </div>
+                <div className="mb-3">
                   <label className="form-label">Item Name</label>
                   <input type="text" className="form-control" placeholder="Enter item name" />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">SKU</label>
-                  <input type="text" className="form-control" placeholder="Enter SKU" />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Quantity</label>
-                  <input type="number" className="form-control" placeholder="Enter quantity" />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Unit</label>
+                  <label className="form-label">Category</label>
                   <select className="form-select">
-                    <option value="">Select unit</option>
-                    <option value="pieces">Pieces</option>
-                    <option value="boxes">Boxes</option>
-                    <option value="bottles">Bottles</option>
-                    <option value="kits">Kits</option>
+                    <option value="">Select category</option>
+                    <option value="Pharmaceutical">Pharmaceutical</option>
+                    <option value="Medical Supply">Medical Supply</option>
+                    <option value="Consumable">Consumable</option>
                   </select>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Location</label>
-                  <input type="text" className="form-control" placeholder="Enter location" />
+                  <label className="form-label">Stock Quantity</label>
+                  <input type="number" className="form-control" placeholder="Enter stock quantity" />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Expiry Date</label>
+                  <input type="date" className="form-control" />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Min Quantity</label>
+                  <input type="number" className="form-control" placeholder="Enter minimum quantity" />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Max Quantity</label>
+                  <input type="number" className="form-control" placeholder="Enter maximum quantity" />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Unit of Measure</label>
+                  <select className="form-select">
+                    <option value="">Select unit</option>
+                    <option value="Tablets">Tablets</option>
+                    <option value="Capsules">Capsules</option>
+                    <option value="Pieces">Pieces</option>
+                    <option value="Pairs">Pairs</option>
+                    <option value="Bottles">Bottles</option>
+                  </select>
                 </div>
               </form>
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={() => setShowAddItemModal(false)}>Cancel</button>
               <button type="button" className="btn btn-primary">Add Item</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* View Item Modal */}
+      <div className={`modal fade ${showViewItemModal ? 'show' : ''}`} style={{ display: showViewItemModal ? 'block' : 'none' }} tabIndex="-1">
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">Item Details</h5>
+              <button type="button" className="btn-close" onClick={() => setShowViewItemModal(false)}></button>
+            </div>
+            <div className="modal-body">
+              {selectedItem && (
+                <div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Item Code:</div>
+                    <div className="col-sm-8">{selectedItem.id}</div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Item Name:</div>
+                    <div className="col-sm-8">{selectedItem.name}</div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Category:</div>
+                    <div className="col-sm-8">{selectedItem.category}</div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Stock Quantity:</div>
+                    <div className="col-sm-8">{selectedItem.stock} {selectedItem.unit}</div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Expiry Date:</div>
+                    <div className="col-sm-8">{selectedItem.expiryDate}</div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Min Quantity:</div>
+                    <div className="col-sm-8">{selectedItem.minLevel} {selectedItem.unit}</div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Max Quantity:</div>
+                    <div className="col-sm-8">{selectedItem.maxLevel} {selectedItem.unit}</div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Unit of Measure:</div>
+                    <div className="col-sm-8">{selectedItem.unit}</div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-sm-4 fw-bold">Status:</div>
+                    <div className="col-sm-8">
+                      <span className={`badge ${
+                        selectedItem.status === 'In Stock' ? 'bg-success' : 
+                        selectedItem.status === 'Low Stock' ? 'bg-warning text-dark' : 
+                        'bg-danger'
+                      }`}>
+                        {selectedItem.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowViewItemModal(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Update Stock Modal */}
+      <div className={`modal fade ${showUpdateStockModal ? 'show' : ''}`} style={{ display: showUpdateStockModal ? 'block' : 'none' }} tabIndex="-1">
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">Update Stock</h5>
+              <button type="button" className="btn-close" onClick={() => setShowUpdateStockModal(false)}></button>
+            </div>
+            <div className="modal-body">
+              {selectedItem && (
+                <form>
+                  <div className="mb-3">
+                    <label className="form-label">Item</label>
+                    <input type="text" className="form-control" defaultValue={`${selectedItem.id} - ${selectedItem.name}`} readOnly />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Current Stock</label>
+                    <input type="text" className="form-control" defaultValue={`${selectedItem.stock} ${selectedItem.unit}`} readOnly />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Update Type</label>
+                    <select className="form-select">
+                      <option value="add">Add Stock</option>
+                      <option value="subtract">Subtract Stock</option>
+                      <option value="set">Set New Stock Level</option>
+                    </select>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Quantity</label>
+                    <input type="number" className="form-control" placeholder="Enter quantity" />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Reason</label>
+                    <textarea className="form-control" rows="3" placeholder="Enter reason for stock update"></textarea>
+                  </div>
+                </form>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowUpdateStockModal(false)}>Cancel</button>
+              <button type="button" className="btn btn-primary">Update Stock</button>
             </div>
           </div>
         </div>
@@ -375,33 +415,52 @@ const FacilityInventory = () => {
               <button type="button" className="btn-close" onClick={() => setShowUpdateItemModal(false)}></button>
             </div>
             <div className="modal-body">
-              <form>
-                <div className="mb-3">
-                  <label className="form-label">Item Name</label>
-                  <input type="text" className="form-control" defaultValue="Medical Gloves" />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">SKU</label>
-                  <input type="text" className="form-control" defaultValue="MG-001" />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Quantity</label>
-                  <input type="number" className="form-control" defaultValue="500" />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Unit</label>
-                  <select className="form-select" defaultValue="boxes">
-                    <option value="pieces">Pieces</option>
-                    <option value="boxes">Boxes</option>
-                    <option value="bottles">Bottles</option>
-                    <option value="kits">Kits</option>
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Location</label>
-                  <input type="text" className="form-control" defaultValue="A1-B2" />
-                </div>
-              </form>
+              {selectedItem && (
+                <form>
+                  <div className="mb-3">
+                    <label className="form-label">Item Code</label>
+                    <input type="text" className="form-control" defaultValue={selectedItem.id} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Item Name</label>
+                    <input type="text" className="form-control" defaultValue={selectedItem.name} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Category</label>
+                    <select className="form-select" defaultValue={selectedItem.category}>
+                      <option value="Pharmaceutical">Pharmaceutical</option>
+                      <option value="Medical Supply">Medical Supply</option>
+                      <option value="Consumable">Consumable</option>
+                    </select>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Stock Quantity</label>
+                    <input type="number" className="form-control" defaultValue={selectedItem.stock} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Expiry Date</label>
+                    <input type="date" className="form-control" defaultValue={selectedItem.expiryDate} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Min Quantity</label>
+                    <input type="number" className="form-control" defaultValue={selectedItem.minLevel} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Max Quantity</label>
+                    <input type="number" className="form-control" defaultValue={selectedItem.maxLevel} />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Unit of Measure</label>
+                    <select className="form-select" defaultValue={selectedItem.unit}>
+                      <option value="Tablets">Tablets</option>
+                      <option value="Capsules">Capsules</option>
+                      <option value="Pieces">Pieces</option>
+                      <option value="Pairs">Pairs</option>
+                      <option value="Bottles">Bottles</option>
+                    </select>
+                  </div>
+                </form>
+              )}
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={() => setShowUpdateItemModal(false)}>Cancel</button>
@@ -420,160 +479,16 @@ const FacilityInventory = () => {
               <button type="button" className="btn-close" onClick={() => setShowRemoveItemModal(false)}></button>
             </div>
             <div className="modal-body">
-              <p>Are you sure you want to remove <strong>Medical Gloves</strong> from inventory?</p>
-              <p className="text-muted">This action cannot be undone.</p>
+              {selectedItem && (
+                <>
+                  <p>Are you sure you want to remove <strong>{selectedItem.name}</strong> from inventory?</p>
+                  <p className="text-muted">This action cannot be undone.</p>
+                </>
+              )}
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary" onClick={() => setShowRemoveItemModal(false)}>Cancel</button>
               <button type="button" className="btn btn-danger">Remove Item</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Add Batch Modal */}
-      <div className={`modal fade ${showAddBatchModal ? 'show' : ''}`} style={{ display: showAddBatchModal ? 'block' : 'none' }} tabIndex="-1">
-        <div className="modal-dialog">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">Add New Batch</h5>
-              <button type="button" className="btn-close" onClick={() => setShowAddBatchModal(false)}></button>
-            </div>
-            <div className="modal-body">
-              <form>
-                <div className="mb-3">
-                  <label className="form-label">Item</label>
-                  <select className="form-select">
-                    <option value="">Select item</option>
-                    <option value="1">Medical Gloves</option>
-                    <option value="2">Face Masks</option>
-                    <option value="3">Sanitizer</option>
-                    <option value="4">Syringes</option>
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Batch Number</label>
-                  <input type="text" className="form-control" placeholder="Enter batch number" />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Quantity</label>
-                  <input type="number" className="form-control" placeholder="Enter quantity" />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Expiry Date</label>
-                  <input type="date" className="form-control" />
-                </div>
-              </form>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowAddBatchModal(false)}>Cancel</button>
-              <button type="button" className="btn btn-primary">Add Batch</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Update Batch Modal */}
-      <div className={`modal fade ${showUpdateBatchModal ? 'show' : ''}`} style={{ display: showUpdateBatchModal ? 'block' : 'none' }} tabIndex="-1">
-        <div className="modal-dialog">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">Update Batch</h5>
-              <button type="button" className="btn-close" onClick={() => setShowUpdateBatchModal(false)}></button>
-            </div>
-            <div className="modal-body">
-              <form>
-                <div className="mb-3">
-                  <label className="form-label">Item</label>
-                  <select className="form-select" defaultValue="1">
-                    <option value="1">Medical Gloves</option>
-                    <option value="2">Face Masks</option>
-                    <option value="3">Sanitizer</option>
-                    <option value="4">Syringes</option>
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Batch Number</label>
-                  <input type="text" className="form-control" defaultValue="BG-2023-001" />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Quantity</label>
-                  <input type="number" className="form-control" defaultValue="200" />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Expiry Date</label>
-                  <input type="date" className="form-control" defaultValue="2025-06-30" />
-                </div>
-              </form>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowUpdateBatchModal(false)}>Cancel</button>
-              <button type="button" className="btn btn-primary">Update Batch</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Remove Batch Modal */}
-      <div className={`modal fade ${showRemoveBatchModal ? 'show' : ''}`} style={{ display: showRemoveBatchModal ? 'block' : 'none' }} tabIndex="-1">
-        <div className="modal-dialog">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">Remove Batch</h5>
-              <button type="button" className="btn-close" onClick={() => setShowRemoveBatchModal(false)}></button>
-            </div>
-            <div className="modal-body">
-              <p>Are you sure you want to remove batch <strong>BG-2023-001</strong> for <strong>Medical Gloves</strong>?</p>
-              <p className="text-muted">This action cannot be undone.</p>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowRemoveBatchModal(false)}>Cancel</button>
-              <button type="button" className="btn btn-danger">Remove Batch</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Adjustment Modal */}
-      <div className={`modal fade ${showAdjustmentModal ? 'show' : ''}`} style={{ display: showAdjustmentModal ? 'block' : 'none' }} tabIndex="-1">
-        <div className="modal-dialog">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">Stock Adjustment</h5>
-              <button type="button" className="btn-close" onClick={() => setShowAdjustmentModal(false)}></button>
-            </div>
-            <div className="modal-body">
-              <form>
-                <div className="mb-3">
-                  <label className="form-label">Item</label>
-                  <select className="form-select">
-                    <option value="">Select item</option>
-                    <option value="1">Medical Gloves</option>
-                    <option value="2">Face Masks</option>
-                    <option value="3">Sanitizer</option>
-                    <option value="4">Syringes</option>
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Adjustment Type</label>
-                  <select className="form-select">
-                    <option value="increase">Increase Stock</option>
-                    <option value="decrease">Decrease Stock</option>
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Quantity</label>
-                  <input type="number" className="form-control" placeholder="Enter quantity to adjust" />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Reason</label>
-                  <textarea className="form-control" rows="3" placeholder="Enter reason for adjustment"></textarea>
-                </div>
-              </form>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowAdjustmentModal(false)}>Cancel</button>
-              <button type="button" className="btn btn-primary">Adjust Stock</button>
             </div>
           </div>
         </div>
