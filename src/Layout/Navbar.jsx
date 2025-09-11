@@ -133,8 +133,8 @@ const Navbar = ({ toggleSidebar }) => {
           >
             <FaUserCircle size={24} style={{ color: '#0056b3' }} />
             <div className="d-none d-sm-block">
-              <small className="mb-0" style={{ color: '#6c757d' }}>Welcome</small>
-              <div className="fw-bold" style={{ color: '#0056b3' }}>Admin</div>
+              <small className="mb-0" style={{ color: '#fff' }}>Welcome</small>
+              <div className="fw-bold" style={{ color: '#fff' }}>Admin</div>
             </div>
           </div>
           {dropdownOpen && (
