@@ -19,7 +19,7 @@ const Navbar = ({ toggleSidebar }) => {
     <nav
       className="navbar navbar-expand px-3 py-2 d-flex justify-content-between align-items-center fixed-top"
       style={{
-        backgroundColor: "#fff", // 白色背景，更加专业
+        backgroundColor: "#032d45", // 白色背景，更加专业
         boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)", // 柔和阴影
         borderBottom: "2px solid #0056b3", // 底部蓝色边框，呼应医院标志
       }}
@@ -29,7 +29,7 @@ const Navbar = ({ toggleSidebar }) => {
         <button
           className="btn p-2"
           style={{
-            backgroundColor: '#0056b3', // 蓝色背景，呼应医院标志
+            backgroundColor: '', // 蓝色背景，呼应医院标志
             borderColor: '#0056b3',
             color: '#fff',
             borderRadius: '6px',
@@ -61,7 +61,7 @@ const Navbar = ({ toggleSidebar }) => {
             <div style={{
               fontSize: '1rem',
               fontWeight: '700',
-              color: '#0056b3', // 蓝色，呼应医院标志
+              color: '#fff', // 蓝色，呼应医院标志
               letterSpacing: '-0.5px',
               fontFamily: "'Poppins', sans-serif",
               lineHeight: '1.2'
@@ -80,45 +80,13 @@ const Navbar = ({ toggleSidebar }) => {
         </div>
       </div>
       
-      {/* Search */}
-      <div className="d-flex align-items-center">
-        <div className="input-group d-none d-sm-flex">
-          <input
-            type="text"
-            className="form-control form-control-sm"
-            placeholder="Search..."
-            aria-label="Search"
-            style={{
-              borderColor: '#ced4da',
-              borderRadius: '4px 0 0 4px',
-            }}
-          />
-          <span 
-            className="input-group-text" 
-            style={{ 
-              backgroundColor: "#0056b3", 
-              borderColor: "#0056b3",
-              borderRadius: '0 4px 4px 0',
-              color: '#fff'
-            }}
-          >
-            <FaSearch />
-          </span>
-        </div>
-        {/* Search icon for mobile */}
-        <button 
-          className="btn btn-sm d-sm-none ms-2" 
-          style={{ color: '#0056b3' }}
-        >
-          <FaSearch />
-        </button>
-      </div>
+
       
       {/* Notification and User */}
       <div className="d-flex align-items-center gap-3 position-relative">
         {/* Notification */}
         <div className="position-relative">
-          <FaBell size={18} style={{ color: '#0056b3' }} />
+          <FaBell size={18} style={{ color: '#fff' }} />
           <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
             3
           </span>
@@ -131,10 +99,10 @@ const Navbar = ({ toggleSidebar }) => {
             role="button"
             onClick={() => setDropdownOpen(!dropdownOpen)}
           >
-            <FaUserCircle size={24} style={{ color: '#0056b3' }} />
+            <FaUserCircle size={24} style={{ color: '#fff' }} />
             <div className="d-none d-sm-block">
-              <small className="mb-0" style={{ color: '#6c757d' }}>Welcome</small>
-              <div className="fw-bold" style={{ color: '#0056b3' }}>Admin</div>
+              <small className="mb-0" style={{ color: '#fff' }}>Welcome</small>
+              <div className="fw-bold" style={{ color: '#fff' }}>Admin</div>
             </div>
           </div>
           {dropdownOpen && (
