@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaPlus, FaSearch, FaEye } from 'react-icons/fa';
+import { FaPlus, FaSearch, FaEye, FaFilePdf } from 'react-icons/fa';
 
 const WarehouseRequisitions = () => {
   // State for search
@@ -8,9 +8,12 @@ const WarehouseRequisitions = () => {
   // State for modals
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
   
   // State for current requisition
   const [currentRequisition, setCurrentRequisition] = useState(null);
+  const [rejectingRequisition, setRejectingRequisition] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
   
   // State for new requisition form
   const [newRequisition, setNewRequisition] = useState({
@@ -22,7 +25,7 @@ const WarehouseRequisitions = () => {
     reason: ''
   });
   
-  // Mock data for requisitions (admin can only create & view)
+  // Mock data for requisitions (admin can create, view, approve, reject)
   const [requisitions, setRequisitions] = useState([
     { 
       id: '#REQ-0042', 
@@ -32,12 +35,17 @@ const WarehouseRequisitions = () => {
       date: '24 Oct 2023', 
       items: '12 items', 
       priority: 'High', 
-      status: 'Pending',
+      status: 'Pending Review',
       details: [
         { name: 'Paracetamol 500mg', quantity: 100, unit: 'Tablets' },
         { name: 'Surgical Gloves', quantity: 50, unit: 'Pairs' },
         { name: 'Syringe 5ml', quantity: 200, unit: 'Pieces' }
-      ]
+      ],
+      approvedBy: null,
+      approvedDate: null,
+      rejectedBy: null,
+      rejectedDate: null,
+      rejectionReason: null
     },
     { 
       id: '#REQ-0040', 
@@ -51,7 +59,12 @@ const WarehouseRequisitions = () => {
       details: [
         { name: 'Amoxicillin 250mg', quantity: 50, unit: 'Capsules' },
         { name: 'Bandages', quantity: 30, unit: 'Pieces' }
-      ]
+      ],
+      approvedBy: null,
+      approvedDate: null,
+      rejectedBy: null,
+      rejectedDate: null,
+      rejectionReason: null
     },
     { 
       id: '#REQ-0038', 
@@ -61,11 +74,40 @@ const WarehouseRequisitions = () => {
       date: '20 Oct 2023', 
       items: '7 items', 
       priority: 'Low', 
-      status: 'Pending',
+      status: 'Approved',
       details: [
         { name: 'Test Tubes', quantity: 100, unit: 'Pieces' },
         { name: 'Gloves', quantity: 20, unit: 'Pairs' }
-      ]
+      ],
+      approvedBy: 'Admin User',
+      approvedDate: '26 Oct 2023',
+      rejectedBy: null,
+      rejectedDate: null,
+      rejectionReason: null,
+      documents: {
+        pickList: true,
+        packingList: true,
+        gdn: true
+      }
+    },
+    { 
+      id: '#REQ-0037', 
+      facility: 'Cape Coast Clinic', 
+      department: 'OPD', 
+      requestedBy: 'Nurse Kofi', 
+      date: '19 Oct 2023', 
+      items: '3 items', 
+      priority: 'High', 
+      status: 'Rejected',
+      details: [
+        { name: 'Thermometers', quantity: 10, unit: 'Pieces' }
+      ],
+      approvedBy: null,
+      approvedDate: null,
+      rejectedBy: 'Admin User',
+      rejectedDate: '25 Oct 2023',
+      rejectionReason: 'Insufficient budget allocation this quarter.',
+      documents: null
     }
   ]);
   
@@ -84,17 +126,17 @@ const WarehouseRequisitions = () => {
     );
   };
   
-  // Status badge component (Simplified for Admin)
+  // Status badge component
   const StatusBadge = ({ status }) => {
     const statusColors = {
-      'Pending': 'bg-warning',
       'Submitted': 'bg-info',
-      'Processing': 'bg-primary',
-      'Fulfilled': 'bg-success'
+      'Pending Review': 'bg-warning',
+      'Approved': 'bg-success',
+      'Rejected': 'bg-danger'
     };
     
     return (
-      <span className={`badge ${statusColors[status] || 'bg-secondary'}`}>
+      <span className={`badge ${statusColors[status] || 'bg-secondary'} text-dark`}>
         {status}
       </span>
     );
@@ -116,6 +158,12 @@ const WarehouseRequisitions = () => {
   const openViewModal = (requisition) => {
     setCurrentRequisition(requisition);
     setShowViewModal(true);
+  };
+
+  const openRejectModal = (requisition) => {
+    setRejectingRequisition(requisition);
+    setRejectionReason('');
+    setShowRejectModal(true);
   };
   
   // Form handlers
@@ -142,12 +190,75 @@ const WarehouseRequisitions = () => {
       date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
       items: newRequisition.items || 'Not specified',
       priority: newRequisition.priority,
-      status: 'Pending', // Admin can only submit, not approve
-      details: [] // Empty for now
+      status: 'Submitted',
+      details: [],
+      approvedBy: null,
+      approvedDate: null,
+      rejectedBy: null,
+      rejectedDate: null,
+      rejectionReason: null
     };
     
     setRequisitions([newItem, ...requisitions]);
     setShowCreateModal(false);
+  };
+
+  const handleApprove = (reqId) => {
+    const now = new Date().toLocaleDateString('en-GB');
+
+    setRequisitions(
+      requisitions.map(req =>
+        req.id === reqId
+          ? {
+              ...req,
+              status: 'Approved',
+              approvedBy: 'Admin User',
+              approvedDate: now,
+              documents: {
+                pickList: true,
+                packingList: true,
+                gdn: true
+              }
+            }
+          : req
+      )
+    );
+
+    alert(`Requisition ${reqId} approved. Documents generated.`);
+  };
+
+  const handleReject = () => {
+    if (!rejectionReason.trim()) {
+      alert('Please provide a reason for rejection.');
+      return;
+    }
+
+    setRequisitions(
+      requisitions.map(req =>
+        req.id === rejectingRequisition.id
+          ? {
+              ...req,
+              status: 'Rejected',
+              rejectedBy: 'Admin User',
+              rejectedDate: new Date().toLocaleDateString('en-GB'),
+              rejectionReason: rejectionReason
+            }
+          : req
+      )
+    );
+
+    setShowRejectModal(false);
+  };
+
+  const downloadPDF = (docType, req) => {
+    alert(`${docType} for ${req.id} is being generated...`);
+    // Simulated download
+    const element = document.createElement('a');
+    element.href = '#';
+    element.download = `${docType.replace(' ', '_')}_${req.id}.pdf`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
   };
 
   // Filter requisitions by search term
@@ -162,7 +273,7 @@ const WarehouseRequisitions = () => {
     <div className="container-fluid py-4">
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="fw-bold text-primary">My Requisitions</h2>
+        <h2 className="fw-bold text-primary">All Requisitions (Admin)</h2>
         <div className="d-flex align-items-center">
           <div className="input-group me-3" style={{ maxWidth: '300px' }}>
             <input 
@@ -176,15 +287,18 @@ const WarehouseRequisitions = () => {
               <FaSearch />
             </button>
           </div>
-          <button className="btn btn-primary d-flex align-items-center" onClick={openCreateModal}>
-            <FaPlus className="me-2" /> Create New
+          <button 
+            className="btn btn-primary d-flex align-items-center text-nowrap" 
+            onClick={openCreateModal}
+          >
+            <FaPlus className="me-2" /> Create Requisition
           </button>
         </div>
       </div>
       
-      {/* Stats Cards */}
-      <div className="row mb-4">
-        <div className="col-md-4 mb-3">
+      {/* Stats Cards — 4 COLUMN LAYOUT LIKE DASHBOARD */}
+      <div className="row row-cols-1 row-cols-md-4 mb-4 g-3">
+        <div className="col">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body bg-primary bg-opacity-10 p-4">
               <div className="d-flex align-items-center">
@@ -199,7 +313,7 @@ const WarehouseRequisitions = () => {
             </div>
           </div>
         </div>
-        <div className="col-md-4 mb-3">
+        <div className="col">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body bg-warning bg-opacity-10 p-4">
               <div className="d-flex align-items-center">
@@ -208,15 +322,15 @@ const WarehouseRequisitions = () => {
                 </div>
                 <div>
                   <h5 className="card-title text-warning fw-bold mb-0">
-                    {requisitions.filter(r => r.status === 'Pending').length}
+                    {requisitions.filter(r => r.status === 'Submitted' || r.status === 'Pending Review').length}
                   </h5>
-                  <p className="card-text text-muted">Pending Review</p>
+                  <p className="card-text text-muted">Awaiting Action</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
-        <div className="col-md-4 mb-3">
+        <div className="col">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body bg-success bg-opacity-10 p-4">
               <div className="d-flex align-items-center">
@@ -225,9 +339,26 @@ const WarehouseRequisitions = () => {
                 </div>
                 <div>
                   <h5 className="card-title text-success fw-bold mb-0">
-                    {requisitions.filter(r => r.status === 'Fulfilled').length}
+                    {requisitions.filter(r => r.status === 'Approved').length}
                   </h5>
-                  <p className="card-text text-muted">Fulfilled</p>
+                  <p className="card-text text-muted">Approved</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col">
+          <div className="card border-0 shadow-sm h-100">
+            <div className="card-body bg-danger bg-opacity-10 p-4">
+              <div className="d-flex align-items-center">
+                <div className="bg-danger bg-opacity-25 rounded-circle p-3 me-3">
+                  <FaEye size={24} className="text-danger" />
+                </div>
+                <div>
+                  <h5 className="card-title text-danger fw-bold mb-0">
+                    {requisitions.filter(r => r.status === 'Rejected').length}
+                  </h5>
+                  <p className="card-text text-muted">Rejected</p>
                 </div>
               </div>
             </div>
@@ -235,18 +366,18 @@ const WarehouseRequisitions = () => {
         </div>
       </div>
       
-      {/* Tabs (Simplified) */}
+      {/* Tabs */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-header bg-white border-0 pt-3">
           <ul className="nav nav-tabs card-header-tabs">
             <li className="nav-item">
-              <button className="nav-link active">My Requisitions</button>
+              <button className="nav-link active">All Requisitions</button>
             </li>
           </ul>
         </div>
         <div className="card-body p-0">
           <div className="table-responsive">
-            <table className="table table-hover mb-0">
+            <table className="table  mb-0">
               <thead className="bg-light">
                 <tr>
                   <th>Requisition ID</th>
@@ -272,12 +403,36 @@ const WarehouseRequisitions = () => {
                     <td><PriorityBadge priority={req.priority} /></td>
                     <td><StatusBadge status={req.status} /></td>
                     <td>
-                      <button 
-                        className="btn btn-sm btn-outline-primary" 
-                        onClick={() => openViewModal(req)}
-                      >
-                        <FaEye />
-                      </button>
+                      <div className="d-flex gap-1">
+                        <button 
+                          className="btn btn-sm btn-outline-primary" 
+                          onClick={() => openViewModal(req)}
+                        >
+                          <FaEye />
+                        </button>
+
+                        {/* APPROVE BUTTON */}
+                        {['Submitted', 'Pending Review'].includes(req.status) && (
+                          <button 
+                            className="btn btn-sm btn-success"
+                            onClick={() => handleApprove(req.id)}
+                            title="Approve Requisition"
+                          >
+                            Approve
+                          </button>
+                        )}
+
+                        {/* REJECT BUTTON */}
+                        {['Submitted', 'Pending Review'].includes(req.status) && (
+                          <button 
+                            className="btn btn-sm btn-danger"
+                            onClick={() => openRejectModal(req)}
+                            title="Reject Requisition"
+                          >
+                            Reject
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -447,10 +602,48 @@ const WarehouseRequisitions = () => {
                 ) : (
                   <p className="text-muted fst-italic">No detailed items listed.</p>
                 )}
-                
-                <div className="alert alert-info mt-4">
-                  <strong>Note:</strong> This requisition is under review. You will be notified once it’s processed.
-                </div>
+
+                {/* Approval Info */}
+                {currentRequisition.status === 'Approved' && (
+                  <div className="alert alert-success mt-4">
+                    <strong>Approved by:</strong> {currentRequisition.approvedBy} on {currentRequisition.approvedDate}
+                  </div>
+                )}
+
+                {currentRequisition.status === 'Rejected' && (
+                  <div className="alert alert-danger mt-4">
+                    <strong>Rejected by:</strong> {currentRequisition.rejectedBy} on {currentRequisition.rejectedDate}
+                    <br />
+                    <strong>Reason:</strong> {currentRequisition.rejectionReason}
+                  </div>
+                )}
+
+                {/* PDF Download Buttons */}
+                {currentRequisition.status === 'Approved' && currentRequisition.documents && (
+                  <div className="mt-4">
+                    <h6 className="border-bottom pb-2 mb-3">Generated Documents:</h6>
+                    <div className="d-grid gap-2 d-md-flex">
+                      <button 
+                        className="btn btn-outline-primary d-flex align-items-center justify-content-center" 
+                        onClick={() => downloadPDF('Pick List', currentRequisition)}
+                      >
+                        <FaFilePdf className="me-2" /> Download Pick List
+                      </button>
+                      <button 
+                        className="btn btn-outline-primary d-flex align-items-center justify-content-center" 
+                        onClick={() => downloadPDF('Packing List', currentRequisition)}
+                      >
+                        <FaFilePdf className="me-2" /> Download Packing List
+                      </button>
+                      <button 
+                        className="btn btn-outline-primary d-flex align-items-center justify-content-center" 
+                        onClick={() => downloadPDF('GDN', currentRequisition)}
+                      >
+                        <FaFilePdf className="me-2" /> Download GDN
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="modal-footer border-top-0 pt-0">
                 <button type="button" className="btn btn-secondary px-4" onClick={() => setShowViewModal(false)}>
@@ -462,10 +655,60 @@ const WarehouseRequisitions = () => {
         </div>
       )}
 
+      {/* Reject Requisition Modal */}
+      {showRejectModal && rejectingRequisition && (
+        <div className="modal fade show d-block" tabIndex="-1" onClick={(e) => {
+          if (e.target.classList.contains('modal')) setShowRejectModal(false);
+        }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header border-bottom-0 pb-0">
+                <h5 className="modal-title fw-bold">Reject Requisition</h5>
+                <button type="button" className="btn-close" onClick={() => setShowRejectModal(false)}></button>
+              </div>
+              <div className="modal-body py-4">
+                <p><strong>Requisition ID:</strong> {rejectingRequisition.id}</p>
+                <p><strong>Facility:</strong> {rejectingRequisition.facility}</p>
+                <div className="mb-3">
+                  <label className="form-label fw-medium">Reason for Rejection <span className="text-danger">*</span></label>
+                  <textarea 
+                    className="form-control"
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    rows="3"
+                    placeholder="Please provide a detailed reason..."
+                    required
+                  ></textarea>
+                </div>
+              </div>
+              <div className="modal-footer border-top-0 pt-0">
+                <button type="button" className="btn btn-secondary px-4" onClick={() => setShowRejectModal(false)}>
+                  Cancel
+                </button>
+                <button type="button" className="btn btn-danger px-4" onClick={handleReject}>
+                  Reject
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Backdrop */}
-      {(showCreateModal || showViewModal) && (
+      {(showCreateModal || showViewModal || showRejectModal) && (
         <div className="modal-backdrop fade show"></div>
       )}
+
+      {/* HOVER EFFECT CSS — SAME AS WAREHOUSE DASHBOARD */}
+      <style jsx>{`
+        .card {
+          transition: all 0.3s ease;
+        }
+        .card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(0,0,0,0.08) !important;
+        }
+      `}</style>
     </div>
   );
 };
