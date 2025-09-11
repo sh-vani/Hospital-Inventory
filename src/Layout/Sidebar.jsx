@@ -17,7 +17,9 @@ import {
   faWarehouse,
   faUserShield,
   faListAlt,
-  faBell,     
+  faBell,
+  faFileInvoice,
+  faRotateLeft,     
 } from "@fortawesome/free-solid-svg-icons";
 import "./Sidebar.css";
 
@@ -121,9 +123,14 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         path: "/warehouse/dispatches",
       },
       {
-        name: "Reports",
+        name: "Reports & Analytics",
         icon: faChartLine,
         path: "/warehouse/reports",
+      },
+      {
+        name: " Returns & Recalls",
+        icon: faRotateLeft,
+        path: "/warehouse/returnsRecalls",
       },
       {
         name: "Assets",
@@ -214,6 +221,11 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         name: "My Requests",
         icon: faListAlt,
         path: "/user/myRequests",
+      },
+      {
+        name: "Receipts",
+        icon: faFileInvoice,
+        path: "/user/receipts",
       },
       {
         name: "Notification",
