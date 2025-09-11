@@ -1,6 +1,6 @@
 .sidebar-container {
   width: 260px;
-  background-color: #022437; /* White background for clean, professional look */
+  background-color: #032d45; /* White background for clean, professional look */
   min-height: 100vh;
   color: #333;
   transition: all 0.3s ease;
@@ -75,7 +75,7 @@
 /* Active/Hover Effect - Using #27b2b6 as requested */
 .menu-link:hover,
 .menu-link.active {
-  background-color: #27b2b6; /* Changed to requested color */
+  background-color: #0056b3; /* Changed to requested color */
   color: #fff; /* Fixed missing # prefix */
   width: 240px;
   left: 10px;
@@ -91,7 +91,7 @@
   transform: translateY(-50%);
   width: 4px;
   height: 70%;
-  background-color: #27b2b6; /* Blue for active indicator */
+  background-color: #0056b3; /* Blue for active indicator */
   border-radius: 4px 0 0 4px; /* Rounded on left side */
 }
 .menu-icon {
@@ -144,7 +144,7 @@
 .submenu-item:hover,
 .submenu-item.active-sub {
   background-color: rgba(39, 178, 182, 0.2); /* Using #27b2b6 with transparency */
-  color: #27b2b6; /* Blue text */
+  color: #0056b3; /* Blue text */
   font-weight: 500;
 }
 /* Submenu active state - Right side rounded border */
@@ -156,7 +156,7 @@
   transform: translateY(-50%);
   width: 3px;
   height: 60%;
-  background-color: #27b2b6; /* Blue for active indicator */
+  background-color: #0056b3; /* Blue for active indicator */
   border-radius: 3px 0 0 3px; /* Rounded on left side */
 }
 .admin-footer {
