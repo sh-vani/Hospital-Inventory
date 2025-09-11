@@ -253,7 +253,7 @@ const SuperAdminDashboard = () => {
   };
 
   return (
-    <div className="container-fluid py-4 bg-light" style={{ minHeight: '100vh' }}>
+    <div className="container-fluid py-4 " style={{ minHeight: '100vh' }}>
       {/* Dashboard Header */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
         <div className="mb-3 mb-md-0">
@@ -266,7 +266,7 @@ const SuperAdminDashboard = () => {
       {/* Alert Summary - 根据截图设计 */}
       <div className="row mb-4">
         <div className="col-12 col-md-4 mb-3">
-          <div className="card border-0 shadow-sm h-100">
+          <div className="card border-1 shadow-sm h-100">
             <div className="card-body bg-danger bg-opacity-10 p-4">
               <div className="d-flex justify-content-between align-items-center">
                 <div>
@@ -281,7 +281,7 @@ const SuperAdminDashboard = () => {
           </div>
         </div>
         <div className="col-12 col-md-4 mb-3">
-          <div className="card border-0 shadow-sm h-100">
+          <div className="card border-1 shadow-sm h-100">
             <div className="card-body bg-warning bg-opacity-10 p-4">
               <div className="d-flex justify-content-between align-items-center">
                 <div>
@@ -296,7 +296,7 @@ const SuperAdminDashboard = () => {
           </div>
         </div>
         <div className="col-12 col-md-4 mb-3">
-          <div className="card border-0 shadow-sm h-100">
+          <div className="card border-1 shadow-sm h-100">
             <div className="card-body bg-info bg-opacity-10 p-4">
               <div className="d-flex justify-content-between align-items-center">
                 <div>
@@ -315,7 +315,7 @@ const SuperAdminDashboard = () => {
       {/* Stats Cards */}
       <div className="row mb-4">
         <div className="col-6 col-md-3 mb-3">
-          <div className="card border-0 shadow-sm h-100 stat-card">
+          <div className="card border-1 shadow-sm h-100 stat-card">
             <div className="card-body text-center p-3 p-md-4">
               <div className="bg-primary bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaPills className="text-primary fa-2x" />
@@ -326,7 +326,7 @@ const SuperAdminDashboard = () => {
           </div>
         </div>
         <div className="col-6 col-md-3 mb-3">
-          <div className="card border-0 shadow-sm h-100 stat-card">
+          <div className="card border-1 shadow-sm h-100 stat-card">
             <div className="card-body text-center p-3 p-md-4">
               <div className="bg-success bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaFileImport className="text-success fa-2x" />
@@ -337,7 +337,7 @@ const SuperAdminDashboard = () => {
           </div>
         </div>
         <div className="col-6 col-md-3 mb-3">
-          <div className="card border-0 shadow-sm h-100 stat-card">
+          <div className="card border-1 shadow-sm h-100 stat-card">
             <div className="card-body text-center p-3 p-md-4">
               <div className="bg-info bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaHospitalAlt className="text-info fa-2x" />
@@ -348,7 +348,7 @@ const SuperAdminDashboard = () => {
           </div>
         </div>
         <div className="col-6 col-md-3 mb-3">
-          <div className="card border-0 shadow-sm h-100 stat-card">
+          <div className="card border-1 shadow-sm h-100 stat-card">
             <div className="card-body text-center p-3 p-md-4">
               <div className="bg-warning bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaLaptopMedical className="text-warning fa-2x" />
@@ -363,7 +363,7 @@ const SuperAdminDashboard = () => {
       {/* Charts and Requisitions */}
       <div className="row mb-4">
         <div className="col-12 col-md-8 mb-3">
-          <div className="card border-0 shadow-sm">
+          <div className="card border-1 shadow-sm">
             <div className="card-header bg-white border-0 pt-4">
               <h5 className="mb-0 fw-bold">Consumption Trends</h5>
             </div>
@@ -373,7 +373,7 @@ const SuperAdminDashboard = () => {
           </div>
         </div>
         <div className="col-12 col-md-4 mb-3">
-          <div className="card border-0 shadow-sm">
+          <div className="card border-1 shadow-sm">
             <div className="card-header bg-white border-0 pt-4">
               <h5 className="mb-0 fw-bold">Stock Distribution</h5>
             </div>
@@ -387,7 +387,7 @@ const SuperAdminDashboard = () => {
       {/* Recent Requisitions */}
       <div className="row mb-4">
         <div className="col-12">
-          <div className="card border-0 shadow-sm">
+          <div className="card border-1 shadow-sm">
             <div className="card-header bg-white border-0 pt-4">
               <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
                 <h5 className="mb-3 mb-md-0 fw-bold">Recent Requisitions</h5>
@@ -398,9 +398,7 @@ const SuperAdminDashboard = () => {
                       <FaSearch />
                     </button>
                   </div>
-                  <a href="#" className="btn btn-sm btn-outline-primary">
-                    <FaPlus className="me-1" /> New Requisition
-                  </a>
+             
                 </div>
               </div>
             </div>
@@ -415,7 +413,7 @@ const SuperAdminDashboard = () => {
                       <th className="d-none d-md-table-cell">Date</th>
                       <th>Items</th>
                       <th>Status</th>
-                      <th>Action</th>
+     
                     </tr>
                   </thead>
                   <tbody>
@@ -427,11 +425,7 @@ const SuperAdminDashboard = () => {
                         <td className="d-none d-md-table-cell">{req.date}</td>
                         <td>{req.items}</td>
                         <td><StatusBadge status={req.status} /></td>
-                        <td>
-                          <button className="btn btn-sm btn-outline-primary d-flex align-items-center">
-                            <FaEye className="me-1" /> {req.action}
-                          </button>
-                        </td>
+              
                       </tr>
                     ))}
                   </tbody>
@@ -445,7 +439,7 @@ const SuperAdminDashboard = () => {
       {/* Reports Section */}
       <div className="row mb-4">
         <div className="col-12 col-md-6 mb-3">
-          <div className="card border-0 shadow-sm">
+          <div className="card border-1 shadow-sm">
             <div className="card-header bg-white border-0 pt-4">
               <h5 className="mb-0 fw-bold">Generate Custom Report</h5>
             </div>
@@ -496,7 +490,7 @@ const SuperAdminDashboard = () => {
           </div>
         </div>
         <div className="col-12 col-md-6 mb-3">
-          <div className="card border-0 shadow-sm">
+          <div className="card border-1 shadow-sm">
             <div className="card-header bg-white border-0 pt-4">
               <h5 className="mb-0 fw-bold">Report Preview</h5>
             </div>
@@ -510,12 +504,10 @@ const SuperAdminDashboard = () => {
       {/* Facilities Section */}
       <div className="row mb-4">
         <div className="col-12">
-          <div className="card border-0 shadow-sm">
+          <div className="card border-1 shadow-sm">
             <div className="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-4">
               <h5 className="mb-0 fw-bold">Facilities Overview</h5>
-              <button className="btn btn-sm btn-primary d-flex align-items-center">
-                <FaPlus className="me-2" /> Add New Facility
-              </button>
+     
             </div>
             <div className="card-body">
               <div className="row">
@@ -544,7 +536,7 @@ const SuperAdminDashboard = () => {
       {/* Users Section */}
       <div className="row mb-5">
         <div className="col-12">
-          <div className="card border-0 shadow-sm">
+          <div className="card border-1 shadow-sm">
             <div className="card-header bg-white border-0 pt-4">
               <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
                 <h5 className="mb-3 mb-md-0 fw-bold">System Users</h5>
@@ -555,9 +547,7 @@ const SuperAdminDashboard = () => {
                       <FaSearch />
                     </button>
                   </div>
-                  <button className="btn btn-sm btn-primary d-flex align-items-center">
-                    <FaPlus className="me-2" /> Add New User
-                  </button>
+           
                 </div>
               </div>
             </div>
@@ -573,7 +563,7 @@ const SuperAdminDashboard = () => {
                       <th className="d-none d-lg-table-cell">Department</th>
                       <th>Status</th>
                       <th className="d-none d-md-table-cell">Last Login</th>
-                      <th>Actions</th>
+
                     </tr>
                   </thead>
                   <tbody>
@@ -593,16 +583,7 @@ const SuperAdminDashboard = () => {
                         <td className="d-none d-lg-table-cell">{user.department}</td>
                         <td><StatusBadge status={user.status} /></td>
                         <td className="d-none d-md-table-cell">{user.lastLogin}</td>
-                        <td>
-                          <div className="btn-group" role="group">
-                            <button className="btn btn-sm btn-outline-primary">
-                              <FaEdit />
-                            </button>
-                            <button className="btn btn-sm btn-outline-danger">
-                              <FaTrash />
-                            </button>
-                          </div>
-                        </td>
+                     
                       </tr>
                     ))}
                   </tbody>
