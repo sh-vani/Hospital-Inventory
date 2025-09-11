@@ -47,6 +47,7 @@ import FacilityUserInventory from "./Dashboard/FacilityUser/FacilityUserInventor
 import FacilityUserRequisition from "./Dashboard/FacilityUser/FacilityUserRequisition"
 import FacilityUserDashboard from "./Dashboard/FacilityUser/FacilityUserDashboard"
 import AcknowledgementOfReceipts from "./Dashboard/FacilityUser/AcknowledgementOfReceipts"
+import ReturnsRecalls from "./Dashboard/WareHouse/ReturnsRecalls"
 
 
 function App() {
@@ -148,8 +149,10 @@ function App() {
 <Route path="/warehouse/reports"element={<WarehouseReports/>}/>
     <Route path="/warehouse/dispatches"element={<WarehouseDispatches/>}/>   
     <Route path="/warehouse/settings"element={<WarehouseSettings/>}/>   
-        <Route path="/warehouse/requisitions"element={<WarehouseRequisitions/>}/>      
+        <Route path="/warehouse/requisitions"element={<WarehouseRequisitions/>}/> 
+         <Route path="/warehouse/returnsRecalls"element={<ReturnsRecalls/>}/>     
               </Routes>
+               
 
 
             </div>

@@ -259,7 +259,7 @@ const SuperAdminRequisitions = () => {
         </div>
       </div>
       
-      {/* Alert Summary */}
+      {/* Alert Summary - Original Desktop View */}
       <div className="row mb-4">
         <div className="col-md-4 mb-3">
           <div className="card border-0 shadow-sm h-100">
