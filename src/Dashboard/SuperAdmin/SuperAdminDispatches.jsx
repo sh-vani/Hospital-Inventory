@@ -59,25 +59,7 @@ const SuperAdminDispatches = () => {
       trackingNumber: 'TRK-2023-0014',
       notes: 'Routine supply for pharmacy department'
     },
-    { 
-      id: '#DSP-0100', 
-      facility: 'Takoradi Clinic', 
-      itemsCount: '12 items', 
-      dispatchedBy: 'Warehouse Admin', 
-      date: '21 Oct 2023', 
-      status: 'In Transit',
-      estimatedDelivery: '25 Oct 2023',
-      items: [
-        { name: 'Test Tubes', quantity: 100, unit: 'Pieces' },
-        { name: 'Gloves', quantity: 20, unit: 'Pairs' },
-        { name: 'Face Masks', quantity: 50, unit: 'Pieces' }
-      ],
-      deliveryAddress: '789 Clinic Avenue, Takoradi',
-      trackingNumber: 'TRK-2023-0013',
-      notes: 'Laboratory supplies',
-      currentLocation: 'Cape Town Distribution Center',
-      progress: 65
-    }
+  
   ]);
   
   // Status badge component
