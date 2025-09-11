@@ -10,6 +10,10 @@ import {
   FaBoxOpen,
   FaFileAlt,
   FaLock,
+  FaMoneyBillWave,
+  FaChartLine,
+  FaTags,
+  FaExclamationTriangle,
 } from "react-icons/fa";
 
 const SuperAdminSettings = () => {
@@ -21,14 +25,12 @@ const SuperAdminSettings = () => {
   const [dateFormat, setDateFormat] = useState("DD/MM/YYYY");
   const [timeFormat, setTimeFormat] = useState("12-hour");
   const [notifications, setNotifications] = useState(true);
-
   // ----------- Inventory -----------
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
   const [expiryWarningDays, setExpiryWarningDays] = useState(30);
   const [autoReorder, setAutoReorder] = useState(true);
   const [defaultReorderQuantity, setDefaultReorderQuantity] = useState(50);
   const [facilitySettings, setFacilitySettings] = useState(true);
-
   // ----------- Warehouse -----------
   const [uom, setUom] = useState("Pieces");
   const [warehouseThreshold, setWarehouseThreshold] = useState(20);
@@ -39,6 +41,20 @@ const SuperAdminSettings = () => {
   ]);
   const [newCategory, setNewCategory] = useState("");
   const [printTemplate, setPrintTemplate] = useState("");
+  // ----------- New Settings -----------
+  const [currency, setCurrency] = useState("GHS");
+  const [valuationMethod, setValuationMethod] = useState("FIFO");
+  const [abcRules, setAbcRules] = useState({
+    aThreshold: 100,
+    bThreshold: 10,
+    cThreshold: 0,
+  });
+  const [expiryAlertDays, setExpiryAlertDays] = useState(30);
+  // ----------- Security -----------
+  const [passwordPolicy, setPasswordPolicy] = useState("Medium");
+  const [sessionTimeout, setSessionTimeout] = useState("30 minutes");
+  const [twoFactor, setTwoFactor] = useState(false);
+  const [loginAttempts, setLoginAttempts] = useState("5 attempts");
 
   const handleAddCategory = () => {
     if (newCategory.trim() !== "" && !categories.includes(newCategory)) {
@@ -46,14 +62,9 @@ const SuperAdminSettings = () => {
       setNewCategory("");
     }
   };
+
   const handleRemoveCategory = (cat) =>
     setCategories(categories.filter((c) => c !== cat));
-
-  // ----------- Security -----------
-  const [passwordPolicy, setPasswordPolicy] = useState("Medium");
-  const [sessionTimeout, setSessionTimeout] = useState("30 minutes");
-  const [twoFactor, setTwoFactor] = useState(false);
-  const [loginAttempts, setLoginAttempts] = useState("5 attempts");
 
   // ----------- Submit -----------
   const handleSave = (e) => {
@@ -68,6 +79,7 @@ const SuperAdminSettings = () => {
         facilitySettings,
       },
       warehouse: { uom, warehouseThreshold, categories, printTemplate },
+      financial: { currency, valuationMethod, abcRules, expiryAlertDays },
       security: { passwordPolicy, sessionTimeout, twoFactor, loginAttempts },
     };
     console.log("All Settings ✅", settings);
@@ -77,7 +89,6 @@ const SuperAdminSettings = () => {
   return (
     <div className="fade-in container py-4">
       <h2 className="fw-bold mb-4">System Settings</h2>
-
       <form onSubmit={handleSave}>
         <div className="row">
           {/* ---------------- General ---------------- */}
@@ -151,35 +162,154 @@ const SuperAdminSettings = () => {
               </div>
             </div>
           </div>
-
-          {/* ---------------- Inventory ---------------- */}
+          {/* ---------------- Financial Settings ---------------- */}
           <div className="col-md-6 mb-4">
             <div className="card border-0 shadow-sm h-100">
               <div className="card-header bg-white border-0 pt-3">
                 <h5 className="fw-bold d-flex align-items-center">
-                  <FaWarehouse className="me-2" /> Inventory Settings
+                  <FaMoneyBillWave className="me-2" /> Financial Settings
                 </h5>
               </div>
               <div className="card-body">
                 <div className="mb-3">
-                  <label className="form-label fw-bold">Low Stock Threshold</label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    value={lowStockThreshold}
-                    onChange={(e) => setLowStockThreshold(e.target.value)}
-                  />
+                  <label className="form-label fw-bold">Default Currency</label>
+                  <select
+                    className="form-select"
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                  >
+                    <option value="GHS">GHS (Ghanaian Cedi)</option>
+                    <option value="USD">USD (US Dollar)</option>
+                    <option value="EUR">EUR (Euro)</option>
+                    <option value="GBP">GBP (British Pound)</option>
+                  </select>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label fw-bold">Expiry Warning Days</label>
+                  <label className="form-label fw-bold">
+                    <FaChartLine className="me-2" /> Valuation Method
+                  </label>
+                  <select
+                    className="form-select"
+                    value={valuationMethod}
+                    onChange={(e) => setValuationMethod(e.target.value)}
+                  >
+                    <option value="FIFO">FIFO (First In, First Out)</option>
+                    <option value="Moving Average">Moving Average</option>
+                    <option value="Last PO Cost">Last PO Cost</option>
+                  </select>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-bold">
+                    <FaTags className="me-2" /> ABC Classification Rules
+                  </label>
+                  <div className="row">
+                    <div className="col-4">
+                      <label className="form-label text-muted small">A Class (≥)</label>
+                      <div className="input-group">
+                        <span className="input-group-text">{currency}</span>
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={abcRules.aThreshold}
+                          onChange={(e) =>
+                            setAbcRules({
+                              ...abcRules,
+                              aThreshold: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="col-4">
+                      <label className="form-label text-muted small">B Class (≥)</label>
+                      <div className="input-group">
+                        <span className="input-group-text">{currency}</span>
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={abcRules.bThreshold}
+                          onChange={(e) =>
+                            setAbcRules({
+                              ...abcRules,
+                              bThreshold: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="col-4">
+                      <label className="form-label text-muted small">C Class (&lt;)</label>
+                      <div className="input-group">
+                        <span className="input-group-text">{currency}</span>
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={abcRules.cThreshold}
+                          onChange={(e) =>
+                            setAbcRules({
+                              ...abcRules,
+                              cThreshold: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="form-text">
+                    Items with value ≥ {currency} {abcRules.aThreshold} = A Class,
+                    {currency} {abcRules.bThreshold}-{abcRules.aThreshold} = B Class,
+                    &lt; {currency} {abcRules.bThreshold} = C Class
+                  </div>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label fw-bold">
+                    <FaExclamationTriangle className="me-2" /> Expiry Alert Days
+                  </label>
                   <input
                     type="number"
                     className="form-control"
-                    value={expiryWarningDays}
-                    onChange={(e) => setExpiryWarningDays(e.target.value)}
+                    value={expiryAlertDays}
+                    onChange={(e) => setExpiryAlertDays(parseInt(e.target.value) || 0)}
                   />
+                  <div className="form-text">
+                    Send alert this many days before items expire
+                  </div>
                 </div>
-                <div className="form-check form-switch mb-3">
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* ---------------- Inventory ---------------- */}
+        <div className="card border-0 shadow-sm mb-4">
+          <div className="card-header bg-white border-0 pt-3">
+            <h5 className="fw-bold d-flex align-items-center">
+              <FaWarehouse className="me-2" /> Inventory Settings
+            </h5>
+          </div>
+          <div className="card-body">
+            <div className="row">
+              <div className="col-md-6 mb-3">
+                <label className="form-label fw-bold">Low Stock Threshold</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={lowStockThreshold}
+                  onChange={(e) => setLowStockThreshold(e.target.value)}
+                />
+              </div>
+              <div className="col-md-6 mb-3">
+                <label className="form-label fw-bold">Expiry Warning Days</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={expiryWarningDays}
+                  onChange={(e) => setExpiryWarningDays(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="row">
+              <div className="col-md-6 mb-3">
+                <div className="form-check form-switch">
                   <input
                     className="form-check-input"
                     type="checkbox"
@@ -188,16 +318,9 @@ const SuperAdminSettings = () => {
                   />
                   <label className="form-check-label">Enable automatic reordering</label>
                 </div>
-                <div className="mb-3">
-                  <label className="form-label fw-bold">Default Reorder Quantity</label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    value={defaultReorderQuantity}
-                    onChange={(e) => setDefaultReorderQuantity(e.target.value)}
-                  />
-                </div>
-                <div className="form-check form-switch mb-3">
+              </div>
+              <div className="col-md-6 mb-3">
+                <div className="form-check form-switch">
                   <input
                     className="form-check-input"
                     type="checkbox"
@@ -210,9 +333,19 @@ const SuperAdminSettings = () => {
                 </div>
               </div>
             </div>
+            <div className="row">
+              <div className="col-md-6 mb-3">
+                <label className="form-label fw-bold">Default Reorder Quantity</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={defaultReorderQuantity}
+                  onChange={(e) => setDefaultReorderQuantity(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
         </div>
-
         {/* ---------------- Warehouse ---------------- */}
         <div className="card border-0 shadow-sm mb-4">
           <div className="card-header bg-white border-0 pt-3">
@@ -245,7 +378,6 @@ const SuperAdminSettings = () => {
                 />
               </div>
             </div>
-
             <div className="mb-3">
               <label className="form-label fw-bold">Categories</label>
               <div className="d-flex mb-2">
@@ -282,7 +414,6 @@ const SuperAdminSettings = () => {
                 ))}
               </ul>
             </div>
-
             <div className="mb-3">
               <label className="form-label fw-bold d-flex align-items-center">
                 <FaFileAlt className="me-2" /> Print Templates
@@ -302,7 +433,6 @@ const SuperAdminSettings = () => {
             </div>
           </div>
         </div>
-
         {/* ---------------- Security ---------------- */}
         <div className="card border-0 shadow-sm mb-4">
           <div className="card-header bg-white border-0 pt-3">
@@ -364,7 +494,6 @@ const SuperAdminSettings = () => {
             </div>
           </div>
         </div>
-
         {/* Save All */}
         <button
           type="submit"

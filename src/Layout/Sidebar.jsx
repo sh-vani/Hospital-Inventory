@@ -17,7 +17,9 @@ import {
   faWarehouse,
   faUserShield,
   faListAlt,
-  faBell,     
+  faBell,
+  faFileInvoice,
+  faRotateLeft,     
 } from "@fortawesome/free-solid-svg-icons";
 import "./Sidebar.css";
 
@@ -121,9 +123,14 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         path: "/warehouse/dispatches",
       },
       {
-        name: "Reports",
+        name: "Reports & Analytics",
         icon: faChartLine,
         path: "/warehouse/reports",
+      },
+      {
+        name: " Returns & Recalls",
+        icon: faRotateLeft,
+        path: "/warehouse/returnsRecalls",
       },
       {
         name: "Assets",
@@ -153,6 +160,23 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         icon: faClipboardList,
         path: "/facility/requisitions",
       },
+       {
+        name: "Assets",
+        icon: faArchive,
+        path: "/facility/assets",
+      },
+
+       {
+        name: "Good Receipt",
+        icon: faArchive,
+        path: "/facility/goodreceipt",
+      },
+
+       {
+        name: "Reports",
+        icon: faChartLine,
+        path: "/facility/reports",
+      },
       {
         name: "Departments & Categories",
         icon: faBuilding,
@@ -163,16 +187,8 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
          icon: faUserShield,
          path: "/facility/usersRoles"
       },
-      {
-        name: "Reports",
-        icon: faChartLine,
-        path: "/facility/reports",
-      },
-      {
-        name: "Assets",
-        icon: faArchive,
-        path: "/facility/assets",
-      },
+     
+     
       {
         name: "Users",
         icon: faUsers,
@@ -205,6 +221,11 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
         name: "My Requests",
         icon: faListAlt,
         path: "/user/myRequests",
+      },
+      {
+        name: "Receipts",
+        icon: faFileInvoice,
+        path: "/user/receipts",
       },
       {
         name: "Notification",
