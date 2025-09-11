@@ -19,7 +19,7 @@ const Navbar = ({ toggleSidebar }) => {
     <nav
       className="navbar navbar-expand px-3 py-2 d-flex justify-content-between align-items-center fixed-top"
       style={{
-        backgroundColor: "#fff", // 白色背景，更加专业
+        backgroundColor: "#022437", // 白色背景，更加专业
         boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)", // 柔和阴影
         borderBottom: "2px solid #0056b3", // 底部蓝色边框，呼应医院标志
       }}
@@ -29,7 +29,7 @@ const Navbar = ({ toggleSidebar }) => {
         <button
           className="btn p-2"
           style={{
-            backgroundColor: '#0056b3', // 蓝色背景，呼应医院标志
+            backgroundColor: '', // 蓝色背景，呼应医院标志
             borderColor: '#0056b3',
             color: '#fff',
             borderRadius: '6px',
@@ -61,7 +61,7 @@ const Navbar = ({ toggleSidebar }) => {
             <div style={{
               fontSize: '1rem',
               fontWeight: '700',
-              color: '#0056b3', // 蓝色，呼应医院标志
+              color: '#fff', // 蓝色，呼应医院标志
               letterSpacing: '-0.5px',
               fontFamily: "'Poppins', sans-serif",
               lineHeight: '1.2'

@@ -1,6 +1,6 @@
 .sidebar-container {
   width: 260px;
-  background-color: #fff; /* White background for clean, professional look */
+  background-color: #022437; /* White background for clean, professional look */
   min-height: 100vh;
   color: #333;
   transition: all 0.3s ease;
@@ -10,11 +10,9 @@
   margin-top: 0; /* Remove margin since navbar has border-bottom */
   border-right: 1px solid #e9ecef; /* Light border to separate from content */
 }
-
 .sidebar-container.collapsed {
   width: 70px;
 }
-
 .sidebar {
   padding: 0;
   margin: 0;
@@ -22,42 +20,35 @@
   flex-direction: column;
   height: 100%;
 }
-
 .logo-section {
   padding: 20px;
   border-bottom: 1px solid #e9ecef; /* Light border */
   background-color: #f8f9fa; /* Light gray background */
 }
-
 .logo {
   display: flex;
   align-items: center;
 }
-
 .logo-img {
   width: 40px;
   height: auto;
   margin-right: 15px;
 }
-
 .logo-text {
   flex-grow: 1;
 }
-
 .hospital-name {
   font-size: 14px;
   font-weight: 700;
-  color: #0056b3; /* Blue to match hospital logo */
+  color: #fff; /* Blue to match hospital logo */
   line-height: 1.2;
 }
-
 .hospital-type {
   font-size: 12px;
   font-weight: 800;
   color: #e63946; /* Red to match hospital logo */
   line-height: 1.2;
 }
-
 .menu {
   list-style: none;
   margin: 0;
@@ -65,18 +56,15 @@
   flex-grow: 1;
   margin-bottom: 10px;
 }
-
 .menu-item {
   cursor: pointer;
   position: relative;
 }
-
 .menu-link {
   display: flex;
   align-items: center;
   padding: 15px 20px;
-  color: #495057; /* Dark gray for text */
-
+  color: #fff; /* Dark gray for text */
   border-radius: 0;
   font-size: 15px;
   font-weight: 500;
@@ -84,24 +72,16 @@
   position: relative;
   
 }
-
-/* Active/Hover Effect - Using blue to match hospital logo */
+/* Active/Hover Effect - Using #27b2b6 as requested */
 .menu-link:hover,
 .menu-link.active {
-  background-color: rgba(0, 86, 179, 0.1); /* Light blue background */
-  color: #0056b3; /* Blue text */
+  background-color: #27b2b6; /* Changed to requested color */
+  color: #fff; /* Fixed missing # prefix */
   width: 240px;
- left: 10px;
- margin-bottom: 5px;
-
+  left: 10px;
+  margin-bottom: 5px;
   border-radius: 8px;
-
-
-
-
-  
 }
-
 /* Active State - Right side rounded border - Blue to match hospital logo */
 .menu-link.active::after {
   content: '';
@@ -111,44 +91,37 @@
   transform: translateY(-50%);
   width: 4px;
   height: 70%;
-  background-color: #0056b3; /* Blue for active indicator */
+  background-color: #27b2b6; /* Blue for active indicator */
   border-radius: 4px 0 0 4px; /* Rounded on left side */
 }
-
 .menu-icon {
   font-size: 18px;
   margin-right: 15px;
   min-width: 20px;
-  color: #6c757d; /* Medium gray for icons */
+  color: #fff; /* Medium gray for icons */
 }
-
 .menu-link:hover .menu-icon,
 .menu-link.active .menu-icon {
-  color: #0056b3; /* Blue icon on hover/active */
+  color: #fff; /* Changed to white for better contrast with #27b2b6 background */
 }
-
 .menu-text {
   flex-grow: 1;
   font-weight: 500;
   /* transition: all 0.3s ease; */
 }
-
 .arrow-icon {
   transition: transform 0.3s ease;
   margin-left: auto;
   font-size: 14px;
-  color: #6c757d; /* Medium gray arrow */
+  color: #fff; /* Medium gray arrow */
 }
-
 .menu-link:hover .arrow-icon,
 .menu-link.active .arrow-icon {
-  color: #0056b3; /* Blue arrow on hover/active */
+  color: #fff; /* Changed to white for better contrast with #27b2b6 background */
 }
-
 .arrow-icon.rotate {
   transform: rotate(180deg);
 }
-
 .submenu {
   padding-left: 0;
   margin-top: 5px;
@@ -156,27 +129,24 @@
   border-radius: 0;
   overflow: hidden;
 }
-
 .submenu-item {
   padding: 12px 20px 12px 55px;
   font-size: 14px;
   font-weight: 400;
-  color: #6c757d; /* Medium gray text */
+  color: #fff; /* Medium gray text */
   cursor: pointer;
   display: flex;
   align-items: center;
   transition: all 0.3s ease;
   position: relative;
 }
-
 /* Submenu hover/active effect */
 .submenu-item:hover,
 .submenu-item.active-sub {
-  background-color: rgba(0, 86, 179, 0.05); /* Very light blue */
-  color: #0056b3; /* Blue text */
+  background-color: rgba(39, 178, 182, 0.2); /* Using #27b2b6 with transparency */
+  color: #27b2b6; /* Blue text */
   font-weight: 500;
 }
-
 /* Submenu active state - Right side rounded border */
 .submenu-item.active-sub::after {
   content: '';
@@ -186,56 +156,46 @@
   transform: translateY(-50%);
   width: 3px;
   height: 60%;
-  background-color: #0056b3; /* Blue for active indicator */
+  background-color: #27b2b6; /* Blue for active indicator */
   border-radius: 3px 0 0 3px; /* Rounded on left side */
 }
-
 .admin-footer {
   padding: 20px;
   border-top: 1px solid #e9ecef; /* Light border */
   font-size: 12px;
-  color: #6c757d; /* Medium gray text */
+  color: #fff; /* Medium gray text */
   text-align: center;
   background-color: #f8f9fa; /* Light gray background */
 }
-
 /* Collapsed state adjustments */
 .sidebar-container.collapsed .logo-section {
   padding: 15px;
   display: flex;
   justify-content: center;
 }
-
 .sidebar-container.collapsed .logo-img {
   margin-right: 0;
 }
-
 .sidebar-container.collapsed .logo-text {
   display: none;
 }
-
 .sidebar-container.collapsed .menu-link {
   padding: 15px 10px;
   justify-content: center;
 }
-
 .sidebar-container.collapsed .menu-icon {
   margin-right: 0;
 }
-
 .sidebar-container.collapsed .menu-text,
 .sidebar-container.collapsed .arrow-icon {
   display: none;
 }
-
 .sidebar-container.collapsed .submenu {
   display: none;
 }
-
 .sidebar-container.collapsed .admin-footer {
   display: none;
 }
-
 /* Hide the left border that was previously used */
 .menu-link.active::before {
   display: none;
