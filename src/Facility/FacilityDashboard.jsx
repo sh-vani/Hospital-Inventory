@@ -274,14 +274,14 @@ const FacilityDashboard = () => {
             </Card.Body>
           </Card>
         </Col>
-        <Col md={3} className="mb-3 mb-md-0">
+        {/* <Col md={3} className="mb-3 mb-md-0">
           <Card className="h-100">
             <Card.Body>
               <Card.Title>Facilities Served</Card.Title>
               <Card.Text className="display-6">6</Card.Text>
             </Card.Body>
           </Card>
-        </Col>
+        </Col> */}
         <Col md={3}>
           <Card className="h-100">
             <Card.Body>
