@@ -231,11 +231,7 @@ const FacilityDashboard = () => {
         <Col>
           <h1 className="mb-0">Facility Dashboard</h1>
         </Col>
-        <Col className="text-end">
-          <Button variant="primary" onClick={handleShowModal}>
-            + New Requisition
-          </Button>
-        </Col>
+        
       </Row>
 
       {/* Alerts */}
@@ -278,14 +274,14 @@ const FacilityDashboard = () => {
             </Card.Body>
           </Card>
         </Col>
-        <Col md={3} className="mb-3 mb-md-0">
+        {/* <Col md={3} className="mb-3 mb-md-0">
           <Card className="h-100">
             <Card.Body>
               <Card.Title>Facilities Served</Card.Title>
               <Card.Text className="display-6">6</Card.Text>
             </Card.Body>
           </Card>
-        </Col>
+        </Col> */}
         <Col md={3}>
           <Card className="h-100">
             <Card.Body>
@@ -462,114 +458,7 @@ const FacilityDashboard = () => {
         </Col>
       </Row>
 
-      {/* New Requisition Modal */}
-      <Modal show={showModal} onHide={handleCloseModal} size="lg" centered>
-        <Modal.Header closeButton>
-          <Modal.Title>New Requisition</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Row className="mb-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Facility</Form.Label>
-                  <Form.Select>
-                    <option>Select Facility</option>
-                    <option>Kumasi Branch Hospital</option>
-                    <option>Accra Medical Center</option>
-                    <option>Tamale General Hospital</option>
-                    <option>Cape Coast Clinic</option>
-                  </Form.Select>
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Requested By</Form.Label>
-                  <Form.Control type="text" placeholder="Your Name" defaultValue="Dr. John Smith" />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Items</Form.Label>
-              <Table bordered size="sm">
-                <thead>
-                  <tr>
-                    <th>Item Name</th>
-                    <th>Quantity</th>
-                    <th>Unit</th>
-                    <th>Urgency</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>
-                      <Form.Control type="text" placeholder="e.g., Paracetamol" />
-                    </td>
-                    <td>
-                      <Form.Control type="number" placeholder="Qty" min="1" />
-                    </td>
-                    <td>
-                      <Form.Select>
-                        <option>Pieces</option>
-                        <option>Boxes</option>
-                        <option>Packs</option>
-                      </Form.Select>
-                    </td>
-                    <td>
-                      <Form.Select>
-                        <option>Normal</option>
-                        <option>Urgent</option>
-                        <option>Critical</option>
-                      </Form.Select>
-                    </td>
-                    <td>
-                      <Button variant="outline-danger" size="sm">
-                        <FaTimes />
-                      </Button>
-                    </td>
-                  </tr>
-                </tbody>
-              </Table>
-              <Button variant="outline-primary" size="sm" className="mt-2">
-                <FaPlus className="me-1" /> Add Item
-              </Button>
-            </Form.Group>
-
-            <Row className="mb-3">
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Estimated Duration</Form.Label>
-                  <Form.Control type="text" placeholder="e.g., 3 days" />
-                </Form.Group>
-              </Col>
-              <Col md={6}>
-                <Form.Group>
-                  <Form.Label>Required By Date</Form.Label>
-                  <Form.Control type="date" />
-                </Form.Group>
-              </Col>
-            </Row>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Additional Notes</Form.Label>
-              <Form.Control as="textarea" rows={3} placeholder="Any special instructions..." />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseModal}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={() => {
-            alert('Requisition Submitted!');
-            handleCloseModal();
-          }}>
-            Submit Requisition
-          </Button>
-        </Modal.Footer>
-      </Modal>
+     
     </Container>
   );
 };

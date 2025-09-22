@@ -1,17 +1,38 @@
 import React, { useState } from 'react';
 import { 
   FaClipboardList, FaEye, FaSearch, FaFilter, FaPaperPlane, 
-  FaCheck, FaTimes, FaExclamationTriangle, FaClock, FaCalendarAlt
+  FaCheck, FaTimes, FaExclamationTriangle, FaClock, FaCalendarAlt,
+  FaPlus, FaTrash
 } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const FacilityUserMyRequests = () => {
   // State for modals
   const [showRequestDetailsModal, setShowRequestDetailsModal] = useState(false);
+  const [showNewRequestModal, setShowNewRequestModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [requestType, setRequestType] = useState('individual'); // 'individual' or 'bulk'
+  
+  // State for search term
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // State for new request forms
+  const [individualRequest, setIndividualRequest] = useState({
+    itemName: '',
+    quantity: '',
+    unit: '',
+    description: ''
+  });
+  
+  const [bulkRequest, setBulkRequest] = useState({
+    description: '',
+    items: [
+      { name: '', quantity: '', unit: '' }
+    ]
+  });
   
   // Sample data for requests
-  const requests = [
+  const [requests, setRequests] = useState([
     { 
       id: 1, 
       title: 'Medical Supplies Request', 
@@ -63,7 +84,16 @@ const FacilityUserMyRequests = () => {
       ],
       comments: ''
     }
-  ];
+  ]);
+  
+  // Filter requests based on search term
+  const filteredRequests = requests.filter(request => {
+    return (
+      request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.status.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
   
   // Function to open request details modal
   const openRequestDetails = (request) => {
@@ -98,7 +128,98 @@ const FacilityUserMyRequests = () => {
         return 'bg-secondary';
     }
   };
-
+  
+  // Function to handle individual request form change
+  const handleIndividualRequestChange = (e) => {
+    const { name, value } = e.target;
+    setIndividualRequest({
+      ...individualRequest,
+      [name]: value
+    });
+  };
+  
+  // Function to handle bulk request form change
+  const handleBulkRequestChange = (e, index = null) => {
+    const { name, value } = e.target;
+    
+    if (index !== null) {
+      // Change for a specific item
+      const newItems = [...bulkRequest.items];
+      newItems[index] = {
+        ...newItems[index],
+        [name]: value
+      };
+      setBulkRequest({
+        ...bulkRequest,
+        items: newItems
+      });
+    } else {
+      // Change for the description
+      setBulkRequest({
+        ...bulkRequest,
+        [name]: value
+      });
+    }
+  };
+  
+  // Function to add a new item to bulk request
+  const addBulkItem = () => {
+    setBulkRequest({
+      ...bulkRequest,
+      items: [...bulkRequest.items, { name: '', quantity: '', unit: '' }]
+    });
+  };
+  
+  // Function to remove an item from bulk request
+  const removeBulkItem = (index) => {
+    if (bulkRequest.items.length > 1) {
+      const newItems = [...bulkRequest.items];
+      newItems.splice(index, 1);
+      setBulkRequest({
+        ...bulkRequest,
+        items: newItems
+      });
+    }
+  };
+  
+  // Function to submit a new request
+  const submitNewRequest = () => {
+    const newRequest = {
+      id: requests.length + 1,
+      title: requestType === 'individual' ? individualRequest.itemName : 'Bulk Request',
+      description: requestType === 'individual' ? individualRequest.description : bulkRequest.description,
+      submittedDate: new Date().toISOString().split('T')[0],
+      status: 'Pending',
+      items: requestType === 'individual' 
+        ? [{ 
+            name: individualRequest.itemName, 
+            quantity: individualRequest.quantity, 
+            unit: individualRequest.unit 
+          }]
+        : bulkRequest.items.filter(item => item.name.trim() !== ''),
+      comments: ''
+    };
+    
+    setRequests([...requests, newRequest]);
+    
+    // Reset form
+    if (requestType === 'individual') {
+      setIndividualRequest({
+        itemName: '',
+        quantity: '',
+        unit: '',
+        description: ''
+      });
+    } else {
+      setBulkRequest({
+        description: '',
+        items: [{ name: '', quantity: '', unit: '' }]
+      });
+    }
+    
+    setShowNewRequestModal(false);
+  };
+  
   return (
     <div className="container-fluid py-4 px-3 px-md-4">
       {/* Header Section - Responsive */}
@@ -108,6 +229,12 @@ const FacilityUserMyRequests = () => {
           <p className="text-muted mb-0">Track and manage your requisition requests</p>
         </div>
         <div className="d-flex align-items-center">
+          <button 
+            className="btn btn-primary me-3"
+            onClick={() => setShowNewRequestModal(true)}
+          >
+            <FaPlus className="me-2" /> New Request
+          </button>
           <div className="text-end me-3">
             <div className="text-muted small">Department: Pharmacy</div>
             <div>User: Dr. Sharma</div>
@@ -126,7 +253,13 @@ const FacilityUserMyRequests = () => {
             <div className="d-flex flex-column flex-md-row gap-2 w-100 w-md-auto">
               <div className="input-group input-group-sm">
                 <span className="input-group-text"><FaSearch /></span>
-                <input type="text" className="form-control" placeholder="Search requests..." />
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="Search requests..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
               <button className="btn btn-sm btn-outline-secondary flex-shrink-0">
                 <FaFilter />
@@ -148,7 +281,7 @@ const FacilityUserMyRequests = () => {
                 </tr>
               </thead>
               <tbody>
-                {requests.map(request => (
+                {filteredRequests.map(request => (
                   <tr key={request.id}>
                     <td>{request.id}</td>
                     <td>{request.title}</td>
@@ -298,8 +431,181 @@ const FacilityUserMyRequests = () => {
         </div>
       </div>
       
-      {/* Modal Backdrop */}
+      {/* New Request Modal */}
+      <div className={`modal fade ${showNewRequestModal ? 'show' : ''}`} style={{ display: showNewRequestModal ? 'block' : 'none' }} tabIndex="-1">
+        <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">Create New Request</h5>
+              <button type="button" className="btn-close" onClick={() => setShowNewRequestModal(false)}></button>
+            </div>
+            <div className="modal-body">
+              {/* Request Type Selection */}
+              <div className="d-flex mb-4">
+                <div className="form-check me-4">
+                  <input 
+                    className="form-check-input" 
+                    type="radio" 
+                    name="requestType" 
+                    id="individualRequest" 
+                    checked={requestType === 'individual'}
+                    onChange={() => setRequestType('individual')}
+                  />
+                  <label className="form-check-label" htmlFor="individualRequest">
+                    Individual Request
+                  </label>
+                </div>
+                <div className="form-check">
+                  <input 
+                    className="form-check-input" 
+                    type="radio" 
+                    name="requestType" 
+                    id="bulkRequest" 
+                    checked={requestType === 'bulk'}
+                    onChange={() => setRequestType('bulk')}
+                  />
+                  <label className="form-check-label" htmlFor="bulkRequest">
+                    Bulk Request
+                  </label>
+                </div>
+              </div>
+              
+              {/* Individual Request Form */}
+              {requestType === 'individual' && (
+                <div>
+                  <div className="mb-3">
+                    <label className="form-label">Item Name</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      name="itemName"
+                      value={individualRequest.itemName}
+                      onChange={handleIndividualRequestChange}
+                    />
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-md-6">
+                      <label className="form-label">Quantity</label>
+                      <input 
+                        type="number" 
+                        className="form-control" 
+                        name="quantity"
+                        value={individualRequest.quantity}
+                        onChange={handleIndividualRequestChange}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Unit</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        name="unit"
+                        value={individualRequest.unit}
+                        onChange={handleIndividualRequestChange}
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Description</label>
+                    <textarea 
+                      className="form-control" 
+                      rows="3"
+                      name="description"
+                      value={individualRequest.description}
+                      onChange={handleIndividualRequestChange}
+                    ></textarea>
+                  </div>
+                </div>
+              )}
+              
+              {/* Bulk Request Form */}
+              {requestType === 'bulk' && (
+                <div>
+                  <div className="mb-3">
+                    <label className="form-label">Description</label>
+                    <textarea 
+                      className="form-control" 
+                      rows="3"
+                      name="description"
+                      value={bulkRequest.description}
+                      onChange={(e) => handleBulkRequestChange(e)}
+                    ></textarea>
+                  </div>
+                  
+                  <h5 className="mb-3">Items</h5>
+                  {bulkRequest.items.map((item, index) => (
+                    <div className="row mb-3" key={index}>
+                      <div className="col-md-5">
+                        <label className="form-label">Item Name</label>
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          name="name"
+                          value={item.name}
+                          onChange={(e) => handleBulkRequestChange(e, index)}
+                        />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Quantity</label>
+                        <input 
+                          type="number" 
+                          className="form-control" 
+                          name="quantity"
+                          value={item.quantity}
+                          onChange={(e) => handleBulkRequestChange(e, index)}
+                        />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Unit</label>
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          name="unit"
+                          value={item.unit}
+                          onChange={(e) => handleBulkRequestChange(e, index)}
+                        />
+                      </div>
+                      <div className="col-md-1 d-flex align-items-end">
+                        {bulkRequest.items.length > 1 && (
+                          <button 
+                            type="button" 
+                            className="btn btn-danger"
+                            onClick={() => removeBulkItem(index)}
+                          >
+                            <FaTrash />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-primary mb-3"
+                    onClick={addBulkItem}
+                  >
+                    <FaPlus className="me-2" /> Add Item
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowNewRequestModal(false)}>Cancel</button>
+              <button 
+                type="button" 
+                className="btn btn-primary"
+                onClick={submitNewRequest}
+              >
+                Submit Request
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Modal Backdrops */}
       {showRequestDetailsModal && <div className="modal-backdrop fade show"></div>}
+      {showNewRequestModal && <div className="modal-backdrop fade show"></div>}
     </div>
   );
 };

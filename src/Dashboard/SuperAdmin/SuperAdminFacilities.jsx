@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   FaPlus, FaHospital, FaClinicMedical, FaFirstAid, FaWarehouse, FaMapMarkerAlt, FaPhone, FaEnvelope,
-  FaEdit, FaTrash, FaTimes, FaSave, FaInfoCircle
+  FaEdit, FaTrash, FaTimes, FaSave, FaInfoCircle, FaBox, FaClipboardList, FaExclamationTriangle, FaCheckCircle
 } from 'react-icons/fa';
 
 const SuperAdminFacilities = () => {
@@ -23,7 +23,9 @@ const SuperAdminFacilities = () => {
     email: '',
     description: '',
     capacity: '',
-    services: ''
+    services: '',
+    inventoryLevel: 'Good',
+    pendingRequisitions: 0
   });
   
   // State for edit facility form
@@ -35,7 +37,9 @@ const SuperAdminFacilities = () => {
     email: '',
     description: '',
     capacity: '',
-    services: ''
+    services: '',
+    inventoryLevel: 'Good',
+    pendingRequisitions: 0
   });
   
   // Mock data for facilities
@@ -50,7 +54,9 @@ const SuperAdminFacilities = () => {
       email: 'warehouse@francisfosu.com',
       description: 'Central storage facility for all medical supplies and equipment',
       capacity: '10,000 sq meters',
-      services: 'Storage, Distribution, Inventory Management'
+      services: 'Storage, Distribution, Inventory Management',
+      inventoryLevel: 'Good',
+      pendingRequisitions: 0
     },
     { 
       id: 2, 
@@ -62,7 +68,9 @@ const SuperAdminFacilities = () => {
       email: 'kumasi@francisfosu.com',
       description: 'Regional hospital serving the Ashanti region with comprehensive medical services',
       capacity: '300 beds',
-      services: 'Emergency, Surgery, Maternity, Pediatrics, Pharmacy'
+      services: 'Emergency, Surgery, Maternity, Pediatrics, Pharmacy',
+      inventoryLevel: 'Low',
+      pendingRequisitions: 3
     },
     { 
       id: 3, 
@@ -74,7 +82,9 @@ const SuperAdminFacilities = () => {
       email: 'accra@francisfosu.com',
       description: 'Main hospital in Accra providing specialized healthcare services',
       capacity: '500 beds',
-      services: 'Cardiology, Oncology, Neurology, Radiology, Laboratory'
+      services: 'Cardiology, Oncology, Neurology, Radiology, Laboratory',
+      inventoryLevel: 'Critical',
+      pendingRequisitions: 5
     },
     { 
       id: 4, 
@@ -86,7 +96,9 @@ const SuperAdminFacilities = () => {
       email: 'takoradi@francisfosu.com',
       description: 'Community health center providing primary care services',
       capacity: '50 beds',
-      services: 'General Practice, Maternity, Immunization, Laboratory'
+      services: 'General Practice, Maternity, Immunization, Laboratory',
+      inventoryLevel: 'Good',
+      pendingRequisitions: 2
     },
     { 
       id: 5, 
@@ -98,7 +110,9 @@ const SuperAdminFacilities = () => {
       email: 'capecoast@francisfosu.com',
       description: 'Regional hospital serving the Central region with comprehensive medical services',
       capacity: '250 beds',
-      services: 'Emergency, Surgery, Maternity, Pediatrics, Pharmacy'
+      services: 'Emergency, Surgery, Maternity, Pediatrics, Pharmacy',
+      inventoryLevel: 'Low',
+      pendingRequisitions: 4
     }
   ]);
   
@@ -112,7 +126,9 @@ const SuperAdminFacilities = () => {
       email: '',
       description: '',
       capacity: '',
-      services: ''
+      services: '',
+      inventoryLevel: 'Good',
+      pendingRequisitions: 0
     });
     setShowAddModal(true);
   };
@@ -183,7 +199,9 @@ const SuperAdminFacilities = () => {
       email: newFacility.email,
       description: newFacility.description,
       capacity: newFacility.capacity,
-      services: newFacility.services
+      services: newFacility.services,
+      inventoryLevel: newFacility.inventoryLevel,
+      pendingRequisitions: parseInt(newFacility.pendingRequisitions)
     };
     
     setFacilities([...facilities, newItem]);
@@ -196,7 +214,8 @@ const SuperAdminFacilities = () => {
         ? { 
             ...editFacility, 
             id: currentFacility.id,
-            icon: currentFacility.icon
+            icon: currentFacility.icon,
+            pendingRequisitions: parseInt(editFacility.pendingRequisitions)
           } 
         : facility
     );
@@ -227,6 +246,20 @@ const SuperAdminFacilities = () => {
         return <FaClinicMedical className="text-info" />;
       default:
         return <FaFirstAid className="text-warning" />;
+    }
+  };
+  
+  // Get inventory level badge
+  const getInventoryBadge = (level) => {
+    switch(level) {
+      case 'Good':
+        return <span className="badge bg-success">Good</span>;
+      case 'Low':
+        return <span className="badge bg-warning">Low</span>;
+      case 'Critical':
+        return <span className="badge bg-danger">Critical</span>;
+      default:
+        return <span className="badge bg-secondary">Unknown</span>;
     }
   };
   
@@ -293,40 +326,46 @@ const SuperAdminFacilities = () => {
         </div>
       </div>
       
-      {/* Facilities Cards */}
+      {/* Facilities Cards - Square Design */}
       <div className="row">
         {facilities.map((facility) => (
-          <div className="col-md-4 mb-4" key={facility.id}>
-            <div className="card border-0 shadow-sm h-100 facility-card">
-              <div className="card-body text-center p-4">
-                <div className="bg-primary bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
-                  {React.cloneElement(facility.icon, { className: `${facility.icon.props.className} fa-3x` })}
+          <div className="col-md-3 col-sm-6 mb-4" key={facility.id}>
+            <div className="card border-0 shadow-sm facility-card">
+              <div className="card-body d-flex flex-column p-3">
+                {/* Icon and Title */}
+                <div className="text-center mb-3">
+                  <div className="bg-light p-3 rounded-circle d-inline-block mb-2">
+                    {React.cloneElement(facility.icon, { className: `${facility.icon.props.className} fa-2x` })}
+                  </div>
+                  <h5 className="fw-bold mb-0">{facility.name}</h5>
+                  <p className="text-muted small mb-0">{facility.type}</p>
                 </div>
-                <h5 className="fw-bold">{facility.name}</h5>
-                <p className="text-muted">{facility.type}</p>
-                <div className="text-start mt-3">
-                  <div className="mb-2">
-                    <small className="text-muted d-flex align-items-center">
-                      <FaMapMarkerAlt className="me-2" />
-                      {facility.address}
-                    </small>
-                  </div>
-                  <div className="mb-2">
-                    <small className="text-muted d-flex align-items-center">
-                      <FaPhone className="me-2" />
-                      {facility.phone}
-                    </small>
-                  </div>
-                  <div>
-                    <small className="text-muted d-flex align-items-center">
-                      <FaEnvelope className="me-2" />
-                      {facility.email}
-                    </small>
+                
+                {/* Inventory Level */}
+                <div className="mb-2">
+                  <div className="d-flex align-items-center justify-content-center">
+                    <FaBox className="me-2 text-muted" />
+                    <span className="me-2">Inventory:</span>
+                    {getInventoryBadge(facility.inventoryLevel)}
                   </div>
                 </div>
-                <div className="d-grid gap-2 mt-3">
-                  <button className="btn btn-outline-primary" onClick={() => openViewModal(facility)}>
-                    Manage
+                
+                {/* Pending Requisitions */}
+                <div className="mb-3">
+                  <div className="d-flex align-items-center justify-content-center">
+                    <FaClipboardList className="me-2 text-muted" />
+                    <span className="me-2">Pending:</span>
+                    <span className="badge bg-info">{facility.pendingRequisitions}</span>
+                  </div>
+                </div>
+                
+                {/* View Details Button */}
+                <div className="mt-auto">
+                  <button 
+                    className="btn btn-sm btn-outline-primary w-100" 
+                    onClick={() => openViewModal(facility)}
+                  >
+                    View Details
                   </button>
                 </div>
               </div>
@@ -334,7 +373,7 @@ const SuperAdminFacilities = () => {
           </div>
         ))}
       </div>
-
+      
       {/* Add Facility Modal */}
       {showAddModal && (
         <div className="modal show d-block" tabIndex="-1">
@@ -430,6 +469,32 @@ const SuperAdminFacilities = () => {
                       />
                     </div>
                   </div>
+                  <div className="row mb-3">
+                    <div className="col-md-6">
+                      <label className="form-label">Inventory Level</label>
+                      <select 
+                        className="form-select" 
+                        name="inventoryLevel"
+                        value={newFacility.inventoryLevel}
+                        onChange={handleAddFacilityChange}
+                      >
+                        <option value="Good">Good</option>
+                        <option value="Low">Low</option>
+                        <option value="Critical">Critical</option>
+                      </select>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Pending Requisitions</label>
+                      <input 
+                        type="number" 
+                        className="form-control" 
+                        name="pendingRequisitions"
+                        value={newFacility.pendingRequisitions}
+                        onChange={handleAddFacilityChange}
+                        min="0"
+                      />
+                    </div>
+                  </div>
                   <div className="mb-3">
                     <label className="form-label">Description</label>
                     <textarea 
@@ -454,7 +519,7 @@ const SuperAdminFacilities = () => {
           </div>
         </div>
       )}
-
+      
       {/* View Facility Modal */}
       {showViewModal && currentFacility && (
         <div className="modal show d-block" tabIndex="-1">
@@ -489,6 +554,13 @@ const SuperAdminFacilities = () => {
                         <p className="text-muted mb-0">{currentFacility.phone}</p>
                       </div>
                     </div>
+                    <div className="d-flex align-items-center mb-3">
+                      <FaBox className="text-primary me-2" />
+                      <div>
+                        <h6 className="mb-0">Inventory Level</h6>
+                        <p className="mb-0">{getInventoryBadge(currentFacility.inventoryLevel)}</p>
+                      </div>
+                    </div>
                   </div>
                   <div className="col-md-6">
                     <div className="d-flex align-items-center mb-3">
@@ -503,6 +575,13 @@ const SuperAdminFacilities = () => {
                       <div>
                         <h6 className="mb-0">Capacity</h6>
                         <p className="text-muted mb-0">{currentFacility.capacity}</p>
+                      </div>
+                    </div>
+                    <div className="d-flex align-items-center mb-3">
+                      <FaClipboardList className="text-primary me-2" />
+                      <div>
+                        <h6 className="mb-0">Pending Requisitions</h6>
+                        <p className="mb-0"><span className="badge bg-info">{currentFacility.pendingRequisitions}</span></p>
                       </div>
                     </div>
                   </div>
@@ -539,7 +618,7 @@ const SuperAdminFacilities = () => {
           </div>
         </div>
       )}
-
+      
       {/* Edit Facility Modal */}
       {showEditModal && currentFacility && (
         <div className="modal show d-block" tabIndex="-1">
@@ -633,6 +712,32 @@ const SuperAdminFacilities = () => {
                       />
                     </div>
                   </div>
+                  <div className="row mb-3">
+                    <div className="col-md-6">
+                      <label className="form-label">Inventory Level</label>
+                      <select 
+                        className="form-select" 
+                        name="inventoryLevel"
+                        value={editFacility.inventoryLevel}
+                        onChange={handleEditFacilityChange}
+                      >
+                        <option value="Good">Good</option>
+                        <option value="Low">Low</option>
+                        <option value="Critical">Critical</option>
+                      </select>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Pending Requisitions</label>
+                      <input 
+                        type="number" 
+                        className="form-control" 
+                        name="pendingRequisitions"
+                        value={editFacility.pendingRequisitions}
+                        onChange={handleEditFacilityChange}
+                        min="0"
+                      />
+                    </div>
+                  </div>
                   <div className="mb-3">
                     <label className="form-label">Description</label>
                     <textarea 
@@ -657,7 +762,7 @@ const SuperAdminFacilities = () => {
           </div>
         </div>
       )}
-
+      
       {/* Delete Facility Modal */}
       {showDeleteModal && currentFacility && (
         <div className="modal show d-block" tabIndex="-1">
@@ -688,7 +793,7 @@ const SuperAdminFacilities = () => {
           </div>
         </div>
       )}
-
+      
       {/* Modal Backdrop */}
       {(showAddModal || showViewModal || showEditModal || showDeleteModal) && (
         <div className="modal-backdrop show"></div>

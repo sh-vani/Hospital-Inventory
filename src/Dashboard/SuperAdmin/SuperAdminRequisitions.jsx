@@ -1,22 +1,23 @@
+import { height } from '@fortawesome/free-solid-svg-icons/fa0';
 import React, { useState } from 'react';
-import { 
-  FaPlus, FaSearch, FaCheck, FaTimes, FaEye, 
+import {
+  FaPlus, FaSearch, FaCheck, FaTimes, FaEye,
   FaExclamationTriangle, FaExclamationCircle
 } from 'react-icons/fa';
 
 const SuperAdminRequisitions = () => {
   // State for search
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // State for modals
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
-  
+
   // State for current requisition
   const [currentRequisition, setCurrentRequisition] = useState(null);
-  
+
   // State for new requisition form
   const [newRequisition, setNewRequisition] = useState({
     facility: '',
@@ -26,23 +27,23 @@ const SuperAdminRequisitions = () => {
     priority: 'Medium',
     reason: ''
   });
-  
+
   // State for rejection reason
   const [rejectionReason, setRejectionReason] = useState('');
-  
+
   // State for active tab
   const [activeTab, setActiveTab] = useState('Pending');
-  
-  // Mock data for requisitions
+
+  // Mock data
   const [requisitions, setRequisitions] = useState([
-    { 
-      id: '#REQ-0042', 
-      facility: 'Kumasi Branch Hospital', 
-      department: 'Emergency', 
-      requestedBy: 'Dr. Amoah', 
-      date: '24 Oct 2023', 
-      items: '12 items', 
-      priority: 'High', 
+    {
+      id: '#REQ-0042',
+      facility: 'Kumasi Branch Hospital',
+      department: 'Emergency',
+      requestedBy: 'Dr. Amoah',
+      date: '24 Oct 2023',
+      items: '12 items',
+      priority: 'High',
       status: 'Pending Review',
       details: [
         { name: 'Paracetamol 500mg', quantity: 100, unit: 'Tablets' },
@@ -50,57 +51,56 @@ const SuperAdminRequisitions = () => {
         { name: 'Syringe 5ml', quantity: 200, unit: 'Pieces' }
       ]
     },
-    { 
-      id: '#REQ-0040', 
-      facility: 'Takoradi Clinic', 
-      department: 'Pharmacy', 
-      requestedBy: 'Dr. Mensah', 
-      date: '22 Oct 2023', 
-      items: '5 items', 
-      priority: 'Medium', 
+    {
+      id: '#REQ-0040',
+      facility: 'Takoradi Clinic',
+      department: 'Pharmacy',
+      requestedBy: 'Dr. Mensah',
+      date: '22 Oct 2023',
+      items: '5 items',
+      priority: 'Medium',
       status: 'Partially Approved',
       details: [
         { name: 'Amoxicillin 250mg', quantity: 50, unit: 'Capsules' },
         { name: 'Bandages', quantity: 30, unit: 'Pieces' }
       ]
     },
-    { 
-      id: '#REQ-0038', 
-      facility: 'Accra Central Hospital', 
-      department: 'Laboratory', 
-      requestedBy: 'Lab Tech. Ama', 
-      date: '20 Oct 2023', 
-      items: '7 items', 
-      priority: 'Low', 
+    {
+      id: '#REQ-0038',
+      facility: 'Accra Central Hospital',
+      department: 'Laboratory',
+      requestedBy: 'Lab Tech. Ama',
+      date: '20 Oct 2023',
+      items: '7 items',
+      priority: 'Low',
       status: 'Pending Review',
       details: [
         { name: 'Test Tubes', quantity: 100, unit: 'Pieces' },
         { name: 'Gloves', quantity: 20, unit: 'Pairs' }
       ]
     },
-    // Add more mock data for testing tabs
-    { 
-      id: '#REQ-0035', 
-      facility: 'Tamale General Hospital', 
-      department: 'Pediatrics', 
-      requestedBy: 'Dr. Kofi', 
-      date: '18 Oct 2023', 
-      items: '8 items', 
-      priority: 'High', 
+    {
+      id: '#REQ-0035',
+      facility: 'Tamale General Hospital',
+      department: 'Pediatrics',
+      requestedBy: 'Dr. Kofi',
+      date: '18 Oct 2023',
+      items: '8 items',
+      priority: 'High',
       status: 'Approved',
       details: [
         { name: 'Pediatric Syringes', quantity: 150, unit: 'Pieces' },
-        { name: 'Children\'s Masks', quantity: 100, unit: 'Pieces' }
+        { name: "Children's Masks", quantity: 100, unit: 'Pieces' }
       ]
     },
-    { 
-      id: '#REQ-0032', 
-      facility: 'Cape Coast Hospital', 
-      department: 'Surgery', 
-      requestedBy: 'Dr. Yaa', 
-      date: '15 Oct 2023', 
-      items: '10 items', 
-      priority: 'Medium', 
+    {
+      id: '#REQ-0032',
+      facility: 'Cape Coast Hospital',
+      department: 'Surgery',
+      requestedBy: 'Dr. Yaa',
+      date: '15 Oct 2023',
+      items: '10 items',
+      priority: 'Medium',
       status: 'Rejected',
       details: [
         { name: 'Surgical Blades', quantity: 50, unit: 'Pieces' },
@@ -109,8 +109,8 @@ const SuperAdminRequisitions = () => {
       rejectionReason: 'Budget constraints for this quarter'
     }
   ]);
-  
-  // Filter requisitions based on active tab
+
+  // Filter by tab
   const filteredRequisitions = requisitions.filter(req => {
     if (activeTab === 'Pending') {
       return req.status === 'Pending Review' || req.status === 'Partially Approved';
@@ -119,41 +119,27 @@ const SuperAdminRequisitions = () => {
     } else if (activeTab === 'Rejected') {
       return req.status === 'Rejected';
     } else {
-      return true; // All Requisitions
+      return true;
     }
   });
-  
-  // Priority badge component
+
+  // Badges (Bootstrap only)
   const PriorityBadge = ({ priority }) => {
-    const priorityColors = {
-      'High': 'bg-danger',
-      'Medium': 'bg-warning',
-      'Low': 'bg-success'
-    };
-    
-    return (
-      <span className={`badge ${priorityColors[priority] || 'bg-secondary'}`}>
-        {priority}
-      </span>
-    );
+    const map = { High: 'bg-danger', Medium: 'bg-warning text-dark', Low: 'bg-success' };
+    return <span className={`badge ${map[priority] || 'bg-secondary'}`}>{priority}</span>;
+    // Note: warning badge is dark text for contrast
   };
-  
-  // Status badge component
+
   const StatusBadge = ({ status }) => {
-    const statusColors = {
-      'Pending Review': 'bg-warning',
-      'Partially Approved': 'bg-info',
+    const map = {
+      'Pending Review': 'bg-warning text-dark',
+      'Partially Approved': 'bg-info text-dark',
       'Approved': 'bg-success',
       'Rejected': 'bg-danger'
     };
-    
-    return (
-      <span className={`badge ${statusColors[status] || 'bg-secondary'}`}>
-        {status}
-      </span>
-    );
+    return <span className={`badge ${map[status] || 'bg-secondary'}`}>{status}</span>;
   };
-  
+
   // Modal handlers
   const openCreateModal = () => {
     setNewRequisition({
@@ -166,37 +152,18 @@ const SuperAdminRequisitions = () => {
     });
     setShowCreateModal(true);
   };
-  
-  const openViewModal = (requisition) => {
-    setCurrentRequisition(requisition);
-    setShowViewModal(true);
-  };
-  
-  const openApproveModal = (requisition) => {
-    setCurrentRequisition(requisition);
-    setShowApproveModal(true);
-  };
-  
-  const openRejectModal = (requisition) => {
-    setCurrentRequisition(requisition);
-    setRejectionReason('');
-    setShowRejectModal(true);
-  };
-  
+  const openViewModal = (req) => { setCurrentRequisition(req); setShowViewModal(true); };
+  const openApproveModal = (req) => { setCurrentRequisition(req); setShowApproveModal(true); };
+  const openRejectModal = (req) => { setCurrentRequisition(req); setRejectionReason(''); setShowRejectModal(true); };
+
   // Form handlers
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setNewRequisition({
-      ...newRequisition,
-      [name]: value
-    });
+    setNewRequisition(prev => ({ ...prev, [name]: value }));
   };
-  
-  const handleRejectionReasonChange = (e) => {
-    setRejectionReason(e.target.value);
-  };
-  
-  // Action handlers
+  const handleRejectionReasonChange = (e) => setRejectionReason(e.target.value);
+
+  // Actions
   const handleCreateRequisition = () => {
     const newItem = {
       id: `#REQ-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
@@ -207,148 +174,149 @@ const SuperAdminRequisitions = () => {
       items: newRequisition.items,
       priority: newRequisition.priority,
       status: 'Pending Review',
-      details: [] // Empty details for new requisition
+      details: []
     };
-    
     setRequisitions([newItem, ...requisitions]);
     setShowCreateModal(false);
   };
-  
   const handleApproveRequisition = () => {
-    const updatedRequisitions = requisitions.map(req => 
-      req.id === currentRequisition.id 
-        ? { ...req, status: 'Approved' } 
-        : req
-    );
-    
-    setRequisitions(updatedRequisitions);
+    setRequisitions(prev => prev.map(r => r.id === currentRequisition.id ? { ...r, status: 'Approved' } : r));
     setShowApproveModal(false);
   };
-  
   const handleRejectRequisition = () => {
-    const updatedRequisitions = requisitions.map(req => 
-      req.id === currentRequisition.id 
-        ? { ...req, status: 'Rejected', rejectionReason } 
-        : req
-    );
-    
-    setRequisitions(updatedRequisitions);
+    setRequisitions(prev => prev.map(r => r.id === currentRequisition.id ? { ...r, status: 'Rejected', rejectionReason } : r));
     setShowRejectModal(false);
   };
-  
+
+  // Filtered for list rendering on mobile
+  const filteredBySearch = filteredRequisitions.filter(r => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      r.id.toLowerCase().includes(q) ||
+      r.facility.toLowerCase().includes(q) ||
+      r.department.toLowerCase().includes(q) ||
+      r.requestedBy.toLowerCase().includes(q) ||
+      r.status.toLowerCase().includes(q)
+    );
+  });
+
   return (
-    <div className="fade-in">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="fw-bold">Requisitions Management</h2>
-        <div className="d-flex align-items-center">
-          <div className="input-group me-2">
-            <input 
-              type="text" 
-              className="form-control" 
-              placeholder="Search requisitions..." 
+    <div className="container-fluid py-3">
+      {/* ===== Top Toolbar ===== */}
+      {/* Mobile-first: stack; md+ align horizontally */}
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-stretch align-items-md-center gap-2 mb-4">
+        <h2 className="fw-bold mb-0">Requisitions Management</h2>
+
+        <div className="d-flex flex-column flex-sm-row align-items-stretch gap-2 w-100 w-md-auto">
+          <div className="input-group">
+            <input
+              type="text"
+              className="form-control"
+              style={{height: "40px"}}
+              placeholder="Search requisitions..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label="Search requisitions"
             />
-            <button className="btn btn-outline-secondary" type="button">
+            <button className="btn btn-outline-secondary" style={{height: "40px"}} type="button" aria-label="Search">
               <FaSearch />
             </button>
           </div>
-          <button className="btn btn-primary d-flex align-items-center" onClick={openCreateModal}>
+
+          <button className="btn btn-primary btn-sm py-1 px-2" style={{height: "40px", width: "150px"}} onClick={openCreateModal}>
             <FaPlus className="me-2" /> Create New
           </button>
         </div>
       </div>
-      
-      {/* Alert Summary - Original Desktop View */}
-      <div className="row mb-4">
-        <div className="col-md-4 mb-3">
+
+      {/* ===== Summary Cards ===== */}
+      {/* row-cols-1 on mobile, 3 cols at md+ */}
+      <div className="row row-cols-1 row-cols-md-3 g-3 mb-4">
+        <div className="col">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body bg-danger bg-opacity-10 p-4">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <div className="d-flex align-items-center mb-2">
-                    <FaExclamationCircle className="text-danger me-2" size={24} />
-                    <h5 className="card-title text-danger fw-bold mb-0">Urgent</h5>
-                  </div>
-                  <p className="card-text text-muted ms-4">3 requisitions need immediate attention</p>
-                </div>
+              <div className="d-flex align-items-center mb-2">
+                <FaExclamationCircle className="text-danger me-2" size={24} />
+                <h5 className="card-title text-danger fw-bold mb-0">Urgent</h5>
               </div>
+              <p className="card-text text-muted ms-4 mb-0">3 requisitions need immediate attention</p>
             </div>
           </div>
         </div>
-        <div className="col-md-4 mb-3">
+
+        <div className="col">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body bg-warning bg-opacity-10 p-4">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <div className="d-flex align-items-center mb-2">
-                    <FaExclamationTriangle className="text-warning me-2" size={24} />
-                    <h5 className="card-title text-warning fw-bold mb-0">Pending</h5>
-                  </div>
-                  <p className="card-text text-muted ms-4">5 requisitions awaiting approval</p>
-                </div>
+              <div className="d-flex align-items-center mb-2">
+                <FaExclamationTriangle className="text-warning me-2" size={24} />
+                <h5 className="card-title text-warning fw-bold mb-0">Pending</h5>
               </div>
+              <p className="card-text text-muted ms-4 mb-0">5 requisitions awaiting approval</p>
             </div>
           </div>
         </div>
-        <div className="col-md-4 mb-3">
+
+        <div className="col">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-body bg-info bg-opacity-10 p-4">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <div className="d-flex align-items-center mb-2">
-                    <FaCheck className="text-info me-2" size={24} />
-                    <h5 className="card-title text-info fw-bold mb-0">Approved</h5>
-                  </div>
-                  <p className="card-text text-muted ms-4">12 requisitions approved this week</p>
-                </div>
+              <div className="d-flex align-items-center mb-2">
+                <FaCheck className="text-info me-2" size={24} />
+                <h5 className="card-title text-info fw-bold mb-0">Approved</h5>
               </div>
+              <p className="card-text text-muted ms-4 mb-0">12 requisitions approved this week</p>
             </div>
           </div>
         </div>
       </div>
-      
-      {/* Tabs */}
+
+      {/* ===== Tabs ===== */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-header bg-white border-0 pt-3">
-          <ul className="nav nav-tabs card-header-tabs">
-            <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'Pending' ? 'active' : ''}`}
-                onClick={() => setActiveTab('Pending')}
-              >
-                Pending
-              </button>
-            </li>
-            <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'Approved' ? 'active' : ''}`}
-                onClick={() => setActiveTab('Approved')}
-              >
-                Approved
-              </button>
-            </li>
-            <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'Rejected' ? 'active' : ''}`}
-                onClick={() => setActiveTab('Rejected')}
-              >
-                Rejected
-              </button>
-            </li>
-            <li className="nav-item">
-              <button 
-                className={`nav-link ${activeTab === 'All' ? 'active' : ''}`}
-                onClick={() => setActiveTab('All')}
-              >
-                All Requisitions
-              </button>
-            </li>
-          </ul>
+          {/* Horizontal scroll if overflow on tiny screens (Bootstrap utilities) */}
+          <div className="overflow-auto">
+            <ul className="nav nav-tabs card-header-tabs flex-nowrap">
+              <li className="nav-item">
+                <button
+                  className={`nav-link ${activeTab === 'Pending' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('Pending')}
+                >
+                  Pending
+                </button>
+              </li>
+              <li className="nav-item">
+                <button
+                  className={`nav-link ${activeTab === 'Approved' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('Approved')}
+                >
+                  Approved
+                </button>
+              </li>
+              <li className="nav-item">
+                <button
+                  className={`nav-link ${activeTab === 'Rejected' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('Rejected')}
+                >
+                  Rejected
+                </button>
+              </li>
+              <li className="nav-item">
+                <button
+                  className={`nav-link ${activeTab === 'All' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('All')}
+                >
+                  All Requisitions
+                </button>
+              </li>
+            </ul>
+          </div>
         </div>
+
+        {/* ===== Data Views ===== */}
         <div className="card-body p-0">
-          <div className="table-responsive">
-            <table className="table table-hover mb-0">
+          {/* (A) TABLE for md and up */}
+          <div className="table-responsive d-none d-md-block">
+            <table className="table table-hover mb-0 align-middle">
               <thead className="bg-light">
                 <tr>
                   <th>Requisition ID</th>
@@ -359,13 +327,13 @@ const SuperAdminRequisitions = () => {
                   <th>Items</th>
                   <th>Priority</th>
                   <th>Status</th>
-                  <th>Actions</th>
+                  <th className="text-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredRequisitions.map((req, index) => (
-                  <tr key={index}>
-                    <td><span className="fw-bold">{req.id}</span></td>
+                {filteredBySearch.map((req, i) => (
+                  <tr key={i}>
+                    <td className="fw-bold">{req.id}</td>
                     <td>{req.facility}</td>
                     <td>{req.department}</td>
                     <td>{req.requestedBy}</td>
@@ -374,24 +342,27 @@ const SuperAdminRequisitions = () => {
                     <td><PriorityBadge priority={req.priority} /></td>
                     <td><StatusBadge status={req.status} /></td>
                     <td>
-                      <div className="btn-group" role="group">
-                        <button 
-                          className="btn btn-sm btn-outline-success" 
+                      <div className="btn-group" role="group" aria-label="Row actions">
+                        <button
+                          className="btn btn-sm btn-outline-success"
                           onClick={() => openApproveModal(req)}
                           disabled={req.status === 'Approved' || req.status === 'Rejected'}
+                          title="Approve"
                         >
                           <FaCheck />
                         </button>
-                        <button 
-                          className="btn btn-sm btn-outline-danger" 
+                        <button
+                          className="btn btn-sm btn-outline-danger"
                           onClick={() => openRejectModal(req)}
                           disabled={req.status === 'Approved' || req.status === 'Rejected'}
+                          title="Reject"
                         >
                           <FaTimes />
                         </button>
-                        <button 
-                          className="btn btn-sm btn-outline-primary" 
+                        <button
+                          className="btn btn-sm btn-outline-primary"
                           onClick={() => openViewModal(req)}
+                          title="View"
                         >
                           <FaEye />
                         </button>
@@ -402,14 +373,94 @@ const SuperAdminRequisitions = () => {
               </tbody>
             </table>
           </div>
+
+          {/* (B) CARD LIST for small screens */}
+          {/* Visible only below md */}
+          <div className="d-block d-md-none p-2">
+            <div className="row g-2">
+              {filteredBySearch.map((req, i) => (
+                <div className="col-12" key={i}>
+                  <div className="card">
+                    <div className="card-body">
+                      {/* Top line: ID + Status */}
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <span className="fw-bold">{req.id}</span>
+                        <StatusBadge status={req.status} />
+                      </div>
+
+                      {/* Meta grid */}
+                      <div className="row g-2 small">
+                        <div className="col-6">
+                          <div className="text-muted">Facility</div>
+                          <div>{req.facility}</div>
+                        </div>
+                        <div className="col-6">
+                          <div className="text-muted">Department</div>
+                          <div>{req.department}</div>
+                        </div>
+                        <div className="col-6">
+                          <div className="text-muted">Requested By</div>
+                          <div>{req.requestedBy}</div>
+                        </div>
+                        <div className="col-6">
+                          <div className="text-muted">Date</div>
+                          <div>{req.date}</div>
+                        </div>
+                        <div className="col-6">
+                          <div className="text-muted">Items</div>
+                          <div>{req.items}</div>
+                        </div>
+                        <div className="col-6">
+                          <div className="text-muted">Priority</div>
+                          <div><PriorityBadge priority={req.priority} /></div>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="d-flex gap-2 mt-3">
+                        <button
+                          className="btn btn-outline-success flex-fill"
+                          onClick={() => openApproveModal(req)}
+                          disabled={req.status === 'Approved' || req.status === 'Rejected'}
+                        >
+                          <FaCheck className="me-1" /> Approve
+                        </button>
+                        <button
+                          className="btn btn-outline-danger flex-fill"
+                          onClick={() => openRejectModal(req)}
+                          disabled={req.status === 'Approved' || req.status === 'Rejected'}
+                        >
+                          <FaTimes className="me-1" /> Reject
+                        </button>
+                        <button
+                          className="btn btn-outline-primary flex-fill"
+                          onClick={() => openViewModal(req)}
+                        >
+                          <FaEye className="me-1" /> View
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {filteredBySearch.length === 0 && (
+                <div className="col-12">
+                  <div className="alert alert-light border text-center mb-0">
+                    No requisitions found.
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-      
-      {/* Modals remain unchanged */}
-      {/* Create Requisition Modal */}
+
+      {/* ===== Create Modal ===== */}
       {showCreateModal && (
-        <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-lg">
+        <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+          {/* Full-screen on small devices */}
+          <div className="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Create New Requisition</h5>
@@ -417,43 +468,43 @@ const SuperAdminRequisitions = () => {
               </div>
               <div className="modal-body">
                 <form>
-                  <div className="row mb-3">
-                    <div className="col-md-6">
+                  {/* 320px+ → stacked; md+ → 2 columns */}
+                  <div className="row g-3">
+                    <div className="col-12 col-md-6">
                       <label className="form-label">Facility</label>
-                      <input 
-                        type="text" 
-                        className="form-control" 
+                      <input
+                        type="text"
+                        className="form-control"
                         name="facility"
                         value={newRequisition.facility}
                         onChange={handleInputChange}
                       />
                     </div>
-                    <div className="col-md-6">
+                    <div className="col-12 col-md-6">
                       <label className="form-label">Department</label>
-                      <input 
-                        type="text" 
-                        className="form-control" 
+                      <input
+                        type="text"
+                        className="form-control"
                         name="department"
                         value={newRequisition.department}
                         onChange={handleInputChange}
                       />
                     </div>
-                  </div>
-                  <div className="row mb-3">
-                    <div className="col-md-6">
+
+                    <div className="col-12 col-md-6">
                       <label className="form-label">Requested By</label>
-                      <input 
-                        type="text" 
-                        className="form-control" 
+                      <input
+                        type="text"
+                        className="form-control"
                         name="requestedBy"
                         value={newRequisition.requestedBy}
                         onChange={handleInputChange}
                       />
                     </div>
-                    <div className="col-md-6">
+                    <div className="col-12 col-md-6">
                       <label className="form-label">Priority</label>
-                      <select 
-                        className="form-select" 
+                      <select
+                        className="form-select"
                         name="priority"
                         value={newRequisition.priority}
                         onChange={handleInputChange}
@@ -463,32 +514,33 @@ const SuperAdminRequisitions = () => {
                         <option value="Low">Low</option>
                       </select>
                     </div>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Items Required</label>
-                    <textarea 
-                      className="form-control" 
-                      name="items"
-                      value={newRequisition.items}
-                      onChange={handleInputChange}
-                      rows="3"
-                      placeholder="List items and quantities required"
-                    ></textarea>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Reason for Requisition</label>
-                    <textarea 
-                      className="form-control" 
-                      name="reason"
-                      value={newRequisition.reason}
-                      onChange={handleInputChange}
-                      rows="2"
-                      placeholder="Explain why these items are needed"
-                    ></textarea>
+
+                    <div className="col-12">
+                      <label className="form-label">Items Required</label>
+                      <textarea
+                        className="form-control"
+                        name="items"
+                        value={newRequisition.items}
+                        onChange={handleInputChange}
+                        rows="3"
+                        placeholder="List items and quantities required"
+                      ></textarea>
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label">Reason for Requisition</label>
+                      <textarea
+                        className="form-control"
+                        name="reason"
+                        value={newRequisition.reason}
+                        onChange={handleInputChange}
+                        rows="2"
+                        placeholder="Explain why these items are needed"
+                      ></textarea>
+                    </div>
                   </div>
                 </form>
               </div>
-              <div className="modal-footer">
+              <div className="modal-footer d-flex gap-2">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>
                   Cancel
                 </button>
@@ -500,31 +552,31 @@ const SuperAdminRequisitions = () => {
           </div>
         </div>
       )}
-      
-      {/* View Requisition Modal */}
+
+      {/* ===== View Modal ===== */}
       {showViewModal && currentRequisition && (
-        <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-lg">
+        <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+          <div className="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Requisition Details: {currentRequisition.id}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
               </div>
               <div className="modal-body">
-                <div className="row mb-3">
-                  <div className="col-md-6">
-                    <p><strong>Facility:</strong> {currentRequisition.facility}</p>
-                    <p><strong>Department:</strong> {currentRequisition.department}</p>
-                    <p><strong>Requested By:</strong> {currentRequisition.requestedBy}</p>
+                <div className="row g-3 mb-2">
+                  <div className="col-12 col-md-6">
+                    <p className="mb-1"><strong>Facility:</strong> {currentRequisition.facility}</p>
+                    <p className="mb-1"><strong>Department:</strong> {currentRequisition.department}</p>
+                    <p className="mb-1"><strong>Requested By:</strong> {currentRequisition.requestedBy}</p>
                   </div>
-                  <div className="col-md-6">
-                    <p><strong>Date:</strong> {currentRequisition.date}</p>
-                    <p><strong>Priority:</strong> <PriorityBadge priority={currentRequisition.priority} /></p>
-                    <p><strong>Status:</strong> <StatusBadge status={currentRequisition.status} /></p>
+                  <div className="col-12 col-md-6">
+                    <p className="mb-1"><strong>Date:</strong> {currentRequisition.date}</p>
+                    <p className="mb-1"><strong>Priority:</strong> <PriorityBadge priority={currentRequisition.priority} /></p>
+                    <p className="mb-1"><strong>Status:</strong> <StatusBadge status={currentRequisition.status} /></p>
                   </div>
                 </div>
-                
-                <h6 className="mt-4 mb-3">Items Requested:</h6>
+
+                <h6 className="mt-3">Items Requested</h6>
                 <div className="table-responsive">
                   <table className="table table-sm">
                     <thead>
@@ -545,7 +597,7 @@ const SuperAdminRequisitions = () => {
                     </tbody>
                   </table>
                 </div>
-                
+
                 {currentRequisition.rejectionReason && (
                   <div className="alert alert-danger mt-3">
                     <strong>Rejection Reason:</strong> {currentRequisition.rejectionReason}
@@ -561,11 +613,11 @@ const SuperAdminRequisitions = () => {
           </div>
         </div>
       )}
-      
-      {/* Approve Requisition Modal */}
+
+      {/* ===== Approve Modal ===== */}
       {showApproveModal && currentRequisition && (
-        <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog">
+        <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Approve Requisition</h5>
@@ -585,7 +637,7 @@ const SuperAdminRequisitions = () => {
                   Approving this requisition will initiate the procurement process for the requested items.
                 </div>
               </div>
-              <div className="modal-footer">
+              <div className="modal-footer d-flex gap-2">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowApproveModal(false)}>
                   Cancel
                 </button>
@@ -597,11 +649,11 @@ const SuperAdminRequisitions = () => {
           </div>
         </div>
       )}
-      
-      {/* Reject Requisition Modal */}
+
+      {/* ===== Reject Modal ===== */}
       {showRejectModal && currentRequisition && (
-        <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog">
+        <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Reject Requisition</h5>
@@ -619,8 +671,8 @@ const SuperAdminRequisitions = () => {
                 </div>
                 <div className="mb-3 mt-3">
                   <label className="form-label">Reason for Rejection</label>
-                  <textarea 
-                    className="form-control" 
+                  <textarea
+                    className="form-control"
                     rows="3"
                     value={rejectionReason}
                     onChange={handleRejectionReasonChange}
@@ -631,13 +683,13 @@ const SuperAdminRequisitions = () => {
                   Rejecting this requisition will cancel the request. The requester will be notified of the rejection.
                 </div>
               </div>
-              <div className="modal-footer">
+              <div className="modal-footer d-flex gap-2">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowRejectModal(false)}>
                   Cancel
                 </button>
-                <button 
-                  type="button" 
-                  className="btn btn-danger" 
+                <button
+                  type="button"
+                  className="btn btn-danger"
                   onClick={handleRejectRequisition}
                   disabled={!rejectionReason.trim()}
                 >
@@ -648,8 +700,8 @@ const SuperAdminRequisitions = () => {
           </div>
         </div>
       )}
-      
-      {/* Modal Backdrop */}
+
+      {/* Backdrop */}
       {(showCreateModal || showViewModal || showApproveModal || showRejectModal) && (
         <div className="modal-backdrop show"></div>
       )}
