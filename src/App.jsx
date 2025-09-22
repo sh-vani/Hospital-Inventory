@@ -96,11 +96,6 @@ function App() {
             >
               
               <Routes>
-                {/* <Route path="okrs/departmentokrs" element={<DepartmentOKRs />} /> */}
-
-           
-              
-
 
                  <Route path="/facility-admin/dashboard" element= {<FacilityDashboard/>}/>'
                 <Route path="/facility/dashboard" element= {<FacilityDashboard/>}/>'
@@ -113,7 +108,6 @@ function App() {
                 <Route path="/facility/departmentsCategories" element={<FacilityDepartmentsCategories/>}/>'
                 <Route path="/facility/usersRoles" element={<FacilityUsersRoles/>}/>'
                   <Route path="/facility/goodreceipt" element={<GoodReceipt/>}/>'
-
 
               <Route path="/profile" element={<Profile/>}/>
 
@@ -128,8 +122,6 @@ function App() {
                   <Route path="/superadmin/users"element={<SuperAdminUsers/>}/>
                    <Route path="/superadmin/assets"element={<SuperAdminAssets/>}/>
                    <Route path="/superadmin/role"element={<SuperAdminRoles/>}/>
-
-
                 
                   <Route path="/user/dashboard" element={<FacilityUserDashboard/>}/>'
               <Route path="/user/requisitions" element={<FacilityUserRequisition/>}/>'
@@ -138,25 +130,15 @@ function App() {
                   <Route path="/user/notification"element={<FacilityUserNotifications/>}/>
                   <Route path="/user/receipts"element={<AcknowledgementOfReceipts/>}/>
 
-
-
-
-                   {/*Warehouse Dashbaord  */}
-
-
-
                    <Route path="/warehouse/dashboard"element={<WarehouseDashbaord/>}/>
-   <Route path="/warehouse/inventory"element={<WarehouseInventory/>}/>
-   <Route path="/warehouse/assets"element={<WareHouseAssets/>}/>
-<Route path="/warehouse/reports"element={<WarehouseReports/>}/>
-    <Route path="/warehouse/dispatches"element={<WarehouseDispatches/>}/>   
+                 <Route path="/warehouse/inventory"element={<WarehouseInventory/>}/>
+                 <Route path="/warehouse/assets"element={<WareHouseAssets/>}/>
+                < Route path="/warehouse/reports"element={<WarehouseReports/>}/>
+               < Route path="/warehouse/dispatches"element={<WarehouseDispatches/>}/>   
     <Route path="/warehouse/settings"element={<WarehouseSettings/>}/>   
         <Route path="/warehouse/requisitions"element={<WarehouseRequisitions/>}/> 
          <Route path="/warehouse/returnsRecalls"element={<ReturnsRecalls/>}/>     
               </Routes>
-               
-
-
             </div>
           </div>
         </>
