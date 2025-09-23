@@ -482,7 +482,7 @@ const SuperAdminRoles = () => {
                       rows="2"
                     ></textarea>
                   </div>
-                  <div className="mb-3">
+                  {/* <div className="mb-3">
                     <label className="form-label fw-bold">Permissions</label>
                     <div className="row">
                       {permissionModules.map((module) => (
@@ -503,7 +503,7 @@ const SuperAdminRoles = () => {
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </div> */}
                 </form>
               </div>
               <div className="modal-footer">
