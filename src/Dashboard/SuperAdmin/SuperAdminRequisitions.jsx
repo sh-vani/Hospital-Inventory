@@ -224,9 +224,9 @@ const SuperAdminRequisitions = () => {
             </button>
           </div>
 
-          <button className="btn btn-primary btn-sm py-1 px-2" style={{height: "40px", width: "150px"}} onClick={openCreateModal}>
+          {/* <button className="btn btn-primary btn-sm py-1 px-2" style={{height: "40px", width: "150px"}} onClick={openCreateModal}>
             <FaPlus className="me-2" /> Create New
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -343,22 +343,22 @@ const SuperAdminRequisitions = () => {
                     <td><StatusBadge status={req.status} /></td>
                     <td>
                       <div className="btn-group" role="group" aria-label="Row actions">
-                        <button
+                        {/* <button
                           className="btn btn-sm btn-outline-success"
                           onClick={() => openApproveModal(req)}
                           disabled={req.status === 'Approved' || req.status === 'Rejected'}
                           title="Approve"
                         >
                           <FaCheck />
-                        </button>
-                        <button
+                        </button> */}
+                        {/* <button
                           className="btn btn-sm btn-outline-danger"
                           onClick={() => openRejectModal(req)}
                           disabled={req.status === 'Approved' || req.status === 'Rejected'}
                           title="Reject"
                         >
                           <FaTimes />
-                        </button>
+                        </button> */}
                         <button
                           className="btn btn-sm btn-outline-primary"
                           onClick={() => openViewModal(req)}

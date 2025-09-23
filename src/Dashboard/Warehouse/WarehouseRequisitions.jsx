@@ -287,12 +287,12 @@ const WarehouseRequisitions = () => {
               <FaSearch />
             </button>
           </div>
-          <button 
+          {/* <button 
             className="btn btn-primary d-flex align-items-center text-nowrap" 
             onClick={openCreateModal}
           >
             <FaPlus className="me-2" /> Create Requisition
-          </button>
+          </button> */}
         </div>
       </div>
       

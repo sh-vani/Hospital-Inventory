@@ -248,9 +248,9 @@ const [viewItem, setViewItem] = useState(null);
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="text-black mb-0">Inventory Management</h2>
-        <button className="btn btn-primary d-flex align-items-center" onClick={openAddModal}>
+        {/* <button className="btn btn-primary d-flex align-items-center" onClick={openAddModal}>
           <FaPlusCircle className="me-2" /> Add New Item
-        </button>
+        </button> */}
       </div>
 
       {/* Table Card */}
@@ -317,29 +317,29 @@ const [viewItem, setViewItem] = useState(null);
       View
     </button>
 
-    <button
+    {/* <button
       className="btn btn-sm btn-outline-primary"
       onClick={() => openEditModal(item)}
       title="Edit"
     >
       <FaEdit />
-    </button>
+    </button> */}
 
-    <button
+    {/* <button
       className="btn btn-sm btn-outline-success"
       onClick={() => openRestockModal(item)}
       title="Restock"
     >
       <FaPlusCircle />
-    </button>
-
+    </button> */}
+{/* 
     <button
       className="btn btn-sm bg-primary text-white"
       onClick={() => openBatchModal(item)}
       title="View Batches"
     >
       Batches
-    </button>
+    </button> */}
   </div>
 </td>
                     </tr>
