@@ -96,10 +96,9 @@ function App() {
             >
               
               <Routes>
- 
                   <Route path="/facility-admin/dashboard" element= {<FacilityDashboard/>}/>'
                   <Route path="/facility/dashboard" element= {<FacilityDashboard/>}/>'
-                   <Route path="/facility/requisitions" element={<FacilityRequisitions/>}/>'
+                 <Route path="/facility/requisitions" element={<FacilityRequisitions/>}/>'
                   <Route path="/facility/reports" element={<FacilityReports/>}/>'
                   <Route path="/facility/assets" element={<FacilityAssets/>}/>'
                   <Route path="/Facility/users" element={<FacilityUser/>}/>'
@@ -108,11 +107,9 @@ function App() {
                   <Route path="/facility/departmentsCategories" element={<FacilityDepartmentsCategories/>}/>'
                   <Route path="/facility/usersRoles" element={<FacilityUsersRoles/>}/>'
                   <Route path="/facility/goodreceipt" element={<GoodReceipt/>}/>'
-
                    <Route path="/profile" element={<Profile/>}/>
-
-              {/* SuperAdmin */}
-              <Route path="/superadmin/dashboard"element={<SuperAdminDashboard/>}/>
+                {/* SuperAdmin */}
+                   <Route path="/superadmin/dashboard"element={<SuperAdminDashboard/>}/>
                    <Route path="/superadmin/inventory"element={<SuperAdminInventory/>}/>
                    <Route path="/superadmin/dispatches"element={<SuperAdminDispatches/>}/>
                    <Route path="/superadmin/facilities"element={<SuperAdminFacilities/>}/>
@@ -122,7 +119,7 @@ function App() {
                    <Route path="/superadmin/users"element={<SuperAdminUsers/>}/>
                    <Route path="/superadmin/assets"element={<SuperAdminAssets/>}/>
                    <Route path="/superadmin/role"element={<SuperAdminRoles/>}/>
-                
+                 {/* Facility User */}
                   <Route path="/user/dashboard" element={<FacilityUserDashboard/>}/>'
                   <Route path="/user/requisitions" element={<FacilityUserRequisition/>}/>'
                   <Route path="/user/facilityInventory"element={<FacilityUserInventory/>}/>
@@ -130,6 +127,7 @@ function App() {
                   <Route path="/user/notification"element={<FacilityUserNotifications/>}/>
                   <Route path="/user/receipts"element={<AcknowledgementOfReceipts/>}/>
 
+                  {/* Warehouse Routes */}
                  <Route path="/warehouse/dashboard"element={<WarehouseDashbaord/>}/>
                  <Route path="/warehouse/inventory"element={<WarehouseInventory/>}/>
                  <Route path="/warehouse/assets"element={<WareHouseAssets/>}/>
