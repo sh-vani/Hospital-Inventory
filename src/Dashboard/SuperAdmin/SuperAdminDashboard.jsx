@@ -4,106 +4,85 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
+  LineElement,
+  PointElement,
   ArcElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 } from 'chart.js';
-import { Bar, Doughnut } from 'react-chartjs-2';
-import {
-  FaExclamationCircle,
-  FaExclamationTriangle,
-  FaClock
-} from 'react-icons/fa';
+import { Bar, Line } from 'react-chartjs-2';
 
-// Register Chart.js
-ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 const SuperAdminDashboard = () => {
   // === Consistent Color Palette ===
   const COLORS = {
-    primary: '#2563eb',    // Blue (main)
-    success: '#10b981',    // Green (completed)
-    warning: '#f59e0b',    // Amber (pending/low stock)
-    danger: '#ef4444',     // Red (out of stock/delayed)
-    info: '#3b82f6',       // Light blue (in transit/approved)
+    primary: '#2563eb',    // Blue
+    success: '#10b981',    // Green
+    warning: '#f59e0b',    // Amber
+    danger: '#ef4444',     // Red
+    info: '#3b82f6',       // Light blue
     secondary: '#6b7280'   // Gray
   };
 
-  // === STOCK STATUS ===
-  const stockData = {
-    labels: ['Pharmaceuticals', 'Medical Supplies', 'Consumables', 'Equipment'],
-    datasets: [{
-      data: [45, 25, 20, 10],
-      backgroundColor: [
-        COLORS.primary,
-        COLORS.success,
-        COLORS.warning,
-        COLORS.info
-      ],
-      borderWidth: 0,
-      borderRadius: 4,
-      spacing: 4
-    }]
-  };
+  // === KPI VALUES (Replace with real data from API later) ===
+  const kpis = [
+    { title: 'Total Inventory', value: '12,450', change: '+2.3%', positive: true },
+    { title: 'Total Facilities', value: '87', change: '+1', positive: true },
+    { title: 'Pending Requisitions', value: '42', change: '+5', positive: false },
+    { title: 'Dispatches Today', value: '28', change: '+3', positive: true }
+  ];
 
-  const stockOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'bottom',
-        labels: {
-          padding: 15,
-          usePointStyle: true,
-          pointStyle: 'circle'
-        }
+  // === STOCK MOVEMENT (Line Chart) ===
+  const stockMovementData = {
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    datasets: [
+      {
+        label: 'Stock In',
+        data: [300, 420, 380, 500, 620, 700],
+        borderColor: COLORS.success,
+        backgroundColor: COLORS.success + '20',
+        fill: true,
+        tension: 0.4,
+        borderWidth: 2
       },
-      title: {
-        display: true,
-        text: 'Stock Status (All Warehouses & Facilities)',
-        font: { size: 15, weight: '600' },
-        padding: { top: 0, bottom: 15 }
+      {
+        label: 'Stock Out',
+        data: [200, 300, 280, 400, 520, 600],
+        borderColor: COLORS.danger,
+        backgroundColor: COLORS.danger + '20',
+        fill: true,
+        tension: 0.4,
+        borderWidth: 2
       }
-    },
-    cutout: '70%',
-    interaction: {
-      intersect: false,
-      mode: 'index'
-    }
+    ]
   };
 
-  // === REQUISITIONS SUMMARY ===
-  const requisitionData = {
-    labels: ['Pending', 'Approved', 'Completed', 'Rejected'],
-    datasets: [{
-      label: 'Requisitions',
-      data: [42, 18, 65, 5],
-      backgroundColor: [
-        COLORS.warning,   // Pending
-        COLORS.info,      // Approved
-        COLORS.success,   // Completed
-        COLORS.danger     // Rejected
-      ],
-      borderRadius: 6,
-      borderSkipped: false
-    }]
-  };
-
-  const requisitionOptions = {
+  const stockMovementOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'bottom',
-        labels: {
-          padding: 15,
-          usePointStyle: true
-        }
+        position: 'top',
+        labels: { usePointStyle: true, padding: 15 }
       },
       title: {
         display: true,
-        text: 'Requisitions Summary',
+        text: 'Stock Movement (Last 6 Months)',
         font: { size: 15, weight: '600' },
         padding: { top: 0, bottom: 15 }
       }
@@ -121,59 +100,54 @@ const SuperAdminDashboard = () => {
     }
   };
 
-  // === DISPATCH SUMMARY ===
-  const dispatchData = {
-    labels: ['Completed', 'In Transit', 'Delayed'],
-    datasets: [{
-      label: 'Dispatches',
-      data: [78, 12, 4],
-      backgroundColor: [
-        COLORS.success,
-        COLORS.info,
-        COLORS.danger
-      ],
-      borderRadius: 6,
-      borderSkipped: false
-    }]
+  // === REQUESTS vs COMPLETED (Bar Chart) ===
+  const requestsVsCompletedData = {
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    datasets: [
+      {
+        label: 'Requests',
+        data: [45, 52, 60, 70, 65, 80],
+        backgroundColor: COLORS.warning,
+        borderRadius: 4,
+        borderSkipped: false
+      },
+      {
+        label: 'Completed',
+        data: [30, 40, 48, 55, 60, 72],
+        backgroundColor: COLORS.success,
+        borderRadius: 4,
+        borderSkipped: false
+      }
+    ]
   };
 
-  const dispatchOptions = {
-    ...requisitionOptions,
+  const requestsVsCompletedOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
     plugins: {
-      ...requisitionOptions.plugins,
+      legend: {
+        position: 'top',
+        labels: { usePointStyle: true, padding: 15 }
+      },
       title: {
         display: true,
-        text: 'Dispatch Summary',
+        text: 'Requests vs Completed',
         font: { size: 15, weight: '600' },
         padding: { top: 0, bottom: 15 }
       }
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { font: { size: 11 } }
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: 'rgba(0,0,0,0.03)' },
+        ticks: { font: { size: 11 } }
+      }
     }
   };
-
-  // === ALERTS ===
-  const alerts = [
-    {
-      icon: <FaExclamationCircle className="text-danger" />,
-      title: 'Out of Stock',
-      value: '8 items',
-      bg: 'bg-danger',
-      textColor: 'text-danger'
-    },
-    {
-      icon: <FaExclamationTriangle className="text-warning" />,
-      title: 'Low Stock',
-      value: '23 items',
-      bg: 'bg-warning',
-      textColor: 'text-warning'
-    },
-    {
-      icon: <FaClock className="text-info" />,
-      title: 'Near Expiry',
-      value: '15 items',
-      bg: 'bg-info',
-      textColor: 'text-info'
-    }
-  ];
 
   return (
     <div className="container-fluid py-4 px-3 px-md-4" style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
@@ -183,18 +157,18 @@ const SuperAdminDashboard = () => {
         <p className="text-muted">System-wide monitoring overview</p>
       </div>
 
-      {/* Critical Alerts */}
+      {/* KPI CARDS */}
       <div className="row mb-5 g-4">
-        {alerts.map((alert, i) => (
-          <div className="col-md-4" key={i}>
-            <div className={`card border-0 shadow-sm rounded-3 h-100 ${alert.bg} bg-opacity-10`}>
-              <div className="card-body d-flex align-items-center p-4">
-                <div className="me-4" style={{ fontSize: '1.8rem' }}>
-                  {alert.icon}
-                </div>
-                <div>
-                  <h5 className={`mb-1 fw-bold ${alert.textColor}`}>{alert.title}</h5>
-                  <p className="mb-0 text-muted">{alert.value}</p>
+        {kpis.map((kpi, i) => (
+          <div className="col-md-3" key={i}>
+            <div className="card border-0 shadow-sm rounded-3 h-100">
+              <div className="card-body p-4">
+                <h6 className="text-muted mb-1">{kpi.title}</h6>
+                <div className="d-flex align-items-baseline">
+                  <h3 className="fw-bold mb-0 me-2">{kpi.value}</h3>
+                  <span className={`small ${kpi.positive ? 'text-success' : 'text-danger'}`}>
+                    {kpi.change}
+                  </span>
                 </div>
               </div>
             </div>
@@ -202,31 +176,22 @@ const SuperAdminDashboard = () => {
         ))}
       </div>
 
-      {/* Charts Section */}
+      {/* CHARTS SECTION */}
       <div className="row g-4">
-        {/* Stock Status */}
-        <div className="col-lg-4">
+        {/* Stock Movement */}
+        <div className="col-lg-6">
           <div className="card border-0 shadow-sm rounded-3 h-100">
-            <div className="card-body p-4" style={{ height: '380px' }}>
-              <Doughnut data={stockData} options={stockOptions} />
+            <div className="card-body p-4" style={{ height: '400px' }}>
+              <Line data={stockMovementData} options={stockMovementOptions} />
             </div>
           </div>
         </div>
 
-        {/* Requisitions Summary */}
-        <div className="col-lg-4">
+        {/* Requests vs Completed */}
+        <div className="col-lg-6">
           <div className="card border-0 shadow-sm rounded-3 h-100">
-            <div className="card-body p-4" style={{ height: '380px' }}>
-              <Bar data={requisitionData} options={requisitionOptions} />
-            </div>
-          </div>
-        </div>
-
-        {/* Dispatch Summary */}
-        <div className="col-lg-4">
-          <div className="card border-0 shadow-sm rounded-3 h-100">
-            <div className="card-body p-4" style={{ height: '380px' }}>
-              <Bar data={dispatchData} options={dispatchOptions} />
+            <div className="card-body p-4" style={{ height: '400px' }}>
+              <Bar data={requestsVsCompletedData} options={requestsVsCompletedOptions} />
             </div>
           </div>
         </div>
