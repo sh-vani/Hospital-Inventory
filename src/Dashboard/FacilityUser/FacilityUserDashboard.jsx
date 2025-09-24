@@ -3,7 +3,8 @@ import { FaBoxOpen, FaExclamationTriangle, FaClock, FaHourglassHalf, FaShoppingC
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const FacilityUserDashboard = () => {
-  // State for dashboard data
+  // State for dashboard data        
+   
   const [dashboardData, setDashboardData] = useState({
     outOfStock: 5,
     lowStock: 12,
