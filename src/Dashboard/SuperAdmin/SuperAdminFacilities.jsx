@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FaPlus, FaHospital, FaClinicMedical, FaFirstAid, FaWarehouse, FaMapMarkerAlt, FaPhone, FaEnvelope,
   FaEdit, FaTrash, FaTimes, FaSave, FaInfoCircle, FaBox, FaClipboardList, FaExclamationTriangle, FaCheckCircle
 } from 'react-icons/fa';
+import axios from 'axios';
+import BaseUrl from '../../Api/BaseUrl';
 
 const SuperAdminFacilities = () => {
   // State for modals
@@ -24,8 +26,8 @@ const SuperAdminFacilities = () => {
     description: '',
     capacity: '',
     services: '',
-    inventoryLevel: 'Good',
-    pendingRequisitions: 0
+    inventory_level: 'Good',
+    pending_requisitions: 0
   });
   
   // State for edit facility form
@@ -38,83 +40,74 @@ const SuperAdminFacilities = () => {
     description: '',
     capacity: '',
     services: '',
-    inventoryLevel: 'Good',
-    pendingRequisitions: 0
+    inventory_level: 'Good',
+    pending_requisitions: 0
   });
   
-  // Mock data for facilities
-  const [facilities, setFacilities] = useState([
-    { 
-      id: 1, 
-      name: 'Main Warehouse', 
-      type: 'Central Storage Facility', 
-      icon: <FaWarehouse className="text-primary" />,
-      address: '123 Industrial Area, Accra',
-      phone: '+233 30 123 4567',
-      email: 'warehouse@francisfosu.com',
-      description: 'Central storage facility for all medical supplies and equipment',
-      capacity: '10,000 sq meters',
-      services: 'Storage, Distribution, Inventory Management',
-      inventoryLevel: 'Good',
-      pendingRequisitions: 0
-    },
-    { 
-      id: 2, 
-      name: 'Kumasi Branch Hospital', 
-      type: 'Regional Facility', 
-      icon: <FaHospital className="text-success" />,
-      address: '456 Hospital Road, Kumasi',
-      phone: '+233 32 234 5678',
-      email: 'kumasi@francisfosu.com',
-      description: 'Regional hospital serving the Ashanti region with comprehensive medical services',
-      capacity: '300 beds',
-      services: 'Emergency, Surgery, Maternity, Pediatrics, Pharmacy',
-      inventoryLevel: 'Low',
-      pendingRequisitions: 3
-    },
-    { 
-      id: 3, 
-      name: 'Accra Central Hospital', 
-      type: 'Metropolitan Facility', 
-      icon: <FaClinicMedical className="text-info" />,
-      address: '789 Central Avenue, Accra',
-      phone: '+233 30 345 6789',
-      email: 'accra@francisfosu.com',
-      description: 'Main hospital in Accra providing specialized healthcare services',
-      capacity: '500 beds',
-      services: 'Cardiology, Oncology, Neurology, Radiology, Laboratory',
-      inventoryLevel: 'Critical',
-      pendingRequisitions: 5
-    },
-    { 
-      id: 4, 
-      name: 'Takoradi Clinic', 
-      type: 'Community Health Center', 
-      icon: <FaFirstAid className="text-warning" />,
-      address: '101 Health Street, Takoradi',
-      phone: '+233 31 456 7890',
-      email: 'takoradi@francisfosu.com',
-      description: 'Community health center providing primary care services',
-      capacity: '50 beds',
-      services: 'General Practice, Maternity, Immunization, Laboratory',
-      inventoryLevel: 'Good',
-      pendingRequisitions: 2
-    },
-    { 
-      id: 5, 
-      name: 'Cape Coast Hospital', 
-      type: 'Coastal Regional Facility', 
-      icon: <FaHospital className="text-danger" />,
-      address: '202 Coastal Road, Cape Coast',
-      phone: '+233 33 567 8901',
-      email: 'capecoast@francisfosu.com',
-      description: 'Regional hospital serving the Central region with comprehensive medical services',
-      capacity: '250 beds',
-      services: 'Emergency, Surgery, Maternity, Pediatrics, Pharmacy',
-      inventoryLevel: 'Low',
-      pendingRequisitions: 4
+  // State for facilities data
+  const [facilities, setFacilities] = useState([]);
+  
+  // State for summary data
+  const [summary, setSummary] = useState({
+    totalFacilities: 0,
+    facilitiesByType: [],
+    inventoryLevels: [],
+    totalPending: 0
+  });
+  
+  // State for loading
+  const [loading, setLoading] = useState(true);
+  
+  // State for error
+  const [error, setError] = useState(null);
+  
+  // API base URL - replace with your actual API base URL
+  
+  // Fetch facilities and summary data on component mount
+  useEffect(() => {
+    fetchFacilities();
+    fetchSummary();
+  }, []);
+  
+  // Function to fetch facilities
+  const fetchFacilities = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${BaseUrl}/facilities`);
+      // Transform the response data to match the component's expected format
+      const transformedData = response.data.map(facility => ({
+        id: facility.id,
+        name: facility.name,
+        type: facility.type,
+        icon: getFacilityIcon(facility.type),
+        address: facility.address,
+        phone: facility.phone,
+        email: facility.email,
+        description: facility.description,
+        capacity: facility.capacity,
+        services: facility.services,
+        inventoryLevel: facility.inventory_level,
+        pendingRequisitions: facility.pending_requisitions
+      }));
+      setFacilities(transformedData);
+      setError(null);
+    } catch (err) {
+      setError('Failed to fetch facilities. Please try again later.');
+      console.error('Error fetching facilities:', err);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+  
+  // Function to fetch summary data
+  const fetchSummary = async () => {
+    try {
+      const response = await axios.get(`${BaseUrl}/getfacilitiesSummary`);
+      setSummary(response.data);
+    } catch (err) {
+      console.error('Error fetching summary:', err);
+    }
+  };
   
   // Modal handlers
   const openAddModal = () => {
@@ -127,8 +120,8 @@ const SuperAdminFacilities = () => {
       description: '',
       capacity: '',
       services: '',
-      inventoryLevel: 'Good',
-      pendingRequisitions: 0
+      inventory_level: 'Good',
+      pending_requisitions: 0
     });
     setShowAddModal(true);
   };
@@ -140,7 +133,16 @@ const SuperAdminFacilities = () => {
   
   const openEditModal = (facility) => {
     setEditFacility({
-      ...facility
+      name: facility.name,
+      type: facility.type,
+      address: facility.address,
+      phone: facility.phone,
+      email: facility.email,
+      description: facility.description,
+      capacity: facility.capacity,
+      services: facility.services,
+      inventory_level: facility.inventoryLevel,
+      pending_requisitions: facility.pendingRequisitions
     });
     setCurrentFacility(facility);
     setShowEditModal(true);
@@ -169,68 +171,117 @@ const SuperAdminFacilities = () => {
   };
   
   // Action handlers
-  const handleAddFacility = () => {
-    const facilityType = newFacility.type;
-    let icon;
-    
-    switch(facilityType) {
-      case 'Central Storage Facility':
-        icon = <FaWarehouse className="text-primary" />;
-        break;
-      case 'Regional Facility':
-      case 'Metropolitan Facility':
-      case 'Coastal Regional Facility':
-        icon = <FaHospital className="text-success" />;
-        break;
-      case 'Community Health Center':
-        icon = <FaClinicMedical className="text-info" />;
-        break;
-      default:
-        icon = <FaFirstAid className="text-warning" />;
+  const handleAddFacility = async () => {
+    try {
+      // Prepare data for API
+      const facilityData = {
+        name: newFacility.name,
+        type: newFacility.type,
+        phone: newFacility.phone,
+        email: newFacility.email,
+        address: newFacility.address,
+        capacity: newFacility.capacity,
+        services: newFacility.services,
+        inventory_level: newFacility.inventory_level,
+        pending_requisitions: parseInt(newFacility.pending_requisitions),
+        description: newFacility.description
+      };
+      
+      // Call API to add facility
+      const response = await axios.post(`${BaseUrl}/facilities`, facilityData);
+      
+      // Transform the response to match the component's expected format
+      const facilityType = newFacility.type;
+      const icon = getFacilityIcon(facilityType);
+      
+      const newItem = {
+        id: response.data.id || facilities.length + 1,
+        name: newFacility.name,
+        type: newFacility.type,
+        icon: icon,
+        address: newFacility.address,
+        phone: newFacility.phone,
+        email: newFacility.email,
+        description: newFacility.description,
+        capacity: newFacility.capacity,
+        services: newFacility.services,
+        inventoryLevel: newFacility.inventory_level,
+        pendingRequisitions: parseInt(newFacility.pending_requisitions)
+      };
+      
+      setFacilities([...facilities, newItem]);
+      setShowAddModal(false);
+      
+      // Refresh summary data
+      fetchSummary();
+    } catch (err) {
+      console.error('Error adding facility:', err);
+      alert('Failed to add facility. Please try again.');
     }
-    
-    const newItem = {
-      id: facilities.length + 1,
-      name: newFacility.name,
-      type: newFacility.type,
-      icon: icon,
-      address: newFacility.address,
-      phone: newFacility.phone,
-      email: newFacility.email,
-      description: newFacility.description,
-      capacity: newFacility.capacity,
-      services: newFacility.services,
-      inventoryLevel: newFacility.inventoryLevel,
-      pendingRequisitions: parseInt(newFacility.pendingRequisitions)
-    };
-    
-    setFacilities([...facilities, newItem]);
-    setShowAddModal(false);
   };
   
-  const handleEditFacility = () => {
-    const updatedFacilities = facilities.map(facility => 
-      facility.id === currentFacility.id 
-        ? { 
-            ...editFacility, 
-            id: currentFacility.id,
-            icon: currentFacility.icon,
-            pendingRequisitions: parseInt(editFacility.pendingRequisitions)
-          } 
-        : facility
-    );
-    
-    setFacilities(updatedFacilities);
-    setShowEditModal(false);
+  const handleEditFacility = async () => {
+    try {
+      // Prepare data for API
+      const facilityData = {
+        name: editFacility.name,
+        type: editFacility.type,
+        phone: editFacility.phone,
+        email: editFacility.email,
+        address: editFacility.address,
+        capacity: editFacility.capacity,
+        services: editFacility.services,
+        inventory_level: editFacility.inventory_level,
+        pending_requisitions: parseInt(editFacility.pending_requisitions),
+        description: editFacility.description
+      };
+      
+      // Call API to update facility
+      await axios.put(`${BaseUrl}/facilities/${currentFacility.id}`, facilityData);
+      
+      // Update the facility in the state
+      const updatedFacilities = facilities.map(facility => 
+        facility.id === currentFacility.id 
+          ? { 
+              ...editFacility, 
+              id: currentFacility.id,
+              icon: getFacilityIcon(editFacility.type),
+              inventoryLevel: editFacility.inventory_level,
+              pendingRequisitions: parseInt(editFacility.pending_requisitions)
+            } 
+          : facility
+      );
+      
+      setFacilities(updatedFacilities);
+      setShowEditModal(false);
+      
+      // Refresh summary data
+      fetchSummary();
+    } catch (err) {
+      console.error('Error updating facility:', err);
+      alert('Failed to update facility. Please try again.');
+    }
   };
   
-  const handleDeleteFacility = () => {
-    const updatedFacilities = facilities.filter(facility => 
-      facility.id !== currentFacility.id
-    );
-    
-    setFacilities(updatedFacilities);
-    setShowDeleteModal(false);
+  const handleDeleteFacility = async () => {
+    try {
+      // Call API to delete facility
+      await axios.delete(`${BaseUrl}/facilities/${currentFacility.id}`);
+      
+      // Update the facilities list in state
+      const updatedFacilities = facilities.filter(facility => 
+        facility.id !== currentFacility.id
+      );
+      
+      setFacilities(updatedFacilities);
+      setShowDeleteModal(false);
+      
+      // Refresh summary data
+      fetchSummary();
+    } catch (err) {
+      console.error('Error deleting facility:', err);
+      alert('Failed to delete facility. Please try again.');
+    }
   };
   
   // Get icon based on facility type
@@ -263,6 +314,31 @@ const SuperAdminFacilities = () => {
     }
   };
   
+  // Calculate stats for display
+  const getStats = () => {
+    const hospitalsCount = summary.facilitiesByType?.find(item => 
+      item.type === 'Hospital' || item.type === 'Regional Facility' || 
+      item.type === 'Metropolitan Facility' || item.type === 'Coastal Regional Facility'
+    )?.count || 0;
+    
+    const clinicsCount = summary.facilitiesByType?.find(item => 
+      item.type === 'Community Health Center'
+    )?.count || 0;
+    
+    const warehouseCount = summary.facilitiesByType?.find(item => 
+      item.type === 'Central Storage Facility'
+    )?.count || 0;
+    
+    return {
+      totalFacilities: summary.totalFacilities || 0,
+      hospitalsCount,
+      clinicsCount,
+      warehouseCount
+    };
+  };
+  
+  const stats = getStats();
+  
   return (
     <div className="fade-in">
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -280,7 +356,7 @@ const SuperAdminFacilities = () => {
               <div className="bg-primary bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaHospital className="text-primary fa-2x" />
               </div>
-              <div className="number text-primary fw-bold">{facilities.length}</div>
+              <div className="number text-primary fw-bold">{stats.totalFacilities}</div>
               <div className="label text-muted">Total Facilities</div>
             </div>
           </div>
@@ -291,9 +367,7 @@ const SuperAdminFacilities = () => {
               <div className="bg-success bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaClinicMedical className="text-success fa-2x" />
               </div>
-              <div className="number text-success fw-bold">
-                {facilities.filter(f => f.type.includes('Hospital')).length}
-              </div>
+              <div className="number text-success fw-bold">{stats.hospitalsCount}</div>
               <div className="label text-muted">Hospitals</div>
             </div>
           </div>
@@ -304,9 +378,7 @@ const SuperAdminFacilities = () => {
               <div className="bg-warning bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaFirstAid className="text-warning fa-2x" />
               </div>
-              <div className="number text-warning fw-bold">
-                {facilities.filter(f => f.type.includes('Clinic') || f.type.includes('Health Center')).length}
-              </div>
+              <div className="number text-warning fw-bold">{stats.clinicsCount}</div>
               <div className="label text-muted">Clinics</div>
             </div>
           </div>
@@ -317,62 +389,78 @@ const SuperAdminFacilities = () => {
               <div className="bg-info bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaWarehouse className="text-info fa-2x" />
               </div>
-              <div className="number text-info fw-bold">
-                {facilities.filter(f => f.type.includes('Storage') || f.type.includes('Warehouse')).length}
-              </div>
+              <div className="number text-info fw-bold">{stats.warehouseCount}</div>
               <div className="label text-muted">Warehouse</div>
             </div>
           </div>
         </div>
       </div>
       
+      {/* Loading and Error States */}
+      {loading && (
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-2">Loading facilities...</p>
+        </div>
+      )}
+      
+      {error && (
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      )}
+      
       {/* Facilities Cards - Square Design */}
-      <div className="row">
-        {facilities.map((facility) => (
-          <div className="col-md-3 col-sm-6 mb-4" key={facility.id}>
-            <div className="card border-0 shadow-sm facility-card">
-              <div className="card-body d-flex flex-column p-3">
-                {/* Icon and Title */}
-                <div className="text-center mb-3">
-                  <div className="bg-light p-3 rounded-circle d-inline-block mb-2">
-                    {React.cloneElement(facility.icon, { className: `${facility.icon.props.className} fa-2x` })}
+      {!loading && !error && (
+        <div className="row">
+          {facilities.map((facility) => (
+            <div className="col-md-3 col-sm-6 mb-4" key={facility.id}>
+              <div className="card border-0 shadow-sm facility-card">
+                <div className="card-body d-flex flex-column p-3">
+                  {/* Icon and Title */}
+                  <div className="text-center mb-3">
+                    <div className="bg-light p-3 rounded-circle d-inline-block mb-2">
+                      {React.cloneElement(facility.icon, { className: `${facility.icon.props.className} fa-2x` })}
+                    </div>
+                    <h5 className="fw-bold mb-0">{facility.name}</h5>
+                    <p className="text-muted small mb-0">{facility.type}</p>
                   </div>
-                  <h5 className="fw-bold mb-0">{facility.name}</h5>
-                  <p className="text-muted small mb-0">{facility.type}</p>
-                </div>
-                
-                {/* Inventory Level */}
-                <div className="mb-2">
-                  <div className="d-flex align-items-center justify-content-center">
-                    <FaBox className="me-2 text-muted" />
-                    <span className="me-2">Inventory:</span>
-                    {getInventoryBadge(facility.inventoryLevel)}
+                  
+                  {/* Inventory Level */}
+                  <div className="mb-2">
+                    <div className="d-flex align-items-center justify-content-center">
+                      <FaBox className="me-2 text-muted" />
+                      <span className="me-2">Inventory:</span>
+                      {getInventoryBadge(facility.inventoryLevel)}
+                    </div>
                   </div>
-                </div>
-                
-                {/* Pending Requisitions */}
-                <div className="mb-3">
-                  <div className="d-flex align-items-center justify-content-center">
-                    <FaClipboardList className="me-2 text-muted" />
-                    <span className="me-2">Pending:</span>
-                    <span className="badge bg-info">{facility.pendingRequisitions}</span>
+                  
+                  {/* Pending Requisitions */}
+                  <div className="mb-3">
+                    <div className="d-flex align-items-center justify-content-center">
+                      <FaClipboardList className="me-2 text-muted" />
+                      <span className="me-2">Pending:</span>
+                      <span className="badge bg-info">{facility.pendingRequisitions}</span>
+                    </div>
                   </div>
-                </div>
-                
-                {/* View Details Button */}
-                <div className="mt-auto">
-                  <button 
-                    className="btn btn-sm btn-outline-primary w-100" 
-                    onClick={() => openViewModal(facility)}
-                  >
-                    View Details
-                  </button>
+                  
+                  {/* View Details Button */}
+                  <div className="mt-auto">
+                    <button 
+                      className="btn btn-sm btn-outline-primary w-100" 
+                      onClick={() => openViewModal(facility)}
+                    >
+                      View Details
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
       
       {/* Add Facility Modal */}
       {showAddModal && (
@@ -394,6 +482,7 @@ const SuperAdminFacilities = () => {
                         name="name"
                         value={newFacility.name}
                         onChange={handleAddFacilityChange}
+                        required
                       />
                     </div>
                     <div className="col-md-6">
@@ -403,6 +492,7 @@ const SuperAdminFacilities = () => {
                         name="type"
                         value={newFacility.type}
                         onChange={handleAddFacilityChange}
+                        required
                       >
                         <option value="Hospital">Hospital</option>
                         <option value="Regional Facility">Regional Facility</option>
@@ -422,6 +512,7 @@ const SuperAdminFacilities = () => {
                         name="phone"
                         value={newFacility.phone}
                         onChange={handleAddFacilityChange}
+                        required
                       />
                     </div>
                     <div className="col-md-6">
@@ -432,6 +523,7 @@ const SuperAdminFacilities = () => {
                         name="email"
                         value={newFacility.email}
                         onChange={handleAddFacilityChange}
+                        required
                       />
                     </div>
                   </div>
@@ -443,6 +535,7 @@ const SuperAdminFacilities = () => {
                       name="address"
                       value={newFacility.address}
                       onChange={handleAddFacilityChange}
+                      required
                     />
                   </div>
                   <div className="row mb-3">
@@ -474,9 +567,10 @@ const SuperAdminFacilities = () => {
                       <label className="form-label">Inventory Level</label>
                       <select 
                         className="form-select" 
-                        name="inventoryLevel"
-                        value={newFacility.inventoryLevel}
+                        name="inventory_level"
+                        value={newFacility.inventory_level}
                         onChange={handleAddFacilityChange}
+                        required
                       >
                         <option value="Good">Good</option>
                         <option value="Low">Low</option>
@@ -488,8 +582,8 @@ const SuperAdminFacilities = () => {
                       <input 
                         type="number" 
                         className="form-control" 
-                        name="pendingRequisitions"
-                        value={newFacility.pendingRequisitions}
+                        name="pending_requisitions"
+                        value={newFacility.pending_requisitions}
                         onChange={handleAddFacilityChange}
                         min="0"
                       />
@@ -639,6 +733,7 @@ const SuperAdminFacilities = () => {
                         name="name"
                         value={editFacility.name}
                         onChange={handleEditFacilityChange}
+                        required
                       />
                     </div>
                     <div className="col-md-6">
@@ -648,6 +743,7 @@ const SuperAdminFacilities = () => {
                         name="type"
                         value={editFacility.type}
                         onChange={handleEditFacilityChange}
+                        required
                       >
                         <option value="Hospital">Hospital</option>
                         <option value="Regional Facility">Regional Facility</option>
@@ -667,6 +763,7 @@ const SuperAdminFacilities = () => {
                         name="phone"
                         value={editFacility.phone}
                         onChange={handleEditFacilityChange}
+                        required
                       />
                     </div>
                     <div className="col-md-6">
@@ -677,6 +774,7 @@ const SuperAdminFacilities = () => {
                         name="email"
                         value={editFacility.email}
                         onChange={handleEditFacilityChange}
+                        required
                       />
                     </div>
                   </div>
@@ -688,6 +786,7 @@ const SuperAdminFacilities = () => {
                       name="address"
                       value={editFacility.address}
                       onChange={handleEditFacilityChange}
+                      required
                     />
                   </div>
                   <div className="row mb-3">
@@ -717,9 +816,10 @@ const SuperAdminFacilities = () => {
                       <label className="form-label">Inventory Level</label>
                       <select 
                         className="form-select" 
-                        name="inventoryLevel"
-                        value={editFacility.inventoryLevel}
+                        name="inventory_level"
+                        value={editFacility.inventory_level}
                         onChange={handleEditFacilityChange}
+                        required
                       >
                         <option value="Good">Good</option>
                         <option value="Low">Low</option>
@@ -731,8 +831,8 @@ const SuperAdminFacilities = () => {
                       <input 
                         type="number" 
                         className="form-control" 
-                        name="pendingRequisitions"
-                        value={editFacility.pendingRequisitions}
+                        name="pending_requisitions"
+                        value={editFacility.pending_requisitions}
                         onChange={handleEditFacilityChange}
                         min="0"
                       />
