@@ -1,86 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaEdit, FaPlusCircle, FaPills, FaEye } from 'react-icons/fa';
+import axios from 'axios';
+import BaseUrl from '../../Api/BaseUrl';
+import axiosInstance from '../../Api/axiosInstance';
 
 const SuperAdminInventory = () => {
-  // Sample inventory data (unchanged)
-  const initialInventoryItems = [
-    {
-      id: 'DRG-0421',
-      name: 'Paracetamol 500mg',
-      category: 'Pharmaceutical',
-      stock: 8,
-      unit: 'Tablets',
-      minLevel: 20,
-      standardCost: 2.50,
-      movingAvgCost: 2.60,
-      lastPOCost: 2.45,
-      batchNo: 'B2023-087',
-      expiryDate: '2025-12-01',
-      abcClass: 'A',
-      facilityTransferPrice: 3.00,
-      batches: [
-        { batchNo: 'B2023-087', expiry: '2025-12-01', quantity: 8, cost: 2.50 },
-        { batchNo: 'B2023-045', expiry: '2025-08-15', quantity: 0, cost: 2.40 },
-      ]
-    },
-    {
-      id: 'MS-0876',
-      name: 'Surgical Gloves (Large)',
-      category: 'Medical Supply',
-      stock: 0,
-      unit: 'Pairs',
-      minLevel: 50,
-      standardCost: 1.20,
-      movingAvgCost: 1.25,
-      lastPOCost: 1.18,
-      batchNo: 'B2023-102',
-      expiryDate: '2026-03-22',
-      abcClass: 'B',
-      facilityTransferPrice: 1.50,
-      batches: [
-        { batchNo: 'B2023-102', expiry: '2026-03-22', quantity: 0, cost: 1.20 },
-      ]
-    },
-    {
-      id: 'CON-1543',
-      name: 'Syringe 5ml',
-      category: 'Consumable',
-      stock: 142,
-      unit: 'Pieces',
-      minLevel: 30,
-      standardCost: 0.80,
-      movingAvgCost: 0.82,
-      lastPOCost: 0.79,
-      batchNo: 'B2023-066',
-      expiryDate: '2025-10-30',
-      abcClass: 'C',
-      facilityTransferPrice: 1.00,
-      batches: [
-        { batchNo: 'B2023-066', expiry: '2025-10-30', quantity: 100, cost: 0.80 },
-        { batchNo: 'B2023-021', expiry: '2025-07-12', quantity: 42, cost: 0.78 },
-      ]
-    },
-    {
-      id: 'DRG-2087',
-      name: 'Amoxicillin 250mg',
-      category: 'Pharmaceutical',
-      stock: 45,
-      unit: 'Capsules',
-      minLevel: 25,
-      standardCost: 4.00,
-      movingAvgCost: 4.10,
-      lastPOCost: 3.95,
-      batchNo: 'B2023-118',
-      expiryDate: '2025-11-05',
-      abcClass: 'A',
-      facilityTransferPrice: 4.50,
-      batches: [
-        { batchNo: 'B2023-118', expiry: '2025-11-05', quantity: 45, cost: 4.00 },
-      ]
-    },
-  ];
-
-  const [inventoryItems, setInventoryItems] = useState(initialInventoryItems);
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showRestockModal, setShowRestockModal] = useState(false);
@@ -103,9 +30,54 @@ const SuperAdminInventory = () => {
   });
 
   const [showViewModal, setShowViewModal] = useState(false);
-const [viewItem, setViewItem] = useState(null);
+  const [viewItem, setViewItem] = useState(null);
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+
+  // Fetch inventory data from API
+  useEffect(() => {
+    const fetchInventoryData = async () => {
+      try {
+        setLoading(true);
+        const response = await axiosInstance.get(`${BaseUrl}/inventory/superadmin`);
+        
+        // Transform API data to match component format
+        const transformedData = response.data.data.map(item => ({
+          id: item.item_id,
+          name: item.name,
+          category: item.category,
+          stock: item.current_stock,
+          unit: item.unit,
+          minLevel: item.min_stock_level,
+          standardCost: parseFloat(item.standard_cost),
+          movingAvgCost: parseFloat(item.moving_avg_cost),
+          lastPOCost: parseFloat(item.last_po_cost),
+          batchNo: item.batch_no,
+          expiryDate: item.expiry_date ? item.expiry_date.split('T')[0] : '',
+          abcClass: item.abc_class,
+          facilityTransferPrice: parseFloat(item.facility_transfer_price),
+          status: item.status,
+          batches: [
+            { 
+              batchNo: item.batch_no, 
+              expiry: item.expiry_date ? item.expiry_date.split('T')[0] : '', 
+              quantity: item.current_stock, 
+              cost: parseFloat(item.standard_cost) 
+            }
+          ]
+        }));
+        
+        setInventoryItems(transformedData);
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to fetch inventory data');
+        setLoading(false);
+        console.error('Error fetching inventory data:', err);
+      }
+    };
+
+    fetchInventoryData();
+  }, []);
 
   // Calculate status
   const calculateStatus = (item) => {
@@ -240,6 +212,7 @@ const [viewItem, setViewItem] = useState(null);
       setShowEditModal(false);
       setShowRestockModal(false);
       setShowBatchModal(false);
+      setShowViewModal(false);
     }
   };
 
@@ -248,108 +221,99 @@ const [viewItem, setViewItem] = useState(null);
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="text-black mb-0">Inventory Management</h2>
-        {/* <button className="btn btn-primary d-flex align-items-center" onClick={openAddModal}>
-          <FaPlusCircle className="me-2" /> Add New Item
-        </button> */}
       </div>
+
+      {/* Loading state */}
+      {loading && (
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-2">Loading inventory data...</p>
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && (
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      )}
 
       {/* Table Card */}
-      <div className="card border-0 ">
-        <div className="card-header bg-light">
-          <h5 className="mb-0 text-muted">All Inventory Items</h5>
-        </div>
-        <div className="card-body p-0">
-          <div className="table-responsive">
-            <table className="table table-hover table-striped mb-0">
-              <thead className="table-light">
-                <tr>
-                  <th scope="col" className="px-4 py-3">Item ID</th>
-                  <th scope="col" className="px-4 py-3">Name</th>
-                  <th scope="col" className="px-4 py-3">Category</th>
-                  <th scope="col" className="px-4 py-3">Stock</th>
-                  <th scope="col" className="px-4 py-3">Unit</th>
-                  <th scope="col" className="px-4 py-3">Std Cost</th>
-                  <th scope="col" className="px-4 py-3">Moving Avg</th>
-                  <th scope="col" className="px-4 py-3">Last PO</th>
-                  <th scope="col" className="px-4 py-3">Batch/Lot</th>
-                  <th scope="col" className="px-4 py-3">Expiry</th>
-                  <th scope="col" className="px-4 py-3">ABC Class</th>
-                  <th scope="col" className="px-4 py-3">Transfer Price</th>
-                  <th scope="col" className="px-4 py-3">Min Level</th>
-                  <th scope="col" className="px-4 py-3">Status</th>
-                  <th scope="col" className="px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {inventoryItems.map((item) => {
-                  const status = calculateStatus(item);
-                  return (
-                    <tr key={item.id} className={getRowClass(status)}>
-                      <td className="px-4 py-3 align-middle">{item.id}</td>
-                      <td className="px-4 py-3 align-middle">{item.name}</td>
-                      <td className="px-4 py-3 align-middle">{item.category}</td>
-                      <td className="px-4 py-3 align-middle fw-bold">{item.stock}</td>
-                      <td className="px-4 py-3 align-middle">{item.unit}</td>
-                      <td className="px-4 py-3 align-middle">₵{item.standardCost?.toFixed(2)}</td>
-                      <td className="px-4 py-3 align-middle">₵{item.movingAvgCost?.toFixed(2)}</td>
-                      <td className="px-4 py-3 align-middle">₵{item.lastPOCost?.toFixed(2)}</td>
-                      <td className="px-4 py-3 align-middle">{item.batchNo}</td>
-                      <td className="px-4 py-3 align-middle">{item.expiryDate?.split('-').reverse().join('/')}</td>
-                      <td className="px-4 py-3 align-middle">
-                        <span className={`badge bg-${item.abcClass === 'A' ? 'success' : item.abcClass === 'B' ? 'warning' : 'info'} text-dark rounded-pill`}>
-                          {item.abcClass}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 align-middle">₵{item.facilityTransferPrice?.toFixed(2)}</td>
-                      <td className="px-4 py-3 align-middle">{item.minLevel}</td>
-                      <td className="px-4 py-3 align-middle">{getStatusBadge(status)}</td>
-                      <td className="px-4 py-3 align-middle">
-  <div className="d-flex gap-2">
-    {/* ✅ NEW: View Button */}
-    <button
-      className="btn btn-sm btn-outline-secondary"
-      onClick={() => {
-        setViewItem(item);
-        setShowViewModal(true);
-      }}
-      title="View Details"
-    >
-      View
-    </button>
-
-    {/* <button
-      className="btn btn-sm btn-outline-primary"
-      onClick={() => openEditModal(item)}
-      title="Edit"
-    >
-      <FaEdit />
-    </button> */}
-
-    {/* <button
-      className="btn btn-sm btn-outline-success"
-      onClick={() => openRestockModal(item)}
-      title="Restock"
-    >
-      <FaPlusCircle />
-    </button> */}
-{/* 
-    <button
-      className="btn btn-sm bg-primary text-white"
-      onClick={() => openBatchModal(item)}
-      title="View Batches"
-    >
-      Batches
-    </button> */}
-  </div>
-</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+      {!loading && !error && (
+        <div className="card border-0">
+          <div className="card-header bg-light">
+            <h5 className="mb-0 text-muted">All Inventory Items</h5>
+          </div>
+          <div className="card-body p-0">
+            <div className="table-responsive">
+              <table className="table table-hover table-striped mb-0">
+                <thead className="table-light">
+                  <tr>
+                    <th scope="col" className="px-4 py-3">Item ID</th>
+                    <th scope="col" className="px-4 py-3">Name</th>
+                    <th scope="col" className="px-4 py-3">Category</th>
+                    <th scope="col" className="px-4 py-3">Stock</th>
+                    <th scope="col" className="px-4 py-3">Unit</th>
+                    <th scope="col" className="px-4 py-3">Std Cost</th>
+                    <th scope="col" className="px-4 py-3">Moving Avg</th>
+                    <th scope="col" className="px-4 py-3">Last PO</th>
+                    <th scope="col" className="px-4 py-3">Batch/Lot</th>
+                    <th scope="col" className="px-4 py-3">Expiry</th>
+                    <th scope="col" className="px-4 py-3">ABC Class</th>
+                    <th scope="col" className="px-4 py-3">Transfer Price</th>
+                    <th scope="col" className="px-4 py-3">Min Level</th>
+                    <th scope="col" className="px-4 py-3">Status</th>
+                    <th scope="col" className="px-4 py-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inventoryItems.map((item) => {
+                    const status = calculateStatus(item);
+                    return (
+                      <tr key={item.id} className={getRowClass(status)}>
+                        <td className="px-4 py-3 align-middle">{item.id}</td>
+                        <td className="px-4 py-3 align-middle">{item.name}</td>
+                        <td className="px-4 py-3 align-middle">{item.category}</td>
+                        <td className="px-4 py-3 align-middle fw-bold">{item.stock}</td>
+                        <td className="px-4 py-3 align-middle">{item.unit}</td>
+                        <td className="px-4 py-3 align-middle">₵{item.standardCost?.toFixed(2)}</td>
+                        <td className="px-4 py-3 align-middle">₵{item.movingAvgCost?.toFixed(2)}</td>
+                        <td className="px-4 py-3 align-middle">₵{item.lastPOCost?.toFixed(2)}</td>
+                        <td className="px-4 py-3 align-middle">{item.batchNo}</td>
+                        <td className="px-4 py-3 align-middle">{item.expiryDate?.split('-').reverse().join('/')}</td>
+                        <td className="px-4 py-3 align-middle">
+                          <span className={`badge bg-${item.abcClass === 'A' ? 'success' : item.abcClass === 'B' ? 'warning' : 'info'} text-dark rounded-pill`}>
+                            {item.abcClass}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 align-middle">₵{item.facilityTransferPrice?.toFixed(2)}</td>
+                        <td className="px-4 py-3 align-middle">{item.minLevel}</td>
+                        <td className="px-4 py-3 align-middle">{getStatusBadge(status)}</td>
+                        <td className="px-4 py-3 align-middle">
+                          <div className="d-flex gap-2">
+                            <button
+                              className="btn btn-sm btn-outline-secondary"
+                              onClick={() => {
+                                setViewItem(item);
+                                setShowViewModal(true);
+                              }}
+                              title="View Details"
+                            >
+                              View
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ========== MODALS ========== */}
 
@@ -436,7 +400,6 @@ const [viewItem, setViewItem] = useState(null);
                     step="1"
                   />
                 </div>
-                {/* ✅ NEW FIELDS IN ADD MODAL */}
                 <div className="mb-3">
                   <label className="form-label">Standard Cost</label>
                   <input
@@ -519,7 +482,6 @@ const [viewItem, setViewItem] = useState(null);
                     min="0"
                   />
                 </div>
-                {/* ✅ END NEW FIELDS */}
               </div>
               <div className="modal-footer border-top-0">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
@@ -534,7 +496,7 @@ const [viewItem, setViewItem] = useState(null);
         </div>
       )}
 
-      {/* Edit Item Modal (unchanged except formData includes new fields) */}
+      {/* Edit Item Modal */}
       {showEditModal && (
         <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
           <div className="modal-dialog modal-dialog-centered">
@@ -612,7 +574,6 @@ const [viewItem, setViewItem] = useState(null);
                     step="1"
                   />
                 </div>
-                {/* ✅ NEW FIELDS IN EDIT MODAL */}
                 <div className="mb-3">
                   <label className="form-label">Standard Cost</label>
                   <input
@@ -695,7 +656,6 @@ const [viewItem, setViewItem] = useState(null);
                     min="0"
                   />
                 </div>
-                {/* ✅ END NEW FIELDS */}
               </div>
               <div className="modal-footer border-top-0">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>
@@ -710,7 +670,7 @@ const [viewItem, setViewItem] = useState(null);
         </div>
       )}
 
-      {/* Restock Modal (unchanged) */}
+      {/* Restock Modal */}
       {showRestockModal && currentItem && (
         <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
           <div className="modal-dialog modal-dialog-centered">
@@ -748,7 +708,7 @@ const [viewItem, setViewItem] = useState(null);
         </div>
       )}
 
-      {/* Batch Details Modal (unchanged) */}
+      {/* Batch Details Modal */}
       {showBatchModal && selectedItem && (
         <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
           <div className="modal-dialog modal-dialog-centered">
@@ -800,89 +760,91 @@ const [viewItem, setViewItem] = useState(null);
           </div>
         </div>
       )}
-{/* View Item Modal */}
-{showViewModal && viewItem && (
-  <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
-    <div className="modal-dialog modal-dialog-centered">
-      <div className="modal-content">
-        <div className="modal-header border-bottom-0">
-          <h5 className="modal-title">Item Details: {viewItem.name}</h5>
-          <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
-        </div>
-        <div className="modal-body">
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Item ID:</div>
-            <div className="col-6">{viewItem.id}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Name:</div>
-            <div className="col-6">{viewItem.name}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Category:</div>
-            <div className="col-6">{viewItem.category}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Stock:</div>
-            <div className="col-6">{viewItem.stock} {viewItem.unit}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Unit:</div>
-            <div className="col-6">{viewItem.unit}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Min Level:</div>
-            <div className="col-6">{viewItem.minLevel}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Standard Cost:</div>
-            <div className="col-6">₵{viewItem.standardCost?.toFixed(2)}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Moving Avg Cost:</div>
-            <div className="col-6">₵{viewItem.movingAvgCost?.toFixed(2)}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Last PO Cost:</div>
-            <div className="col-6">₵{viewItem.lastPOCost?.toFixed(2)}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Batch/Lot No:</div>
-            <div className="col-6">{viewItem.batchNo || '—'}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Expiry Date:</div>
-            <div className="col-6">{viewItem.expiryDate ? viewItem.expiryDate.split('-').reverse().join('/') : '—'}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">ABC Class:</div>
-            <div className="col-6">
-              <span className={`badge bg-${viewItem.abcClass === 'A' ? 'success' : viewItem.abcClass === 'B' ? 'warning' : 'info'} text-dark`}>
-                {viewItem.abcClass}
-              </span>
+
+      {/* View Item Modal */}
+      {showViewModal && viewItem && (
+        <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header border-bottom-0">
+                <h5 className="modal-title">Item Details: {viewItem.name}</h5>
+                <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Item ID:</div>
+                  <div className="col-6">{viewItem.id}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Name:</div>
+                  <div className="col-6">{viewItem.name}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Category:</div>
+                  <div className="col-6">{viewItem.category}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Stock:</div>
+                  <div className="col-6">{viewItem.stock} {viewItem.unit}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Unit:</div>
+                  <div className="col-6">{viewItem.unit}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Min Level:</div>
+                  <div className="col-6">{viewItem.minLevel}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Standard Cost:</div>
+                  <div className="col-6">₵{viewItem.standardCost?.toFixed(2)}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Moving Avg Cost:</div>
+                  <div className="col-6">₵{viewItem.movingAvgCost?.toFixed(2)}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Last PO Cost:</div>
+                  <div className="col-6">₵{viewItem.lastPOCost?.toFixed(2)}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Batch/Lot No:</div>
+                  <div className="col-6">{viewItem.batchNo || '—'}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Expiry Date:</div>
+                  <div className="col-6">{viewItem.expiryDate ? viewItem.expiryDate.split('-').reverse().join('/') : '—'}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">ABC Class:</div>
+                  <div className="col-6">
+                    <span className={`badge bg-${viewItem.abcClass === 'A' ? 'success' : viewItem.abcClass === 'B' ? 'warning' : 'info'} text-dark`}>
+                      {viewItem.abcClass}
+                    </span>
+                  </div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Transfer Price:</div>
+                  <div className="col-6">₵{viewItem.facilityTransferPrice?.toFixed(2)}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Status:</div>
+                  <div className="col-6">{getStatusBadge(calculateStatus(viewItem))}</div>
+                </div>
+              </div>
+              <div className="modal-footer border-top-0">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowViewModal(false)}>
+                  Close
+                </button>
+              </div>
             </div>
           </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Transfer Price:</div>
-            <div className="col-6">₵{viewItem.facilityTransferPrice?.toFixed(2)}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Status:</div>
-            <div className="col-6">{getStatusBadge(calculateStatus(viewItem))}</div>
-          </div>
         </div>
-        <div className="modal-footer border-top-0">
-          <button type="button" className="btn btn-secondary" onClick={() => setShowViewModal(false)}>
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-     {(showAddModal || showEditModal || showRestockModal || showBatchModal || showViewModal) && (
-  <div className="modal-backdrop fade show"></div>
-)}
+      )}
+      
+      {(showAddModal || showEditModal || showRestockModal || showBatchModal || showViewModal) && (
+        <div className="modal-backdrop fade show"></div>
+      )}
     </div>
   );
 };
