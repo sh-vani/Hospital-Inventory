@@ -2,6 +2,9 @@ import { Route, Routes, useLocation } from "react-router-dom";
 import "./App.css";
 import { useState, useEffect } from "react";
 import * as echarts from "echarts";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap/dist/js/bootstrap.bundle.min.js"; // optional, for full Bootstrap features
+
 
 
 import Navbar from "./Layout/Navbar";

@@ -8,69 +8,46 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 
 const FacilityUserMyRequests = () => {
   // State for modals
-  const [showRequestDetailsModal, setShowRequestDetailsModal] = useState(false);
-  const [showNewRequestModal, setShowNewRequestModal] = useState(false);
+  const [showStatusTimelineModal, setShowStatusTimelineModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [requestType, setRequestType] = useState('individual'); // 'individual' or 'bulk'
   
   // State for search term
   const [searchTerm, setSearchTerm] = useState('');
   
-  // State for new request forms
-  const [individualRequest, setIndividualRequest] = useState({
-    itemName: '',
-    quantity: '',
-    unit: '',
-    description: ''
-  });
-  
-  const [bulkRequest, setBulkRequest] = useState({
-    description: '',
-    items: [
-      { name: '', quantity: '', unit: '' }
-    ]
-  });
-  
-  // Sample data for requests
+  // Sample data for requests with simplified status
   const [requests, setRequests] = useState([
     { 
       id: 1, 
       title: 'Medical Supplies Request', 
       description: 'Request for additional medical gloves and face masks', 
       submittedDate: '2023-07-10', 
-      status: 'Approved',
-      approvedDate: '2023-07-12',
+      status: 'Completed',
       items: [
         { name: 'Medical Gloves', quantity: 50, unit: 'boxes' },
         { name: 'Face Masks', quantity: 200, unit: 'pieces' }
-      ],
-      comments: 'Request approved. Items will be available for pickup from the pharmacy.'
+      ]
     },
     { 
       id: 2, 
       title: 'Surgical Equipment', 
       description: 'Request for new surgical instruments for operating theater', 
       submittedDate: '2023-07-12', 
-      status: 'Partially Approved',
-      approvedDate: '2023-07-15',
+      status: 'Delivered',
       items: [
-        { name: 'Scalpel Set', quantity: 5, unit: 'sets', approved: true },
-        { name: 'Forceps', quantity: 10, unit: 'pieces', approved: false }
-      ],
-      comments: 'Scalpel sets approved. Forceps are out of stock and will be ordered.'
+        { name: 'Scalpel Set', quantity: 5, unit: 'sets' },
+        { name: 'Forceps', quantity: 10, unit: 'pieces' }
+      ]
     },
     { 
       id: 3, 
       title: 'Pharmaceutical Items', 
       description: 'Request for various medicines for the ward', 
       submittedDate: '2023-07-14', 
-      status: 'Rejected',
-      rejectedDate: '2023-07-15',
+      status: 'Processing',
       items: [
         { name: 'Antibiotics', quantity: 30, unit: 'bottles' },
         { name: 'Painkillers', quantity: 50, unit: 'strips' }
-      ],
-      comments: 'Request rejected due to budget constraints. Please resubmit next quarter.'
+      ]
     },
     { 
       id: 4, 
@@ -81,8 +58,7 @@ const FacilityUserMyRequests = () => {
       items: [
         { name: 'Gowns', quantity: 100, unit: 'pieces' },
         { name: 'Face Shields', quantity: 50, unit: 'pieces' }
-      ],
-      comments: ''
+      ]
     }
   ]);
   
@@ -95,129 +71,53 @@ const FacilityUserMyRequests = () => {
     );
   });
   
-  // Function to open request details modal
-  const openRequestDetails = (request) => {
+  // Function to open status timeline modal
+  const openStatusTimeline = (request) => {
     setSelectedRequest(request);
-    setShowRequestDetailsModal(true);
-  };
-  
-  // Function to get status icon
-  const getStatusIcon = (status) => {
-    switch(status) {
-      case 'Approved':
-        return <FaCheck className="text-success" />;
-      case 'Partially Approved':
-        return <FaExclamationTriangle className="text-warning" />;
-      case 'Rejected':
-        return <FaTimes className="text-danger" />;
-      default:
-        return <FaClock className="text-secondary" />;
-    }
+    setShowStatusTimelineModal(true);
   };
   
   // Function to get status badge class
   const getStatusBadgeClass = (status) => {
     switch(status) {
-      case 'Approved':
-        return 'bg-success';
-      case 'Partially Approved':
+      case 'Pending':
+        return 'bg-secondary';
+      case 'Processing':
         return 'bg-warning text-dark';
-      case 'Rejected':
-        return 'bg-danger';
+      case 'Delivered':
+        return 'bg-info';
+      case 'Completed':
+        return 'bg-success';
       default:
         return 'bg-secondary';
     }
   };
   
-  // Function to handle individual request form change
-  const handleIndividualRequestChange = (e) => {
-    const { name, value } = e.target;
-    setIndividualRequest({
-      ...individualRequest,
-      [name]: value
-    });
-  };
-  
-  // Function to handle bulk request form change
-  const handleBulkRequestChange = (e, index = null) => {
-    const { name, value } = e.target;
-    
-    if (index !== null) {
-      // Change for a specific item
-      const newItems = [...bulkRequest.items];
-      newItems[index] = {
-        ...newItems[index],
-        [name]: value
-      };
-      setBulkRequest({
-        ...bulkRequest,
-        items: newItems
-      });
-    } else {
-      // Change for the description
-      setBulkRequest({
-        ...bulkRequest,
-        [name]: value
-      });
+  // Function to get status icon
+  const getStatusIcon = (status) => {
+    switch(status) {
+      case 'Pending':
+        return <FaClock className="text-secondary" />;
+      case 'Processing':
+        return <FaExclamationTriangle className="text-warning" />;
+      case 'Delivered':
+        return <FaPaperPlane className="text-info" />;
+      case 'Completed':
+        return <FaCheck className="text-success" />;
+      default:
+        return <FaClock className="text-secondary" />;
     }
   };
   
-  // Function to add a new item to bulk request
-  const addBulkItem = () => {
-    setBulkRequest({
-      ...bulkRequest,
-      items: [...bulkRequest.items, { name: '', quantity: '', unit: '' }]
-    });
-  };
-  
-  // Function to remove an item from bulk request
-  const removeBulkItem = (index) => {
-    if (bulkRequest.items.length > 1) {
-      const newItems = [...bulkRequest.items];
-      newItems.splice(index, 1);
-      setBulkRequest({
-        ...bulkRequest,
-        items: newItems
-      });
-    }
-  };
-  
-  // Function to submit a new request
-  const submitNewRequest = () => {
-    const newRequest = {
-      id: requests.length + 1,
-      title: requestType === 'individual' ? individualRequest.itemName : 'Bulk Request',
-      description: requestType === 'individual' ? individualRequest.description : bulkRequest.description,
-      submittedDate: new Date().toISOString().split('T')[0],
-      status: 'Pending',
-      items: requestType === 'individual' 
-        ? [{ 
-            name: individualRequest.itemName, 
-            quantity: individualRequest.quantity, 
-            unit: individualRequest.unit 
-          }]
-        : bulkRequest.items.filter(item => item.name.trim() !== ''),
-      comments: ''
-    };
+  // Function to get step status
+  const getStepStatus = (currentStatus, stepStatus) => {
+    const statusOrder = ['Pending', 'Processing', 'Delivered', 'Completed'];
+    const currentIdx = statusOrder.indexOf(currentStatus);
+    const stepIdx = statusOrder.indexOf(stepStatus);
     
-    setRequests([...requests, newRequest]);
-    
-    // Reset form
-    if (requestType === 'individual') {
-      setIndividualRequest({
-        itemName: '',
-        quantity: '',
-        unit: '',
-        description: ''
-      });
-    } else {
-      setBulkRequest({
-        description: '',
-        items: [{ name: '', quantity: '', unit: '' }]
-      });
-    }
-    
-    setShowNewRequestModal(false);
+    if (stepIdx < currentIdx) return 'completed';
+    if (stepIdx === currentIdx) return 'current';
+    return 'upcoming';
   };
   
   return (
@@ -229,12 +129,6 @@ const FacilityUserMyRequests = () => {
           <p className="text-muted mb-0">Track and manage your requisition requests</p>
         </div>
         <div className="d-flex align-items-center">
-          <button 
-            className="btn btn-primary me-3"
-            onClick={() => setShowNewRequestModal(true)}
-          >
-            <FaPlus className="me-2" /> New Request
-          </button>
           <div className="text-end me-3">
             <div className="text-muted small">Department: Pharmacy</div>
             <div>User: Dr. Sharma</div>
@@ -293,8 +187,8 @@ const FacilityUserMyRequests = () => {
                       </span>
                     </td>
                     <td>
-                      <button className="btn btn-sm btn-outline-primary" onClick={() => openRequestDetails(request)}>
-                        <FaEye /> <span className="d-none d-md-inline-block ms-1">View Details</span>
+                      <button className="btn btn-sm btn-outline-primary" onClick={() => openStatusTimeline(request)}>
+                        <FaEye /> <span className="d-none d-md-inline-block ms-1">View Status Timeline</span>
                       </button>
                     </td>
                   </tr>
@@ -305,307 +199,72 @@ const FacilityUserMyRequests = () => {
         </div>
       </div>
       
-      {/* Request Details Modal - Responsive */}
-      <div className={`modal fade ${showRequestDetailsModal ? 'show' : ''}`} style={{ display: showRequestDetailsModal ? 'block' : 'none' }} tabIndex="-1">
-        <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      {/* Status Timeline Modal */}
+      <div className={`modal fade ${showStatusTimelineModal ? 'show' : ''}`} style={{ display: showStatusTimelineModal ? 'block' : 'none' }} tabIndex="-1">
+        <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
             <div className="modal-header">
-              <h5 className="modal-title">Request Details</h5>
-              <button type="button" className="btn-close" onClick={() => setShowRequestDetailsModal(false)}></button>
+              <h5 className="modal-title">Request Status Timeline</h5>
+              <button type="button" className="btn-close" onClick={() => setShowStatusTimelineModal(false)}></button>
             </div>
             <div className="modal-body">
               {selectedRequest && (
-                <>
-                  <div className="row mb-4">
-                    <div className="col-12 col-md-6">
-                      <h4 className="mb-2">{selectedRequest.title}</h4>
-                      <p className="text-muted">{selectedRequest.description}</p>
-                    </div>
-                    <div className="col-12 col-md-6 text-md-end">
-                      <span className={`badge ${getStatusBadgeClass(selectedRequest.status)} fs-6`}>
+                <div className="timeline-container">
+                  <div className="d-flex flex-column flex-md-row justify-content-between position-relative">
+                    {/* Timeline line */}
+                    <div className="timeline-line position-absolute top-0 bottom-0 start-50 translate-middle-x"></div>
+                    
+                    {/* Timeline steps */}
+                    {['Pending', 'Processing', 'Delivered', 'Completed'].map((status, index) => {
+                      const stepStatus = getStepStatus(selectedRequest.status, status);
+                      return (
+                        <div key={status} className="text-center mb-4 flex-grow-1">
+                          <div className={`timeline-step rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 ${
+                            stepStatus === 'completed' ? 'bg-success' : 
+                            stepStatus === 'current' ? 'bg-primary' : 
+                            'bg-light border'
+                          }`} style={{ width: '40px', height: '40px' }}>
+                            {stepStatus === 'completed' ? (
+                              <FaCheck className="text-white" />
+                            ) : stepStatus === 'current' ? (
+                              <span className="text-white fw-bold">{index + 1}</span>
+                            ) : (
+                              <span className="text-muted">{index + 1}</span>
+                            )}
+                          </div>
+                          <div className={`fw-bold ${
+                            stepStatus === 'completed' || stepStatus === 'current' ? 'text-primary' : 'text-muted'
+                          }`}>
+                            {status}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Request details */}
+                  <div className="mt-4 p-3 bg-light rounded">
+                    <h6 className="mb-2">{selectedRequest.title}</h6>
+                    <p className="text-muted small mb-2">{selectedRequest.description}</p>
+                    <div className="d-flex justify-content-between">
+                      <span className="text-muted">Submitted: {selectedRequest.submittedDate}</span>
+                      <span className={`badge ${getStatusBadgeClass(selectedRequest.status)}`}>
                         {getStatusIcon(selectedRequest.status)} {selectedRequest.status}
                       </span>
                     </div>
                   </div>
-                  
-                  <div className="row mb-4">
-                    <div className="col-12 col-md-6 mb-4 mb-md-0">
-                      <h5>Requested Items</h5>
-                      <div className="table-responsive">
-                        <table className="table table-sm">
-                          <thead>
-                            <tr>
-                              <th>Item</th>
-                              <th>Quantity</th>
-                              <th>Unit</th>
-                              {selectedRequest.status !== 'Pending' && <th>Status</th>}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {selectedRequest.items.map((item, index) => (
-                              <tr key={index}>
-                                <td>{item.name}</td>
-                                <td>{item.quantity}</td>
-                                <td>{item.unit}</td>
-                                {selectedRequest.status !== 'Pending' && (
-                                  <td>
-                                    {item.approved === undefined ? (
-                                      <span className="badge bg-secondary">N/A</span>
-                                    ) : item.approved ? (
-                                      <span className="badge bg-success">Approved</span>
-                                    ) : (
-                                      <span className="badge bg-danger">Rejected</span>
-                                    )}
-                                  </td>
-                                )}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                    <div className="col-12 col-md-6">
-                      <h5>Status Timeline</h5>
-                      <div className="timeline">
-                        {/* Submitted Step */}
-                        <div className="d-flex align-items-start mb-4">
-                          <div className="bg-primary rounded-circle p-2 me-3 flex-shrink-0">
-                            <FaPaperPlane className="text-white" />
-                          </div>
-                          <div>
-                            <h6>Submitted</h6>
-                            <div className="d-flex align-items-center text-muted">
-                              <FaCalendarAlt className="me-2 flex-shrink-0" />
-                              <span>{selectedRequest.submittedDate}</span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* Status Step */}
-                        <div className="d-flex align-items-start">
-                          <div className={`rounded-circle p-2 me-3 flex-shrink-0 ${
-                            selectedRequest.status === 'Approved' ? 'bg-success' : 
-                            selectedRequest.status === 'Partially Approved' ? 'bg-warning' : 
-                            selectedRequest.status === 'Rejected' ? 'bg-danger' : 'bg-secondary'
-                          }`}>
-                            {selectedRequest.status === 'Approved' && <FaCheck className="text-white" />}
-                            {selectedRequest.status === 'Partially Approved' && <FaExclamationTriangle className="text-white" />}
-                            {selectedRequest.status === 'Rejected' && <FaTimes className="text-white" />}
-                            {selectedRequest.status === 'Pending' && <FaClock className="text-white" />}
-                          </div>
-                          <div>
-                            <h6>{selectedRequest.status}</h6>
-                            {selectedRequest.status !== 'Pending' && (
-                              <div className="d-flex align-items-center text-muted">
-                                <FaCalendarAlt className="me-2 flex-shrink-0" />
-                                <span>
-                                  {selectedRequest.status === 'Approved' && selectedRequest.approvedDate}
-                                  {selectedRequest.status === 'Partially Approved' && selectedRequest.approvedDate}
-                                  {selectedRequest.status === 'Rejected' && selectedRequest.rejectedDate}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {selectedRequest.comments && (
-                    <div className="mb-4">
-                      <h5>Comments</h5>
-                      <div className="card">
-                        <div className="card-body">
-                          <p className="mb-0">{selectedRequest.comments}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
+                </div>
               )}
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-secondary w-100 w-md-auto" onClick={() => setShowRequestDetailsModal(false)}>Close</button>
+              <button type="button" className="btn btn-secondary w-100 w-md-auto" onClick={() => setShowStatusTimelineModal(false)}>Close</button>
             </div>
           </div>
         </div>
       </div>
       
-      {/* New Request Modal */}
-      <div className={`modal fade ${showNewRequestModal ? 'show' : ''}`} style={{ display: showNewRequestModal ? 'block' : 'none' }} tabIndex="-1">
-        <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">Create New Request</h5>
-              <button type="button" className="btn-close" onClick={() => setShowNewRequestModal(false)}></button>
-            </div>
-            <div className="modal-body">
-              {/* Request Type Selection */}
-              <div className="d-flex mb-4">
-                <div className="form-check me-4">
-                  <input 
-                    className="form-check-input" 
-                    type="radio" 
-                    name="requestType" 
-                    id="individualRequest" 
-                    checked={requestType === 'individual'}
-                    onChange={() => setRequestType('individual')}
-                  />
-                  <label className="form-check-label" htmlFor="individualRequest">
-                    Individual Request
-                  </label>
-                </div>
-                <div className="form-check">
-                  <input 
-                    className="form-check-input" 
-                    type="radio" 
-                    name="requestType" 
-                    id="bulkRequest" 
-                    checked={requestType === 'bulk'}
-                    onChange={() => setRequestType('bulk')}
-                  />
-                  <label className="form-check-label" htmlFor="bulkRequest">
-                    Bulk Request
-                  </label>
-                </div>
-              </div>
-              
-              {/* Individual Request Form */}
-              {requestType === 'individual' && (
-                <div>
-                  <div className="mb-3">
-                    <label className="form-label">Item Name</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      name="itemName"
-                      value={individualRequest.itemName}
-                      onChange={handleIndividualRequestChange}
-                    />
-                  </div>
-                  <div className="row mb-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Quantity</label>
-                      <input 
-                        type="number" 
-                        className="form-control" 
-                        name="quantity"
-                        value={individualRequest.quantity}
-                        onChange={handleIndividualRequestChange}
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Unit</label>
-                      <input 
-                        type="text" 
-                        className="form-control" 
-                        name="unit"
-                        value={individualRequest.unit}
-                        onChange={handleIndividualRequestChange}
-                      />
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Description</label>
-                    <textarea 
-                      className="form-control" 
-                      rows="3"
-                      name="description"
-                      value={individualRequest.description}
-                      onChange={handleIndividualRequestChange}
-                    ></textarea>
-                  </div>
-                </div>
-              )}
-              
-              {/* Bulk Request Form */}
-              {requestType === 'bulk' && (
-                <div>
-                  <div className="mb-3">
-                    <label className="form-label">Description</label>
-                    <textarea 
-                      className="form-control" 
-                      rows="3"
-                      name="description"
-                      value={bulkRequest.description}
-                      onChange={(e) => handleBulkRequestChange(e)}
-                    ></textarea>
-                  </div>
-                  
-                  <h5 className="mb-3">Items</h5>
-                  {bulkRequest.items.map((item, index) => (
-                    <div className="row mb-3" key={index}>
-                      <div className="col-md-5">
-                        <label className="form-label">Item Name</label>
-                        <input 
-                          type="text" 
-                          className="form-control" 
-                          name="name"
-                          value={item.name}
-                          onChange={(e) => handleBulkRequestChange(e, index)}
-                        />
-                      </div>
-                      <div className="col-md-3">
-                        <label className="form-label">Quantity</label>
-                        <input 
-                          type="number" 
-                          className="form-control" 
-                          name="quantity"
-                          value={item.quantity}
-                          onChange={(e) => handleBulkRequestChange(e, index)}
-                        />
-                      </div>
-                      <div className="col-md-3">
-                        <label className="form-label">Unit</label>
-                        <input 
-                          type="text" 
-                          className="form-control" 
-                          name="unit"
-                          value={item.unit}
-                          onChange={(e) => handleBulkRequestChange(e, index)}
-                        />
-                      </div>
-                      <div className="col-md-1 d-flex align-items-end">
-                        {bulkRequest.items.length > 1 && (
-                          <button 
-                            type="button" 
-                            className="btn btn-danger"
-                            onClick={() => removeBulkItem(index)}
-                          >
-                            <FaTrash />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  
-                  <button 
-                    type="button" 
-                    className="btn btn-outline-primary mb-3"
-                    onClick={addBulkItem}
-                  >
-                    <FaPlus className="me-2" /> Add Item
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowNewRequestModal(false)}>Cancel</button>
-              <button 
-                type="button" 
-                className="btn btn-primary"
-                onClick={submitNewRequest}
-              >
-                Submit Request
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Modal Backdrops */}
-      {showRequestDetailsModal && <div className="modal-backdrop fade show"></div>}
-      {showNewRequestModal && <div className="modal-backdrop fade show"></div>}
+      {/* Modal Backdrop */}
+      {showStatusTimelineModal && <div className="modal-backdrop fade show"></div>}
     </div>
   );
 };

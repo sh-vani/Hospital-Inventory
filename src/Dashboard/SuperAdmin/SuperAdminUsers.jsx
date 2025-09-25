@@ -508,8 +508,6 @@ const SuperAdminUsers = () => {
                       >
                         <option value="Super Admin">Super Admin</option>
                         <option value="Warehouse Admin">Warehouse Admin</option>
-                        <option value="Facility Admin">Facility Admin</option>
-                        <option value="Facility User">Facility User</option>
                       </select>
                     </div>
 
