@@ -272,6 +272,28 @@ const SuperAdminRoles = () => {
                       rows="2"
                     ></textarea>
                   </div>
+                  {/* <div className="mb-3">
+                    <label className="form-label fw-bold">Permissions</label>
+                    <div className="row">
+                      {permissionModules.map((module) => (
+                        <div key={module.id} className="col-6 mb-2">
+                          <div className="form-check">
+                            <input 
+                              className="form-check-input" 
+                              type="checkbox" 
+                              name={module.id}
+                              checked={newRole.permissions[module.id]}
+                              onChange={handleNewRolePermissionChange}
+                              id={`new-permission-${module.id}`}
+                            />
+                            <label className="form-check-label" htmlFor={`new-permission-${module.id}`}>
+                              {module.name}
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div> */}
                 </form>
               </div>
               <div className="modal-footer">

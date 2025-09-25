@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { FaEdit, FaPlusCircle, FaPills, FaEye } from 'react-icons/fa';
+import { FaEdit, FaPlusCircle, FaArrowDown, FaArrowUp, FaHistory } from 'react-icons/fa';
 
 const WarehouseInventory = () => {
-  // Sample inventory data (unchanged)
+  // Sample inventory data (updated to include lastIn and lastOut)
   const initialInventoryItems = [
     {
       id: 'DRG-0421',
@@ -21,6 +21,14 @@ const WarehouseInventory = () => {
       batches: [
         { batchNo: 'B2023-087', expiry: '2025-12-01', quantity: 8, cost: 2.50 },
         { batchNo: 'B2023-045', expiry: '2025-08-15', quantity: 0, cost: 2.40 },
+      ],
+      lastIn: '2023-10-15',
+      lastOut: '2023-10-10',
+      movementHistory: [
+        { date: '2023-10-15', type: 'IN', quantity: 10, source: 'Supplier', notes: 'Regular supply' },
+        { date: '2023-10-10', type: 'OUT', quantity: 5, destination: 'Facility A', notes: 'Regular demand' },
+        { date: '2023-10-05', type: 'OUT', quantity: 7, destination: 'Facility B', notes: 'Emergency request' },
+        { date: '2023-10-01', type: 'IN', quantity: 20, source: 'Supplier', notes: 'Monthly stock' },
       ]
     },
     {
@@ -39,6 +47,12 @@ const WarehouseInventory = () => {
       facilityTransferPrice: 1.50,
       batches: [
         { batchNo: 'B2023-102', expiry: '2026-03-22', quantity: 0, cost: 1.20 },
+      ],
+      lastIn: '2023-09-20',
+      lastOut: '2023-10-05',
+      movementHistory: [
+        { date: '2023-09-20', type: 'IN', quantity: 100, source: 'Supplier', notes: 'Monthly supply' },
+        { date: '2023-10-05', type: 'OUT', quantity: 100, destination: 'Facility C', notes: 'Regular demand' },
       ]
     },
     {
@@ -58,6 +72,13 @@ const WarehouseInventory = () => {
       batches: [
         { batchNo: 'B2023-066', expiry: '2025-10-30', quantity: 100, cost: 0.80 },
         { batchNo: 'B2023-021', expiry: '2025-07-12', quantity: 42, cost: 0.78 },
+      ],
+      lastIn: '2023-10-12',
+      lastOut: '2023-10-08',
+      movementHistory: [
+        { date: '2023-10-12', type: 'IN', quantity: 50, source: 'Supplier', notes: 'Weekly supply' },
+        { date: '2023-10-08', type: 'OUT', quantity: 30, destination: 'Facility A', notes: 'Regular demand' },
+        { date: '2023-10-01', type: 'IN', quantity: 100, source: 'Supplier', notes: 'Monthly stock' },
       ]
     },
     {
@@ -76,6 +97,12 @@ const WarehouseInventory = () => {
       facilityTransferPrice: 4.50,
       batches: [
         { batchNo: 'B2023-118', expiry: '2025-11-05', quantity: 45, cost: 4.00 },
+      ],
+      lastIn: '2023-10-01',
+      lastOut: '2023-09-28',
+      movementHistory: [
+        { date: '2023-10-01', type: 'IN', quantity: 50, source: 'Supplier', notes: 'Monthly supply' },
+        { date: '2023-09-28', type: 'OUT', quantity: 15, destination: 'Facility B', notes: 'Regular demand' },
       ]
     },
   ];
@@ -83,7 +110,9 @@ const WarehouseInventory = () => {
   const [inventoryItems, setInventoryItems] = useState(initialInventoryItems);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [showStockInModal, setShowStockInModal] = useState(false);
+  const [showStockOutModal, setShowStockOutModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [currentItem, setCurrentItem] = useState(null);
   const [formData, setFormData] = useState({
     id: '',
@@ -100,23 +129,24 @@ const WarehouseInventory = () => {
     abcClass: 'A',
     facilityTransferPrice: 0,
     batches: [],
+    lastIn: '',
+    lastOut: ''
   });
 
-  const [showViewModal, setShowViewModal] = useState(false);
-const [viewItem, setViewItem] = useState(null);
-  const [showBatchModal, setShowBatchModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [stockFormData, setStockFormData] = useState({
+    quantity: 0,
+    source: '',
+    destination: '',
+    notes: '',
+    batchNo: '',
+    expiryDate: ''
+  });
 
   // Calculate status
   const calculateStatus = (item) => {
     if (item.stock === 0) return 'out';
     if (item.stock < item.minLevel) return 'low';
     return 'in';
-  };
-
-  const openBatchModal = (item) => {
-    setSelectedItem(item);
-    setShowBatchModal(true);
   };
 
   const getStatusBadge = (status) => {
@@ -160,6 +190,9 @@ const [viewItem, setViewItem] = useState(null);
       abcClass: 'A',
       facilityTransferPrice: 0,
       batches: [],
+      lastIn: '',
+      lastOut: '',
+      movementHistory: []
     });
     setShowAddModal(true);
   };
@@ -181,13 +214,38 @@ const [viewItem, setViewItem] = useState(null);
       abcClass: item.abcClass,
       facilityTransferPrice: item.facilityTransferPrice,
       batches: item.batches,
+      lastIn: item.lastIn,
+      lastOut: item.lastOut,
+      movementHistory: item.movementHistory || []
     });
     setShowEditModal(true);
   };
 
-  const openRestockModal = (item) => {
+  const openStockInModal = (item) => {
     setCurrentItem(item);
-    setShowRestockModal(true);
+    setStockFormData({
+      quantity: 0,
+      source: 'Supplier',
+      notes: '',
+      batchNo: '',
+      expiryDate: ''
+    });
+    setShowStockInModal(true);
+  };
+
+  const openStockOutModal = (item) => {
+    setCurrentItem(item);
+    setStockFormData({
+      quantity: 0,
+      destination: '',
+      notes: ''
+    });
+    setShowStockOutModal(true);
+  };
+
+  const openHistoryModal = (item) => {
+    setCurrentItem(item);
+    setShowHistoryModal(true);
   };
 
   const handleInputChange = (e) => {
@@ -197,6 +255,14 @@ const [viewItem, setViewItem] = useState(null);
       [name]: ['stock', 'minLevel', 'standardCost', 'movingAvgCost', 'lastPOCost', 'facilityTransferPrice'].includes(name)
         ? parseFloat(value) || 0
         : value,
+    });
+  };
+
+  const handleStockInputChange = (e) => {
+    const { name, value } = e.target;
+    setStockFormData({
+      ...stockFormData,
+      [name]: name === 'quantity' ? parseInt(value) || 0 : value,
     });
   };
 
@@ -218,29 +284,113 @@ const [viewItem, setViewItem] = useState(null);
     setShowEditModal(false);
   };
 
-  const handleRestock = () => {
-    const amount = parseInt(document.getElementById('restockAmount').value) || 0;
-    if (amount <= 0) {
-      alert('Enter valid restock amount.');
+  const handleStockIn = () => {
+    const quantity = stockFormData.quantity || 0;
+    if (quantity <= 0) {
+      alert('Enter valid quantity.');
       return;
     }
+    
+    const today = new Date().toISOString().split('T')[0];
+    const newMovement = {
+      date: today,
+      type: 'IN',
+      quantity: quantity,
+      source: stockFormData.source,
+      notes: stockFormData.notes
+    };
+    
     setInventoryItems(
-      inventoryItems.map((item) =>
-        item.id === currentItem.id
-          ? { ...item, stock: item.stock + amount }
-          : item
-      )
+      inventoryItems.map((item) => {
+        if (item.id === currentItem.id) {
+          // Add new batch if provided
+          let updatedBatches = [...item.batches];
+          if (stockFormData.batchNo && stockFormData.expiryDate) {
+            updatedBatches.push({
+              batchNo: stockFormData.batchNo,
+              expiry: stockFormData.expiryDate,
+              quantity: quantity,
+              cost: item.standardCost
+            });
+          }
+          
+          return {
+            ...item, 
+            stock: item.stock + quantity,
+            lastIn: today,
+            movementHistory: [newMovement, ...(item.movementHistory || [])],
+            batches: updatedBatches
+          };
+        }
+        return item;
+      })
     );
-    setShowRestockModal(false);
+    setShowStockInModal(false);
+  };
+
+  const handleStockOut = () => {
+    const quantity = stockFormData.quantity || 0;
+    if (quantity <= 0) {
+      alert('Enter valid quantity.');
+      return;
+    }
+    
+    if (quantity > currentItem.stock) {
+      alert('Not enough stock available.');
+      return;
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    const newMovement = {
+      date: today,
+      type: 'OUT',
+      quantity: quantity,
+      destination: stockFormData.destination,
+      notes: stockFormData.notes
+    };
+    
+    setInventoryItems(
+      inventoryItems.map((item) => {
+        if (item.id === currentItem.id) {
+          // Update batches (FIFO - First In First Out)
+          let updatedBatches = [...item.batches];
+          let remainingQuantity = quantity;
+          
+          for (let i = 0; i < updatedBatches.length && remainingQuantity > 0; i++) {
+            if (updatedBatches[i].quantity > 0) {
+              const deductAmount = Math.min(updatedBatches[i].quantity, remainingQuantity);
+              updatedBatches[i].quantity -= deductAmount;
+              remainingQuantity -= deductAmount;
+            }
+          }
+          
+          return {
+            ...item, 
+            stock: item.stock - quantity,
+            lastOut: today,
+            movementHistory: [newMovement, ...(item.movementHistory || [])],
+            batches: updatedBatches
+          };
+        }
+        return item;
+      })
+    );
+    setShowStockOutModal(false);
   };
 
   const closeModalOnBackdrop = (e) => {
     if (e.target.classList.contains('modal')) {
       setShowAddModal(false);
       setShowEditModal(false);
-      setShowRestockModal(false);
-      setShowBatchModal(false);
+      setShowStockInModal(false);
+      setShowStockOutModal(false);
+      setShowHistoryModal(false);
     }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '—';
+    return dateString.split('-').reverse().join('/');
   };
 
   return (
@@ -263,20 +413,13 @@ const [viewItem, setViewItem] = useState(null);
             <table className="table table-hover table-striped mb-0">
               <thead className="table-light">
                 <tr>
-                  <th scope="col" className="px-4 py-3">Item ID</th>
-                  <th scope="col" className="px-4 py-3">Name</th>
+                  <th scope="col" className="px-4 py-3">Item Code</th>
+                  <th scope="col" className="px-4 py-3">Item Name</th>
                   <th scope="col" className="px-4 py-3">Category</th>
-                  <th scope="col" className="px-4 py-3">Stock</th>
-                  <th scope="col" className="px-4 py-3">Unit</th>
-                  <th scope="col" className="px-4 py-3">Std Cost</th>
-                  <th scope="col" className="px-4 py-3">Moving Avg</th>
-                  <th scope="col" className="px-4 py-3">Last PO</th>
-                  <th scope="col" className="px-4 py-3">Batch/Lot</th>
-                  <th scope="col" className="px-4 py-3">Expiry</th>
-                  <th scope="col" className="px-4 py-3">ABC Class</th>
-                  <th scope="col" className="px-4 py-3">Transfer Price</th>
-                  <th scope="col" className="px-4 py-3">Min Level</th>
-                  <th scope="col" className="px-4 py-3">Status</th>
+                  <th scope="col" className="px-4 py-3">Qty Available</th>
+                  <th scope="col" className="px-4 py-3">Reorder Level</th>
+                  <th scope="col" className="px-4 py-3">Last In</th>
+                  <th scope="col" className="px-4 py-3">Last Out</th>
                   <th scope="col" className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
@@ -289,59 +432,41 @@ const [viewItem, setViewItem] = useState(null);
                       <td className="px-4 py-3 align-middle">{item.name}</td>
                       <td className="px-4 py-3 align-middle">{item.category}</td>
                       <td className="px-4 py-3 align-middle fw-bold">{item.stock}</td>
-                      <td className="px-4 py-3 align-middle">{item.unit}</td>
-                      <td className="px-4 py-3 align-middle">₵{item.standardCost?.toFixed(2)}</td>
-                      <td className="px-4 py-3 align-middle">₵{item.movingAvgCost?.toFixed(2)}</td>
-                      <td className="px-4 py-3 align-middle">₵{item.lastPOCost?.toFixed(2)}</td>
-                      <td className="px-4 py-3 align-middle">{item.batchNo}</td>
-                      <td className="px-4 py-3 align-middle">{item.expiryDate?.split('-').reverse().join('/')}</td>
-                      <td className="px-4 py-3 align-middle">
-                        <span className={`badge bg-${item.abcClass === 'A' ? 'success' : item.abcClass === 'B' ? 'warning' : 'info'} text-dark rounded-pill`}>
-                          {item.abcClass}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 align-middle">₵{item.facilityTransferPrice?.toFixed(2)}</td>
                       <td className="px-4 py-3 align-middle">{item.minLevel}</td>
-                      <td className="px-4 py-3 align-middle">{getStatusBadge(status)}</td>
+                      <td className="px-4 py-3 align-middle">{formatDate(item.lastIn)}</td>
+                      <td className="px-4 py-3 align-middle">{formatDate(item.lastOut)}</td>
                       <td className="px-4 py-3 align-middle">
-  <div className="d-flex gap-2">
-    {/* ✅ NEW: View Button */}
-    <button
-      className="btn btn-sm btn-outline-secondary"
-      onClick={() => {
-        setViewItem(item);
-        setShowViewModal(true);
-      }}
-      title="View Details"
-    >
-      View
-    </button>
-
-    <button
-      className="btn btn-sm btn-outline-primary"
-      onClick={() => openEditModal(item)}
-      title="Edit"
-    >
-      <FaEdit />
-    </button>
-
-    <button
-      className="btn btn-sm btn-outline-success"
-      onClick={() => openRestockModal(item)}
-      title="Restock"
-    >
-      <FaPlusCircle />
-    </button>
-
-    <button
-      className="btn btn-sm bg-primary text-white"
-      onClick={() => openBatchModal(item)}
-      title="View Batches"
-    >
-      Batches
-    </button>
-  </div>
-</td>
+                        <div className="d-flex gap-1 flex-wrap">
+                          <button
+                            className="btn btn-sm btn-success d-flex align-items-center"
+                            onClick={() => openStockInModal(item)}
+                            title="Stock In"
+                          >
+                            <FaArrowDown className="me-1" /> In
+                          </button>
+                          <button
+                            className="btn btn-sm btn-warning d-flex align-items-center"
+                            onClick={() => openStockOutModal(item)}
+                            title="Stock Out"
+                          >
+                            <FaArrowUp className="me-1" /> Out
+                          </button>
+                          <button
+                            className="btn btn-sm btn-info d-flex align-items-center text-white"
+                            onClick={() => openHistoryModal(item)}
+                            title="View Movement History"
+                          >
+                            <FaHistory className="me-1" /> History
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => openEditModal(item)}
+                            title="Edit"
+                          >
+                            <FaEdit />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -364,7 +489,7 @@ const [viewItem, setViewItem] = useState(null);
               </div>
               <div className="modal-body">
                 <div className="mb-3">
-                  <label className="form-label">Item ID <span className="text-danger">*</span></label>
+                  <label className="form-label">Item Code <span className="text-danger">*</span></label>
                   <input
                     type="text"
                     className="form-control form-control-lg"
@@ -376,7 +501,7 @@ const [viewItem, setViewItem] = useState(null);
                   />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Name <span className="text-danger">*</span></label>
+                  <label className="form-label">Item Name <span className="text-danger">*</span></label>
                   <input
                     type="text"
                     className="form-control form-control-lg"
@@ -401,7 +526,7 @@ const [viewItem, setViewItem] = useState(null);
                   </select>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Current Stock</label>
+                  <label className="form-label">Qty Available</label>
                   <input
                     type="number"
                     className="form-control form-control-lg"
@@ -425,7 +550,7 @@ const [viewItem, setViewItem] = useState(null);
                   />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Minimum Stock Level</label>
+                  <label className="form-label">Reorder Level</label>
                   <input
                     type="number"
                     className="form-control form-control-lg"
@@ -436,7 +561,6 @@ const [viewItem, setViewItem] = useState(null);
                     step="1"
                   />
                 </div>
-                {/* ✅ NEW FIELDS IN ADD MODAL */}
                 <div className="mb-3">
                   <label className="form-label">Standard Cost</label>
                   <input
@@ -519,7 +643,6 @@ const [viewItem, setViewItem] = useState(null);
                     min="0"
                   />
                 </div>
-                {/* ✅ END NEW FIELDS */}
               </div>
               <div className="modal-footer border-top-0">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
@@ -534,7 +657,7 @@ const [viewItem, setViewItem] = useState(null);
         </div>
       )}
 
-      {/* Edit Item Modal (unchanged except formData includes new fields) */}
+      {/* Edit Item Modal */}
       {showEditModal && (
         <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
           <div className="modal-dialog modal-dialog-centered">
@@ -545,7 +668,7 @@ const [viewItem, setViewItem] = useState(null);
               </div>
               <div className="modal-body">
                 <div className="mb-3">
-                  <label className="form-label">Item ID</label>
+                  <label className="form-label">Item Code</label>
                   <input
                     type="text"
                     className="form-control form-control-lg"
@@ -556,7 +679,7 @@ const [viewItem, setViewItem] = useState(null);
                   />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Name</label>
+                  <label className="form-label">Item Name</label>
                   <input
                     type="text"
                     className="form-control form-control-lg"
@@ -579,18 +702,6 @@ const [viewItem, setViewItem] = useState(null);
                   </select>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Current Stock</label>
-                  <input
-                    type="number"
-                    className="form-control form-control-lg"
-                    name="stock"
-                    value={formData.stock}
-                    onChange={handleInputChange}
-                    min="0"
-                    step="1"
-                  />
-                </div>
-                <div className="mb-3">
                   <label className="form-label">Unit</label>
                   <input
                     type="text"
@@ -601,7 +712,7 @@ const [viewItem, setViewItem] = useState(null);
                   />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Minimum Stock Level</label>
+                  <label className="form-label">Reorder Level</label>
                   <input
                     type="number"
                     className="form-control form-control-lg"
@@ -612,7 +723,6 @@ const [viewItem, setViewItem] = useState(null);
                     step="1"
                   />
                 </div>
-                {/* ✅ NEW FIELDS IN EDIT MODAL */}
                 <div className="mb-3">
                   <label className="form-label">Standard Cost</label>
                   <input
@@ -650,27 +760,6 @@ const [viewItem, setViewItem] = useState(null);
                   />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Batch/Lot No</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg"
-                    name="batchNo"
-                    value={formData.batchNo}
-                    onChange={handleInputChange}
-                    placeholder="e.g. B2023-087"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Expiry Date</label>
-                  <input
-                    type="date"
-                    className="form-control form-control-lg"
-                    name="expiryDate"
-                    value={formData.expiryDate}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="mb-3">
                   <label className="form-label">ABC Class</label>
                   <select
                     className="form-select form-select-lg"
@@ -695,7 +784,6 @@ const [viewItem, setViewItem] = useState(null);
                     min="0"
                   />
                 </div>
-                {/* ✅ END NEW FIELDS */}
               </div>
               <div className="modal-footer border-top-0">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>
@@ -710,37 +798,86 @@ const [viewItem, setViewItem] = useState(null);
         </div>
       )}
 
-      {/* Restock Modal (unchanged) */}
-      {showRestockModal && currentItem && (
+      {/* Stock In Modal */}
+      {showStockInModal && currentItem && (
         <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header border-bottom-0">
-                <h5 className="modal-title">Restock Item</h5>
-                <button type="button" className="btn-close" onClick={() => setShowRestockModal(false)}></button>
+                <h5 className="modal-title">Stock In: {currentItem.name}</h5>
+                <button type="button" className="btn-close" onClick={() => setShowStockInModal(false)}></button>
               </div>
-              <div className="modal-body text-center">
-                <h5 className="mb-1">{currentItem.name}</h5>
-                <p className="text-muted">
-                  Current Stock: <strong>{currentItem.stock} {currentItem.unit}</strong>
-                </p>
+              <div className="modal-body">
                 <div className="mb-3">
-                  <label className="form-label">Amount to Add</label>
+                  <label className="form-label">Current Stock</label>
+                  <div className="form-control form-control-lg bg-light">
+                    {currentItem.stock} {currentItem.unit}
+                  </div>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Quantity <span className="text-danger">*</span></label>
                   <input
                     type="number"
-                    className="form-control form-control-lg text-center"
-                    id="restockAmount"
+                    className="form-control form-control-lg"
+                    name="quantity"
+                    value={stockFormData.quantity}
+                    onChange={handleStockInputChange}
                     min="1"
-                    defaultValue="1"
+                    step="1"
                   />
                 </div>
+                <div className="mb-3">
+                  <label className="form-label">Source</label>
+                  <select
+                    className="form-select form-select-lg"
+                    name="source"
+                    value={stockFormData.source}
+                    onChange={handleStockInputChange}
+                  >
+                    <option value="Supplier">Supplier</option>
+                    <option value="Return">Return</option>
+                    <option value="Transfer">Transfer</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Batch/Lot No</label>
+                  <input
+                    type="text"
+                    className="form-control form-control-lg"
+                    name="batchNo"
+                    value={stockFormData.batchNo}
+                    onChange={handleStockInputChange}
+                    placeholder="e.g. B2023-087"
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Expiry Date</label>
+                  <input
+                    type="date"
+                    className="form-control form-control-lg"
+                    name="expiryDate"
+                    value={stockFormData.expiryDate}
+                    onChange={handleStockInputChange}
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Notes</label>
+                  <textarea
+                    className="form-control form-control-lg"
+                    name="notes"
+                    value={stockFormData.notes}
+                    onChange={handleStockInputChange}
+                    rows="2"
+                  ></textarea>
+                </div>
               </div>
-              <div className="modal-footer border-top-0 justify-content-center">
-                <button type="button" className="btn btn-secondary me-2" onClick={() => setShowRestockModal(false)}>
+              <div className="modal-footer border-top-0">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowStockInModal(false)}>
                   Cancel
                 </button>
-                <button type="button" className="btn btn-success" onClick={handleRestock}>
-                  Restock
+                <button type="button" className="btn btn-success" onClick={handleStockIn}>
+                  Stock In
                 </button>
               </div>
             </div>
@@ -748,141 +885,128 @@ const [viewItem, setViewItem] = useState(null);
         </div>
       )}
 
-      {/* Batch Details Modal (unchanged) */}
-      {showBatchModal && selectedItem && (
+      {/* Stock Out Modal */}
+      {showStockOutModal && currentItem && (
         <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header border-bottom-0">
-                <h5 className="modal-title">Batch Details: {selectedItem.name}</h5>
-                <button type="button" className="btn-close" onClick={() => setShowBatchModal(false)}></button>
+                <h5 className="modal-title">Stock Out: {currentItem.name}</h5>
+                <button type="button" className="btn-close" onClick={() => setShowStockOutModal(false)}></button>
               </div>
               <div className="modal-body">
-                <div className="table-responsive">
-                  <table className="table table-sm table-bordered mb-0">
-                    <thead>
-                      <tr>
-                        <th>Batch No</th>
-                        <th>Expiry</th>
-                        <th>Quantity</th>
-                        <th>Cost</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedItem.batches?.map((batch, idx) => (
-                        <tr key={idx}>
-                          <td>{batch.batchNo}</td>
-                          <td>{batch.expiry.split('-').reverse().join('/')}</td>
-                          <td>{batch.quantity} {selectedItem.unit}</td>
-                          <td>₵{batch.cost.toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="mb-3">
+                  <label className="form-label">Current Stock</label>
+                  <div className="form-control form-control-lg bg-light">
+                    {currentItem.stock} {currentItem.unit}
+                  </div>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Quantity <span className="text-danger">*</span></label>
+                  <input
+                    type="number"
+                    className="form-control form-control-lg"
+                    name="quantity"
+                    value={stockFormData.quantity}
+                    onChange={handleStockInputChange}
+                    min="1"
+                    max={currentItem.stock}
+                    step="1"
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Destination Facility <span className="text-danger">*</span></label>
+                  <input
+                    type="text"
+                    className="form-control form-control-lg"
+                    name="destination"
+                    value={stockFormData.destination}
+                    onChange={handleStockInputChange}
+                    placeholder="e.g. Facility A"
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Notes</label>
+                  <textarea
+                    className="form-control form-control-lg"
+                    name="notes"
+                    value={stockFormData.notes}
+                    onChange={handleStockInputChange}
+                    rows="2"
+                  ></textarea>
                 </div>
               </div>
               <div className="modal-footer border-top-0">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowBatchModal(false)}>
-                  Close
+                <button type="button" className="btn btn-secondary" onClick={() => setShowStockOutModal(false)}>
+                  Cancel
                 </button>
-                <button 
-                  type="button" 
-                  className="btn btn-primary" 
-                  onClick={() => {
-                    setShowBatchModal(false);
-                    openEditModal(selectedItem);
-                  }}
-                >
-                  Add New Batch
+                <button type="button" className="btn btn-warning" onClick={handleStockOut}>
+                  Stock Out
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
-{/* View Item Modal */}
-{showViewModal && viewItem && (
-  <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
-    <div className="modal-dialog modal-dialog-centered">
-      <div className="modal-content">
-        <div className="modal-header border-bottom-0">
-          <h5 className="modal-title">Item Details: {viewItem.name}</h5>
-          <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
-        </div>
-        <div className="modal-body">
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Item ID:</div>
-            <div className="col-6">{viewItem.id}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Name:</div>
-            <div className="col-6">{viewItem.name}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Category:</div>
-            <div className="col-6">{viewItem.category}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Stock:</div>
-            <div className="col-6">{viewItem.stock} {viewItem.unit}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Unit:</div>
-            <div className="col-6">{viewItem.unit}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Min Level:</div>
-            <div className="col-6">{viewItem.minLevel}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Standard Cost:</div>
-            <div className="col-6">₵{viewItem.standardCost?.toFixed(2)}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Moving Avg Cost:</div>
-            <div className="col-6">₵{viewItem.movingAvgCost?.toFixed(2)}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Last PO Cost:</div>
-            <div className="col-6">₵{viewItem.lastPOCost?.toFixed(2)}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Batch/Lot No:</div>
-            <div className="col-6">{viewItem.batchNo || '—'}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Expiry Date:</div>
-            <div className="col-6">{viewItem.expiryDate ? viewItem.expiryDate.split('-').reverse().join('/') : '—'}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">ABC Class:</div>
-            <div className="col-6">
-              <span className={`badge bg-${viewItem.abcClass === 'A' ? 'success' : viewItem.abcClass === 'B' ? 'warning' : 'info'} text-dark`}>
-                {viewItem.abcClass}
-              </span>
+
+      {/* Movement History Modal */}
+      {showHistoryModal && currentItem && (
+        <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content">
+              <div className="modal-header border-bottom-0">
+                <h5 className="modal-title">Movement History: {currentItem.name}</h5>
+                <button type="button" className="btn-close" onClick={() => setShowHistoryModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <div className="table-responsive">
+                  <table className="table table-striped table-hover">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Quantity</th>
+                        <th>Source/Destination</th>
+                        <th>Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentItem.movementHistory && currentItem.movementHistory.length > 0 ? (
+                        currentItem.movementHistory.map((movement, index) => (
+                          <tr key={index}>
+                            <td>{formatDate(movement.date)}</td>
+                            <td>
+                              <span className={`badge ${movement.type === 'IN' ? 'bg-success' : 'bg-warning'}`}>
+                                {movement.type}
+                              </span>
+                            </td>
+                            <td>{movement.quantity} {currentItem.unit}</td>
+                            <td>{movement.source || movement.destination || '—'}</td>
+                            <td>{movement.notes || '—'}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="5" className="text-center">No movement history available</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="modal-footer border-top-0">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowHistoryModal(false)}>
+                  Close
+                </button>
+              </div>
             </div>
           </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Transfer Price:</div>
-            <div className="col-6">₵{viewItem.facilityTransferPrice?.toFixed(2)}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-6 fw-bold">Status:</div>
-            <div className="col-6">{getStatusBadge(calculateStatus(viewItem))}</div>
-          </div>
         </div>
-        <div className="modal-footer border-top-0">
-          <button type="button" className="btn btn-secondary" onClick={() => setShowViewModal(false)}>
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-     {(showAddModal || showEditModal || showRestockModal || showBatchModal || showViewModal) && (
-  <div className="modal-backdrop fade show"></div>
-)}
+      )}
+      
+      {(showAddModal || showEditModal || showStockInModal || showStockOutModal || showHistoryModal) && (
+        <div className="modal-backdrop fade show"></div>
+      )}
     </div>
   );
 };

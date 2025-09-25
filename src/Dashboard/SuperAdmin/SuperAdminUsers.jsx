@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
   FaPlus, FaSearch, FaEdit, FaTimes, FaCheck, FaUser, FaUserMd, FaUserCog, FaHospital,
   FaEnvelope, FaPhone, FaLock, FaKey, FaInfoCircle, FaUserCircle
 } from 'react-icons/fa';
+import BaseUrl from '../../Api/BaseUrl';
 
 const SuperAdminUsers = () => {
+  // API base URL - replace with your actual API URL
+
   // Search
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -19,11 +23,11 @@ const SuperAdminUsers = () => {
 
   // New user form
   const [newUser, setNewUser] = useState({
-    name: '',
+    full_name: '',
     email: '',
     phone: '',
-    role: 'Facility User',
-    facility: 'Main Warehouse',
+    role_id: 1, // Default role
+    facility_id: 2, // Default facility
     department: '',
     password: '',
     confirmPassword: ''
@@ -31,87 +35,90 @@ const SuperAdminUsers = () => {
 
   // Edit user form
   const [editUser, setEditUser] = useState({
-    name: '',
+    full_name: '',
     email: '',
     phone: '',
-    role: 'Facility User',
-    facility: 'Main Warehouse',
+    role_id: 1,
+    facility_id: 2,
     department: ''
   });
 
   // Status change
   const [newStatus, setNewStatus] = useState('');
 
-  // Mock users
-  const [users, setUsers] = useState([
-    {
-      id: 'USR-001',
-      name: 'John Mensah',
-      email: 'john.mensah@francisfosu.com',
-      phone: '+233 20 123 4567',
-      role: 'Super Admin',
-      facility: 'Main Warehouse',
-      department: 'Administration',
-      status: 'Active',
-      lastLogin: '25 Oct 2023',
-      joinDate: '15 Jan 2022'
-    },
-    {
-      id: 'USR-002',
-      name: 'Alice Ofori',
-      email: 'alice.ofori@francisfosu.com',
-      phone: '+233 24 234 5678',
-      role: 'Warehouse Admin',
-      facility: 'Main Warehouse',
-      department: 'Inventory',
-      status: 'Active',
-      lastLogin: '24 Oct 2023',
-      joinDate: '10 Mar 2022'
-    },
-    {
-      id: 'USR-003',
-      name: 'Dr. Kwame Asare',
-      email: 'kwame.asare@francisfosu.com',
-      phone: '+233 27 345 6789',
-      role: 'Facility Admin',
-      facility: 'Kumasi Branch Hospital',
-      department: 'Medical',
-      status: 'Active',
-      lastLogin: '24 Oct 2023',
-      joinDate: '05 May 2023'
-    },
-    {
-      id: 'USR-004',
-      name: 'Nurse Ama Serwaa',
-      email: 'ama.serwaa@francisfosu.com',
-      phone: '+233 26 456 7890',
-      role: 'Facility User',
-      facility: 'Accra Central Hospital',
-      department: 'Emergency',
-      status: 'Inactive',
-      lastLogin: '20 Oct 2023',
-      joinDate: '12 Aug 2023'
-    }
-  ]);
+  // Users data
+  const [users, setUsers] = useState([]);
+  
+  // User summary stats
+  const [userSummary, setUserSummary] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    adminUsers: 0,
+    medicalStaff: 0
+  });
 
-  // Mock facilities
+  // Loading state
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Mock facilities - replace with API call if needed
   const facilities = [
-    'Main Warehouse',
-    'Kumasi Branch Hospital',
-    'Accra Central Hospital',
-    'Takoradi Clinic',
-    'Cape Coast Hospital'
+    { id: 1, name: 'Main Warehouse' },
+    { id: 2, name: 'Kumasi Branch Hospital' },
+    { id: 3, name: 'Accra Central Hospital' },
+    { id: 4, name: 'Takoradi Clinic' },
+    { id: 5, name: 'Cape Coast Hospital' }
   ];
 
+  // Roles mapping
+  const roles = [
+    { id: 1, name: 'Super Admin' },
+    { id: 2, name: 'Warehouse Admin' },
+    { id: 3, name: 'Facility Admin' },
+    { id: 4, name: 'Facility User' }
+  ];
+
+  // Fetch users data
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${BaseUrl}/users`);
+      setUsers(response.data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to fetch users');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch user summary
+  const fetchUserSummary = async () => {
+    try {
+      const response = await axios.get(`${BaseUrl}/getUserSummary`);
+      setUserSummary(response.data);
+    } catch (err) {
+      console.error('Failed to fetch user summary:', err);
+    }
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchUsers();
+    fetchUserSummary();
+  }, []);
+
   // Badges (Bootstrap classes only)
-  const RoleBadge = ({ role }) => {
+  const RoleBadge = ({ roleId }) => {
+    const role = roles.find(r => r.id === roleId);
     const map = {
-      'Super Admin': 'bg-danger',
-      'Warehouse Admin': 'bg-primary',
-      'Facility Admin': 'bg-info text-dark',
-      'Facility User': 'bg-secondary'
+      1: 'bg-danger',      // Super Admin
+      2: 'bg-primary',     // Warehouse Admin
+      3: 'bg-info text-dark', // Facility Admin
+      4: 'bg-secondary'    // Facility User
     };
-    return <span className={`badge ${map[role] || 'bg-secondary'}`}>{role}</span>;
+    return <span className={`badge ${map[roleId] || 'bg-secondary'}`}>{role ? role.name : 'Unknown'}</span>;
   };
 
   const StatusBadge = ({ status }) => {
@@ -126,30 +133,36 @@ const SuperAdminUsers = () => {
   // Openers
   const openAddModal = () => {
     setNewUser({
-      name: '',
+      full_name: '',
       email: '',
       phone: '',
-      role: 'Facility User',
-      facility: 'Main Warehouse',
+      role_id: 1,
+      facility_id: 2,
       department: '',
       password: '',
       confirmPassword: ''
     });
     setShowAddModal(true);
   };
-  const openViewModal = (user) => { setCurrentUser(user); setShowViewModal(true); };
+  
+  const openViewModal = (user) => { 
+    setCurrentUser(user); 
+    setShowViewModal(true); 
+  };
+  
   const openEditModal = (user) => {
     setEditUser({
-      name: user.name,
+      full_name: user.full_name,
       email: user.email,
       phone: user.phone,
-      role: user.role,
-      facility: user.facility,
+      role_id: user.role_id,
+      facility_id: user.facility_id,
       department: user.department
     });
     setCurrentUser(user);
     setShowEditModal(true);
   };
+  
   const openStatusModal = (user) => {
     setCurrentUser(user);
     setNewStatus(user.status === 'Active' ? 'Inactive' : 'Active');
@@ -161,59 +174,103 @@ const SuperAdminUsers = () => {
     const { name, value } = e.target;
     setNewUser(prev => ({ ...prev, [name]: value }));
   };
+  
   const handleEditUserChange = (e) => {
     const { name, value } = e.target;
     setEditUser(prev => ({ ...prev, [name]: value }));
   };
 
-  // Actions
-  const handleAddUser = () => {
-    const newItem = {
-      id: `USR-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
-      name: newUser.name,
-      email: newUser.email,
-      phone: newUser.phone,
-      role: newUser.role,
-      facility: newUser.facility,
-      department: newUser.department,
-      status: 'Active',
-      lastLogin: 'Never',
-      joinDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-    };
-    setUsers(prev => [...prev, newItem]);
-    setShowAddModal(false);
+  // API Actions
+  const handleAddUser = async () => {
+    try {
+      // Remove confirmPassword before sending to API
+      const { confirmPassword, ...userData } = newUser;
+      const response = await axios.post(`${BaseUrl}/users`, userData);
+      
+      // Add the new user to the state with proper structure
+      const newUserWithId = {
+        ...response.data,
+        id: response.data.id || Math.max(...users.map(u => u.id), 0) + 1, // Fallback ID if not provided
+        status: response.data.status || 'Active', // Default status if not provided
+        lastLogin: response.data.lastLogin || null,
+        created_at: response.data.created_at || new Date().toISOString()
+      };
+      
+      setUsers(prev => [...prev, newUserWithId]);
+      setShowAddModal(false);
+      
+      // Refresh user summary
+      fetchUserSummary();
+    } catch (err) {
+      console.error('Failed to add user:', err);
+      setError('Failed to add user');
+    }
   };
 
-  const handleEditUser = () => {
-    setUsers(prev => prev.map(u =>
-      u.id === currentUser.id
-        ? { ...u, ...editUser }
-        : u
-    ));
-    setShowEditModal(false);
+  const handleEditUser = async () => {
+    try {
+      const response = await axios.put(`${BaseUrl}/users/${currentUser.id}`, editUser);
+      
+      // Update the user in the state with the response data
+      setUsers(prev => prev.map(u =>
+        u.id === currentUser.id ? { 
+          ...u, 
+          ...response.data,
+          // Ensure these fields are preserved if not in response
+          status: response.data.status || u.status,
+          lastLogin: response.data.lastLogin || u.lastLogin,
+          created_at: response.data.created_at || u.created_at
+        } : u
+      ));
+      setShowEditModal(false);
+    } catch (err) {
+      console.error('Failed to update user:', err);
+      setError('Failed to update user');
+    }
   };
 
-  const handleChangeStatus = () => {
-    setUsers(prev => prev.map(u =>
-      u.id === currentUser.id
-        ? { ...u, status: newStatus }
-        : u
-    ));
-    setShowStatusModal(false);
+  const handleChangeStatus = async () => {
+    try {
+      // Fixed the status update endpoint - changed from /users/status/{id} to /users/{id}/status
+      const response = await axios.patch(`${BaseUrl}/users/status/${currentUser.id}`, { 
+        status: newStatus 
+      });
+      
+      // Update the user in the state with the response data
+      setUsers(prev => prev.map(u =>
+        u.id === currentUser.id ? { 
+          ...u, 
+          status: response.data.status || newStatus,
+          // Update any other fields that might be returned
+          ...response.data
+        } : u
+      ));
+      setShowStatusModal(false);
+      
+      // Refresh user summary
+      fetchUserSummary();
+    } catch (err) {
+      console.error('Failed to update user status:', err);
+      setError('Failed to update user status');
+    }
   };
 
   // Search filter (applies to table & mobile card list)
   const filtered = users.filter(u => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return true;
+    
+    const role = roles.find(r => r.id === u.role_id);
+    const facility = facilities.find(f => f.id === u.facility_id);
+    
     return (
-      u.id.toLowerCase().includes(q) ||
-      u.name.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
-      u.role.toLowerCase().includes(q) ||
-      u.facility.toLowerCase().includes(q) ||
+      u.id?.toString().toLowerCase().includes(q) ||
+      u.full_name?.toLowerCase().includes(q) ||
+      u.email?.toLowerCase().includes(q) ||
+      role?.name?.toLowerCase().includes(q) ||
+      facility?.name?.toLowerCase().includes(q) ||
       (u.department || '').toLowerCase().includes(q) ||
-      u.status.toLowerCase().includes(q)
+      u.status?.toLowerCase().includes(q)
     );
   });
 
@@ -254,6 +311,22 @@ const SuperAdminUsers = () => {
         </div>
       </div>
 
+      {/* Error message */}
+      {error && (
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      )}
+
+      {/* Loading indicator */}
+      {loading && (
+        <div className="d-flex justify-content-center my-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      )}
+
       {/* ============================================
           Stats
           xs: 1 col | md: 4 cols
@@ -265,7 +338,7 @@ const SuperAdminUsers = () => {
               <div className="bg-primary bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaUser className="text-primary fs-3" />
               </div>
-              <div className="text-primary fw-bold fs-4">{users.length}</div>
+              <div className="text-primary fw-bold fs-4">{userSummary.totalUsers}</div>
               <div className="text-muted small">Total Users</div>
             </div>
           </div>
@@ -276,7 +349,7 @@ const SuperAdminUsers = () => {
               <div className="bg-success bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaCheck className="text-success fs-3" />
               </div>
-              <div className="text-success fw-bold fs-4">{users.filter(u => u.status === 'Active').length}</div>
+              <div className="text-success fw-bold fs-4">{userSummary.activeUsers}</div>
               <div className="text-muted small">Active Users</div>
             </div>
           </div>
@@ -287,7 +360,7 @@ const SuperAdminUsers = () => {
               <div className="bg-warning bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaUserCog className="text-warning fs-3" />
               </div>
-              <div className="text-warning fw-bold fs-4">{users.filter(u => u.role.includes('Admin')).length}</div>
+              <div className="text-warning fw-bold fs-4">{userSummary.adminUsers}</div>
               <div className="text-muted small">Admin Users</div>
             </div>
           </div>
@@ -298,7 +371,7 @@ const SuperAdminUsers = () => {
               <div className="bg-info bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaUserMd className="text-info fs-3" />
               </div>
-              <div className="text-info fw-bold fs-4">{users.filter(u => u.department === 'Medical').length}</div>
+              <div className="text-info fw-bold fs-4">{userSummary.medicalStaff}</div>
               <div className="text-muted small">Medical Staff</div>
             </div>
           </div>
@@ -332,43 +405,48 @@ const SuperAdminUsers = () => {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((user, index) => (
-                  <tr key={index}>
-                    <td className="fw-bold">{user.id}</td>
-                    <td>
-                      <div className="d-flex align-items-center">
-                        <div className="bg-secondary bg-opacity-10 p-2 rounded-circle me-2">
-                          <FaUser className="text-secondary" />
+                {filtered.map((user, index) => {
+                  const role = roles.find(r => r.id === user.role_id);
+                  const facility = facilities.find(f => f.id === user.facility_id);
+                  
+                  return (
+                    <tr key={index}>
+                      <td className="fw-bold">{user.id}</td>
+                      <td>
+                        <div className="d-flex align-items-center">
+                          <div className="bg-secondary bg-opacity-10 p-2 rounded-circle me-2">
+                            <FaUser className="text-secondary" />
+                          </div>
+                          {user.full_name}
                         </div>
-                        {user.name}
-                      </div>
-                    </td>
-                    <td><RoleBadge role={user.role} /></td>
-                    <td>{user.facility}</td>
-                    <td>{user.department}</td>
-                    <td><StatusBadge status={user.status} /></td>
-                    <td>{user.lastLogin}</td>
-                    <td>
-                      <div className="btn-group" role="group" aria-label="Row actions">
-                        <button className="btn btn-sm btn-outline-primary" onClick={() => openViewModal(user)}>
-                          <FaInfoCircle />
-                        </button>
-                        <button className="btn btn-sm btn-outline-primary" onClick={() => openEditModal(user)}>
-                          <FaEdit />
-                        </button>
-                        {user.status === 'Active' ? (
-                          <button className="btn btn-sm btn-outline-danger" onClick={() => openStatusModal(user)}>
-                            <FaTimes />
+                      </td>
+                      <td><RoleBadge roleId={user.role_id} /></td>
+                      <td>{facility ? facility.name : 'Unknown'}</td>
+                      <td>{user.department}</td>
+                      <td><StatusBadge status={user.status} /></td>
+                      <td>{user.lastLogin || 'Never'}</td>
+                      <td>
+                        <div className="btn-group" role="group" aria-label="Row actions">
+                          <button className="btn btn-sm btn-outline-primary" onClick={() => openViewModal(user)}>
+                            <FaInfoCircle />
                           </button>
-                        ) : (
-                          <button className="btn btn-sm btn-outline-success" onClick={() => openStatusModal(user)}>
-                            <FaCheck />
+                          <button className="btn btn-sm btn-outline-primary" onClick={() => openEditModal(user)}>
+                            <FaEdit />
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {user.status === 'Active' ? (
+                            <button className="btn btn-sm btn-outline-danger" onClick={() => openStatusModal(user)}>
+                              <FaTimes />
+                            </button>
+                          ) : (
+                            <button className="btn btn-sm btn-outline-success" onClick={() => openStatusModal(user)}>
+                              <FaCheck />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -377,72 +455,77 @@ const SuperAdminUsers = () => {
         {/* CARD LIST (below md) */}
         <div className="card-body d-block d-md-none">
           <div className="row g-2">
-            {filtered.map((u, i) => (
-              <div className="col-12" key={i}>
-                <div className="card">
-                  <div className="card-body">
-                    {/* Header */}
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                      <span className="fw-bold">{u.name}</span>
-                      <StatusBadge status={u.status} />
-                    </div>
+            {filtered.map((u, i) => {
+              const role = roles.find(r => r.id === u.role_id);
+              const facility = facilities.find(f => f.id === u.facility_id);
+              
+              return (
+                <div className="col-12" key={i}>
+                  <div className="card">
+                    <div className="card-body">
+                      {/* Header */}
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <span className="fw-bold">{u.full_name}</span>
+                        <StatusBadge status={u.status} />
+                      </div>
 
-                    {/* Meta grid */}
-                    <div className="row g-2 small">
-                      <div className="col-6">
-                        <div className="text-muted">User ID</div>
-                        <div>{u.id}</div>
+                      {/* Meta grid */}
+                      <div className="row g-2 small">
+                        <div className="col-6">
+                          <div className="text-muted">User ID</div>
+                          <div>{u.id}</div>
+                        </div>
+                        <div className="col-6">
+                          <div className="text-muted">Role</div>
+                          <div><RoleBadge roleId={u.role_id} /></div>
+                        </div>
+                        <div className="col-6">
+                          <div className="text-muted">Facility</div>
+                          <div>{facility ? facility.name : 'Unknown'}</div>
+                        </div>
+                        <div className="col-6">
+                          <div className="text-muted">Department</div>
+                          <div>{u.department}</div>
+                        </div>
+                        <div className="col-6">
+                          <div className="text-muted">Email</div>
+                          <div className="text-truncate">{u.email}</div>
+                        </div>
+                        <div className="col-6">
+                          <div className="text-muted">Phone</div>
+                          <div>{u.phone}</div>
+                        </div>
+                        <div className="col-6">
+                          <div className="text-muted">Last Login</div>
+                          <div>{u.lastLogin || 'Never'}</div>
+                        </div>
                       </div>
-                      <div className="col-6">
-                        <div className="text-muted">Role</div>
-                        <div><RoleBadge role={u.role} /></div>
-                      </div>
-                      <div className="col-6">
-                        <div className="text-muted">Facility</div>
-                        <div>{u.facility}</div>
-                      </div>
-                      <div className="col-6">
-                        <div className="text-muted">Department</div>
-                        <div>{u.department}</div>
-                      </div>
-                      <div className="col-6">
-                        <div className="text-muted">Email</div>
-                        <div className="text-truncate">{u.email}</div>
-                      </div>
-                      <div className="col-6">
-                        <div className="text-muted">Phone</div>
-                        <div>{u.phone}</div>
-                      </div>
-                      <div className="col-6">
-                        <div className="text-muted">Last Login</div>
-                        <div>{u.lastLogin}</div>
-                      </div>
-                    </div>
 
-                    {/* Actions */}
-                    <div className="d-flex gap-2 mt-3">
-                      <button className="btn btn-outline-primary w-100 btn-sm" onClick={() => openViewModal(u)}>
-                        <FaInfoCircle className="me-1" /> Details
-                      </button>
-                      <button className="btn btn-outline-primary w-100 btn-sm" onClick={() => openEditModal(u)}>
-                        <FaEdit className="me-1" /> Edit
-                      </button>
-                      {u.status === 'Active' ? (
-                        <button className="btn btn-outline-danger w-100 btn-sm" onClick={() => openStatusModal(u)}>
-                          <FaTimes className="me-1" /> Deactivate
+                      {/* Actions */}
+                      <div className="d-flex gap-2 mt-3">
+                        <button className="btn btn-outline-primary w-100 btn-sm" onClick={() => openViewModal(u)}>
+                          <FaInfoCircle className="me-1" /> Details
                         </button>
-                      ) : (
-                        <button className="btn btn-outline-success w-100 btn-sm" onClick={() => openStatusModal(u)}>
-                          <FaCheck className="me-1" /> Activate
+                        <button className="btn btn-outline-primary w-100 btn-sm" onClick={() => openEditModal(u)}>
+                          <FaEdit className="me-1" /> Edit
                         </button>
-                      )}
+                        {u.status === 'Active' ? (
+                          <button className="btn btn-outline-danger w-100 btn-sm" onClick={() => openStatusModal(u)}>
+                            <FaTimes className="me-1" /> Deactivate
+                          </button>
+                        ) : (
+                          <button className="btn btn-outline-success w-100 btn-sm" onClick={() => openStatusModal(u)}>
+                            <FaCheck className="me-1" /> Activate
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
-            {filtered.length === 0 && (
+            {filtered.length === 0 && !loading && (
               <div className="col-12">
                 <div className="alert alert-light border text-center mb-0">No users found.</div>
               </div>
@@ -472,8 +555,8 @@ const SuperAdminUsers = () => {
                       <input
                         type="text"
                         className="form-control"
-                        name="name"
-                        value={newUser.name}
+                        name="full_name"
+                        value={newUser.full_name}
                         onChange={handleAddUserChange}
                       />
                     </div>
@@ -502,12 +585,13 @@ const SuperAdminUsers = () => {
                       <label className="form-label">Role</label>
                       <select
                         className="form-select"
-                        name="role"
-                        value={newUser.role}
+                        name="role_id"
+                        value={newUser.role_id}
                         onChange={handleAddUserChange}
                       >
-                        <option value="Super Admin">Super Admin</option>
-                        <option value="Warehouse Admin">Warehouse Admin</option>
+                        {roles.map((role) => (
+                          <option key={role.id} value={role.id}>{role.name}</option>
+                        ))}
                       </select>
                     </div>
 
@@ -515,12 +599,12 @@ const SuperAdminUsers = () => {
                       <label className="form-label">Facility</label>
                       <select
                         className="form-select"
-                        name="facility"
-                        value={newUser.facility}
+                        name="facility_id"
+                        value={newUser.facility_id}
                         onChange={handleAddUserChange}
                       >
-                        {facilities.map((f, i) => (
-                          <option key={i} value={f}>{f}</option>
+                        {facilities.map((facility) => (
+                          <option key={facility.id} value={facility.id}>{facility.name}</option>
                         ))}
                       </select>
                     </div>
@@ -585,7 +669,7 @@ const SuperAdminUsers = () => {
           <div className="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">User Details: {currentUser.name}</h5>
+                <h5 className="modal-title">User Details: {currentUser.full_name}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
               </div>
               <div className="modal-body">
@@ -593,7 +677,7 @@ const SuperAdminUsers = () => {
                   <div className="bg-primary bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                     <FaUserCircle className="text-primary" style={{ fontSize: '3rem' }} />
                   </div>
-                  <h4 className="fw-bold">{currentUser.name}</h4>
+                  <h4 className="fw-bold">{currentUser.full_name}</h4>
                   <p className="text-muted">{currentUser.email}</p>
                 </div>
 
@@ -610,14 +694,16 @@ const SuperAdminUsers = () => {
                       <FaUserCog className="text-primary me-2" />
                       <div>
                         <h6 className="mb-0">Role</h6>
-                        <p className="mb-0"><RoleBadge role={currentUser.role} /></p>
+                        <p className="mb-0"><RoleBadge roleId={currentUser.role_id} /></p>
                       </div>
                     </div>
                     <div className="d-flex align-items-center mb-2">
                       <FaHospital className="text-primary me-2" />
                       <div>
                         <h6 className="mb-0">Facility</h6>
-                        <p className="text-muted mb-0">{currentUser.facility}</p>
+                        <p className="text-muted mb-0">
+                          {facilities.find(f => f.id === currentUser.facility_id)?.name || 'Unknown'}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -653,11 +739,25 @@ const SuperAdminUsers = () => {
                   </div>
                   <div className="col-12 col-md-6">
                     <h6 className="mb-0">Join Date</h6>
-                    <p className="text-muted mb-0">{currentUser.joinDate}</p>
+                    <p className="text-muted mb-0">
+                      {new Date(currentUser.created_at).toLocaleDateString('en-GB', { 
+                        day: 'numeric', 
+                        month: 'short', 
+                        year: 'numeric' 
+                      })}
+                    </p>
                   </div>
                   <div className="col-12 col-md-6">
                     <h6 className="mb-0">Last Login</h6>
-                    <p className="text-muted mb-0">{currentUser.lastLogin}</p>
+                    <p className="text-muted mb-0">
+                      {currentUser.lastLogin 
+                        ? new Date(currentUser.lastLogin).toLocaleDateString('en-GB', { 
+                            day: 'numeric', 
+                            month: 'short', 
+                            year: 'numeric' 
+                          })
+                        : 'Never'}
+                    </p>
                   </div>
                 </div>
 
@@ -684,7 +784,7 @@ const SuperAdminUsers = () => {
           <div className="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Edit User: {currentUser.name}</h5>
+                <h5 className="modal-title">Edit User: {currentUser.full_name}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowEditModal(false)}></button>
               </div>
               <div className="modal-body">
@@ -696,8 +796,8 @@ const SuperAdminUsers = () => {
                       <input
                         type="text"
                         className="form-control"
-                        name="name"
-                        value={editUser.name}
+                        name="full_name"
+                        value={editUser.full_name}
                         onChange={handleEditUserChange}
                       />
                     </div>
@@ -726,14 +826,13 @@ const SuperAdminUsers = () => {
                       <label className="form-label">Role</label>
                       <select
                         className="form-select"
-                        name="role"
-                        value={editUser.role}
+                        name="role_id"
+                        value={editUser.role_id}
                         onChange={handleEditUserChange}
                       >
-                        <option value="Super Admin">Super Admin</option>
-                        <option value="Warehouse Admin">Warehouse Admin</option>
-                        <option value="Facility Admin">Facility Admin</option>
-                        <option value="Facility User">Facility User</option>
+                        {roles.map((role) => (
+                          <option key={role.id} value={role.id}>{role.name}</option>
+                        ))}
                       </select>
                     </div>
 
@@ -741,12 +840,12 @@ const SuperAdminUsers = () => {
                       <label className="form-label">Facility</label>
                       <select
                         className="form-select"
-                        name="facility"
-                        value={editUser.facility}
+                        name="facility_id"
+                        value={editUser.facility_id}
                         onChange={handleEditUserChange}
                       >
-                        {facilities.map((f, i) => (
-                          <option key={i} value={f}>{f}</option>
+                        {facilities.map((facility) => (
+                          <option key={facility.id} value={facility.id}>{facility.name}</option>
                         ))}
                       </select>
                     </div>
@@ -801,7 +900,7 @@ const SuperAdminUsers = () => {
                     {currentUser.status === 'Active' ? 'Deactivate User?' : 'Activate User?'}
                   </h4>
                   <p className="text-muted">
-                    Are you sure you want to {currentUser.status === 'Active' ? 'deactivate' : 'activate'} <strong>{currentUser.name}</strong>?
+                    Are you sure you want to {currentUser.status === 'Active' ? 'deactivate' : 'activate'} <strong>{currentUser.full_name}</strong>?
                   </p>
                   <p className="text-muted">
                     {currentUser.status === 'Active'
