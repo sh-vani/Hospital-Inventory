@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   FaBell, FaCheck, FaExclamationTriangle, FaInfoCircle, FaSearch, 
   FaFilter, FaEye, FaCalendarAlt, FaMapMarkerAlt, FaClock, 
-  FaCheckCircle, FaTimesCircle, FaClipboardList
+  FaCheckCircle, FaTimesCircle, FaTruck, FaCheckSquare
 } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
@@ -11,54 +11,42 @@ const FacilityUserNotifications = () => {
   const [notifications, setNotifications] = useState([
     { 
       id: 1, 
-      type: 'approval', 
-      title: 'Request Approved', 
-      message: 'Your medical supplies request has been approved', 
+      type: 'stock_delivered', 
+      title: 'Stock Delivered', 
+      message: 'Your requested medical supplies have been delivered', 
       timestamp: '2023-07-15 10:30 AM', 
       read: false,
       details: {
-        requestId: 'REQ-001',
-        approvedBy: 'Dr. Smith',
-        approvedDate: '2023-07-15',
+        deliveryId: 'DEL-001',
+        deliveredBy: 'Warehouse Team',
+        deliveryDate: '2023-07-15',
         items: [
           { name: 'Medical Gloves', quantity: 50, unit: 'boxes' },
           { name: 'Face Masks', quantity: 200, unit: 'pieces' }
         ],
-        pickupInfo: {
-          location: 'Pharmacy - Building B, Ground Floor',
-          date: '2023-07-16',
-          time: '9:00 AM - 5:00 PM'
-        }
+        deliveryLocation: 'Pharmacy - Building B, Ground Floor'
       }
     },
     { 
       id: 2, 
-      type: 'partial_approval', 
-      title: 'Request Partially Approved', 
-      message: 'Your surgical equipment request has been partially approved', 
+      type: 'request_approved', 
+      title: 'Request Approved', 
+      message: 'Your surgical equipment request has been approved', 
       timestamp: '2023-07-14 3:45 PM', 
       read: false,
       details: {
         requestId: 'REQ-002',
         approvedBy: 'Dr. Johnson',
         approvedDate: '2023-07-14',
-        notes: 'Scalpel sets approved. Forceps are out of stock and will be ordered.',
-        approvedItems: [
-          { name: 'Scalpel Set', quantity: 5, unit: 'sets' }
-        ],
-        rejectedItems: [
-          { name: 'Forceps', quantity: 10, unit: 'pieces', reason: 'Out of stock' }
-        ],
-        pickupInfo: {
-          location: 'Central Supply - Building C, Floor 1',
-          date: '2023-07-17',
-          time: '10:00 AM - 4:00 PM'
-        }
+        items: [
+          { name: 'Scalpel Set', quantity: 5, unit: 'sets' },
+          { name: 'Forceps', quantity: 10, unit: 'pieces' }
+        ]
       }
     },
     { 
       id: 3, 
-      type: 'rejection', 
+      type: 'request_rejected', 
       title: 'Request Rejected', 
       message: 'Your pharmaceutical items request has been rejected', 
       timestamp: '2023-07-13 11:20 AM', 
@@ -67,32 +55,30 @@ const FacilityUserNotifications = () => {
         requestId: 'REQ-003',
         rejectedBy: 'Dr. Williams',
         rejectedDate: '2023-07-13',
-        notes: 'Request rejected due to budget constraints. Please resubmit next quarter.',
         items: [
           { name: 'Antibiotics', quantity: 30, unit: 'bottles' },
           { name: 'Painkillers', quantity: 50, unit: 'strips' }
-        ]
+        ],
+        reason: 'Request rejected due to budget constraints. Please resubmit next quarter.'
       }
     },
     { 
       id: 4, 
-      type: 'pickup_info', 
-      title: 'Items Ready for Pickup', 
-      message: 'Your requested items are ready for pickup', 
+      type: 'request_delayed', 
+      title: 'Request Delayed', 
+      message: 'Your PPE equipment request has been delayed', 
       timestamp: '2023-07-12 2:15 PM', 
       read: true,
       details: {
         requestId: 'REQ-004',
+        delayedBy: 'Supply Chain Team',
+        delayedDate: '2023-07-12',
         items: [
-          { name: 'Bandages', quantity: 20, unit: 'rolls' },
-          { name: 'Gauze Pads', quantity: 100, unit: 'pieces' }
+          { name: 'Gowns', quantity: 100, unit: 'pieces' },
+          { name: 'Face Shields', quantity: 50, unit: 'pieces' }
         ],
-        pickupInfo: {
-          location: 'Pharmacy - Building B, Ground Floor',
-          date: '2023-07-13',
-          time: '9:00 AM - 5:00 PM',
-          referenceNumber: 'PU-2023-07-001'
-        }
+        newExpectedDate: '2023-07-25',
+        reason: 'Delay due to supplier shortage. New delivery expected by July 25th.'
       }
     }
   ]);
@@ -101,22 +87,24 @@ const FacilityUserNotifications = () => {
   const [filterType, setFilterType] = useState('all');
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
+  const [showMarkAsReadModal, setShowMarkAsReadModal] = useState(false);
+  const [notificationToMark, setNotificationToMark] = useState(null);
   
   // State for search term
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Helper functions - MOVED HERE BEFORE THEY ARE USED
+  // Helper functions
   // Function to get notification icon
   const getNotificationIcon = (type) => {
     switch(type) {
-      case 'approval':
+      case 'stock_delivered':
+        return <FaTruck className="text-success" />;
+      case 'request_approved':
         return <FaCheckCircle className="text-success" />;
-      case 'partial_approval':
-        return <FaExclamationTriangle className="text-warning" />;
-      case 'rejection':
+      case 'request_rejected':
         return <FaTimesCircle className="text-danger" />;
-      case 'pickup_info':
-        return <FaInfoCircle className="text-info" />;
+      case 'request_delayed':
+        return <FaExclamationTriangle className="text-warning" />;
       default:
         return <FaBell className="text-secondary" />;
     }
@@ -125,14 +113,14 @@ const FacilityUserNotifications = () => {
   // Function to get notification badge class
   const getNotificationBadgeClass = (type) => {
     switch(type) {
-      case 'approval':
+      case 'stock_delivered':
         return 'bg-success';
-      case 'partial_approval':
-        return 'bg-warning text-dark';
-      case 'rejection':
+      case 'request_approved':
+        return 'bg-success';
+      case 'request_rejected':
         return 'bg-danger';
-      case 'pickup_info':
-        return 'bg-info text-dark';
+      case 'request_delayed':
+        return 'bg-warning text-dark';
       default:
         return 'bg-secondary';
     }
@@ -141,14 +129,14 @@ const FacilityUserNotifications = () => {
   // Function to get notification type label
   const getNotificationTypeLabel = (type) => {
     switch(type) {
-      case 'approval':
-        return 'Approved';
-      case 'partial_approval':
-        return 'Partially Approved';
-      case 'rejection':
-        return 'Rejected';
-      case 'pickup_info':
-        return 'Pickup Info';
+      case 'stock_delivered':
+        return 'Stock Delivered';
+      case 'request_approved':
+        return 'Request Approved';
+      case 'request_rejected':
+        return 'Request Rejected';
+      case 'request_delayed':
+        return 'Request Delayed';
       default:
         return 'Notification';
     }
@@ -170,14 +158,23 @@ const FacilityUserNotifications = () => {
   
   // Function to open notification details modal
   const openNotificationDetails = (notification) => {
-    // Mark notification as read
-    const updatedNotifications = notifications.map(n => 
-      n.id === notification.id ? { ...n, read: true } : n
-    );
-    setNotifications(updatedNotifications);
-    
     setSelectedNotification(notification);
     setShowNotificationModal(true);
+  };
+  
+  // Function to open mark as read confirmation modal
+  const openMarkAsReadModal = (notification) => {
+    setNotificationToMark(notification);
+    setShowMarkAsReadModal(true);
+  };
+  
+  // Function to mark notification as read
+  const handleMarkAsRead = () => {
+    const updatedNotifications = notifications.map(n => 
+      n.id === notificationToMark.id ? { ...n, read: true } : n
+    );
+    setNotifications(updatedNotifications);
+    setShowMarkAsReadModal(false);
   };
   
   // Count unread notifications
@@ -229,10 +226,10 @@ const FacilityUserNotifications = () => {
                 onChange={(e) => setFilterType(e.target.value)}
               >
                 <option value="all">All Types</option>
-                <option value="approval">Approvals</option>
-                <option value="partial_approval">Partial Approvals</option>
-                <option value="rejection">Rejections</option>
-                <option value="pickup_info">Pickup Info</option>
+                <option value="stock_delivered">Stock Delivered</option>
+                <option value="request_approved">Request Approved</option>
+                <option value="request_rejected">Request Rejected</option>
+                <option value="request_delayed">Request Delayed</option>
               </select>
             </div>
           </div>
@@ -245,44 +242,69 @@ const FacilityUserNotifications = () => {
               <p className="text-muted">Try adjusting your filter criteria</p>
             </div>
           ) : (
-            <div className="list-group">
-              {filteredNotifications.map(notification => (
-                <div 
-                  key={notification.id} 
-                  className={`list-group-item list-group-item-action ${!notification.read ? 'bg-light' : ''}`}
-                  onClick={() => openNotificationDetails(notification)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="d-flex flex-column flex-md-row w-100 justify-content-between align-items-md-start">
-                    <div className="d-flex align-items-start mb-2 mb-md-0">
-                      <div className="me-3">
-                        {getNotificationIcon(notification.type)}
-                      </div>
-                      <div className="flex-grow-1">
-                        <h6 className="mb-1">
-                          {notification.title}
+            <div className="table-responsive">
+              <table className="table table-hover mb-0">
+                <thead className="table-light">
+                  <tr>
+                    <th>Notification</th>
+                    <th>Type</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredNotifications.map(notification => (
+                    <tr key={notification.id} className={!notification.read ? 'table-light' : ''}>
+                      <td>
+                        <div className="d-flex align-items-start">
+                          <div className="me-3 mt-1">
+                            {getNotificationIcon(notification.type)}
+                          </div>
+                          <div>
+                            <h6 className="mb-1">
+                              {notification.title}
+                              {!notification.read && (
+                                <span className="badge bg-primary ms-2">New</span>
+                              )}
+                            </h6>
+                            <p className="mb-1 text-muted">{notification.message}</p>
+                            <small className="text-muted d-flex align-items-center">
+                              <FaClock className="me-1 flex-shrink-0" />
+                              <span>{notification.timestamp}</span>
+                            </small>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`badge ${getNotificationBadgeClass(notification.type)}`}>
+                          {getNotificationTypeLabel(notification.type)}
+                        </span>
+                      </td>
+                      <td>{notification.timestamp}</td>
+                      <td>
+                        <div className="d-flex gap-2">
+                          <button 
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => openNotificationDetails(notification)}
+                            title="View Detail"
+                          >
+                            <FaEye />
+                          </button>
                           {!notification.read && (
-                            <span className="badge bg-primary ms-2">New</span>
+                            <button 
+                              className="btn btn-sm btn-outline-success"
+                              onClick={() => openMarkAsReadModal(notification)}
+                              title="Mark as Read"
+                            >
+                              <FaCheckSquare />
+                            </button>
                           )}
-                        </h6>
-                        <p className="mb-1 d-none d-md-block">{notification.message}</p>
-                        <small className="text-muted d-flex align-items-center">
-                          <FaClock className="me-1 flex-shrink-0" />
-                          <span>{notification.timestamp}</span>
-                        </small>
-                      </div>
-                    </div>
-                    <div className="d-flex align-items-center">
-                      <span className={`badge ${getNotificationBadgeClass(notification.type)} me-3 flex-shrink-0`}>
-                        {getNotificationTypeLabel(notification.type)}
-                      </span>
-                      <FaEye className="text-muted flex-shrink-0" />
-                    </div>
-                  </div>
-                  {/* Mobile-only message display */}
-                  <p className="mb-0 d-md-none text-muted small mt-2">{notification.message}</p>
-                </div>
-              ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
@@ -317,51 +339,54 @@ const FacilityUserNotifications = () => {
                   
                   <div className="card mb-4">
                     <div className="card-header bg-white">
-                      <h5 className="mb-0">Request Information</h5>
+                      <h5 className="mb-0">Details</h5>
                     </div>
                     <div className="card-body">
                       <div className="row">
                         <div className="col-12 col-md-6">
-                          <p className="mb-2"><strong>Request ID:</strong> {selectedNotification.details.requestId}</p>
-                          {(selectedNotification.type === 'approval' || selectedNotification.type === 'partial_approval') && (
-                            <p className="mb-2"><strong>Approved By:</strong> {selectedNotification.details.approvedBy}</p>
+                          {selectedNotification.type === 'stock_delivered' && (
+                            <>
+                              <p className="mb-2"><strong>Delivery ID:</strong> {selectedNotification.details.deliveryId}</p>
+                              <p className="mb-2"><strong>Delivered By:</strong> {selectedNotification.details.deliveredBy}</p>
+                              <p className="mb-2"><strong>Delivery Date:</strong> {selectedNotification.details.deliveryDate}</p>
+                            </>
                           )}
-                          {selectedNotification.type === 'rejection' && (
-                            <p className="mb-2"><strong>Rejected By:</strong> {selectedNotification.details.rejectedBy}</p>
-                          )}
-                          {(selectedNotification.type === 'approval' || selectedNotification.type === 'partial_approval') && (
-                            <p className="mb-2"><strong>Approved Date:</strong> {selectedNotification.details.approvedDate}</p>
-                          )}
-                          {selectedNotification.type === 'rejection' && (
-                            <p className="mb-2"><strong>Rejected Date:</strong> {selectedNotification.details.rejectedDate}</p>
+                          {(selectedNotification.type === 'request_approved' || selectedNotification.type === 'request_rejected' || selectedNotification.type === 'request_delayed') && (
+                            <>
+                              <p className="mb-2"><strong>Request ID:</strong> {selectedNotification.details.requestId}</p>
+                              {selectedNotification.type === 'request_approved' && (
+                                <>
+                                  <p className="mb-2"><strong>Approved By:</strong> {selectedNotification.details.approvedBy}</p>
+                                  <p className="mb-2"><strong>Approved Date:</strong> {selectedNotification.details.approvedDate}</p>
+                                </>
+                              )}
+                              {selectedNotification.type === 'request_rejected' && (
+                                <>
+                                  <p className="mb-2"><strong>Rejected By:</strong> {selectedNotification.details.rejectedBy}</p>
+                                  <p className="mb-2"><strong>Rejected Date:</strong> {selectedNotification.details.rejectedDate}</p>
+                                </>
+                              )}
+                              {selectedNotification.type === 'request_delayed' && (
+                                <>
+                                  <p className="mb-2"><strong>Delayed By:</strong> {selectedNotification.details.delayedBy}</p>
+                                  <p className="mb-2"><strong>Delayed Date:</strong> {selectedNotification.details.delayedDate}</p>
+                                  <p className="mb-2"><strong>New Expected Date:</strong> {selectedNotification.details.newExpectedDate}</p>
+                                </>
+                              )}
+                            </>
                           )}
                         </div>
                         <div className="col-12 col-md-6">
-                          {selectedNotification.details.pickupInfo && (
-                            <>
-                              <p className="mb-2"><strong>Pickup Location:</strong> {selectedNotification.details.pickupInfo.location}</p>
-                              <p className="mb-2"><strong>Pickup Date:</strong> {selectedNotification.details.pickupInfo.date}</p>
-                              <p className="mb-2"><strong>Pickup Time:</strong> {selectedNotification.details.pickupInfo.time}</p>
-                              {selectedNotification.details.pickupInfo.referenceNumber && (
-                                <p className="mb-2"><strong>Reference Number:</strong> {selectedNotification.details.pickupInfo.referenceNumber}</p>
-                              )}
-                            </>
+                          {selectedNotification.type === 'stock_delivered' && (
+                            <p className="mb-2"><strong>Delivery Location:</strong> {selectedNotification.details.deliveryLocation}</p>
+                          )}
+                          {(selectedNotification.type === 'request_rejected' || selectedNotification.type === 'request_delayed') && (
+                            <p className="mb-2"><strong>Reason:</strong> {selectedNotification.details.reason}</p>
                           )}
                         </div>
                       </div>
                     </div>
                   </div>
-                  
-                  {(selectedNotification.type === 'partial_approval' || selectedNotification.type === 'rejection') && selectedNotification.details.notes && (
-                    <div className="card mb-4">
-                      <div className="card-header bg-white">
-                        <h5 className="mb-0">Notes</h5>
-                      </div>
-                      <div className="card-body">
-                        <p className="mb-0">{selectedNotification.details.notes}</p>
-                      </div>
-                    </div>
-                  )}
                   
                   <div className="card">
                     <div className="card-header bg-white">
@@ -375,40 +400,14 @@ const FacilityUserNotifications = () => {
                               <th>Item Name</th>
                               <th>Quantity</th>
                               <th>Unit</th>
-                              {selectedNotification.type === 'partial_approval' && <th>Status</th>}
-                              {selectedNotification.type === 'partial_approval' && <th>Reason</th>}
                             </tr>
                           </thead>
                           <tbody>
-                            {selectedNotification.details.items && selectedNotification.details.items.map((item, index) => (
+                            {selectedNotification.details.items.map((item, index) => (
                               <tr key={index}>
                                 <td>{item.name}</td>
                                 <td>{item.quantity}</td>
                                 <td>{item.unit}</td>
-                                {selectedNotification.type === 'partial_approval' && (
-                                  <>
-                                    <td><span className="badge bg-success">Approved</span></td>
-                                    <td>-</td>
-                                  </>
-                                )}
-                              </tr>
-                            ))}
-                            {selectedNotification.details.approvedItems && selectedNotification.details.approvedItems.map((item, index) => (
-                              <tr key={`approved-${index}`}>
-                                <td>{item.name}</td>
-                                <td>{item.quantity}</td>
-                                <td>{item.unit}</td>
-                                <td><span className="badge bg-success">Approved</span></td>
-                                <td>-</td>
-                              </tr>
-                            ))}
-                            {selectedNotification.details.rejectedItems && selectedNotification.details.rejectedItems.map((item, index) => (
-                              <tr key={`rejected-${index}`}>
-                                <td>{item.name}</td>
-                                <td>{item.quantity}</td>
-                                <td>{item.unit}</td>
-                                <td><span className="badge bg-danger">Rejected</span></td>
-                                <td>{item.reason}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -421,18 +420,37 @@ const FacilityUserNotifications = () => {
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-secondary w-100 w-md-auto" onClick={() => setShowNotificationModal(false)}>Close</button>
-              {selectedNotification && selectedNotification.details.pickupInfo && (
-                <button type="button" className="btn btn-primary w-100 w-md-auto">
-                  <FaClipboardList className="me-2" /> View Pickup Details
-                </button>
-              )}
             </div>
           </div>
         </div>
       </div>
       
-      {/* Modal Backdrop */}
+      {/* Mark as Read Confirmation Modal */}
+      <div className={`modal fade ${showMarkAsReadModal ? 'show' : ''}`} style={{ display: showMarkAsReadModal ? 'block' : 'none' }} tabIndex="-1">
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">Mark as Read</h5>
+              <button type="button" className="btn-close" onClick={() => setShowMarkAsReadModal(false)}></button>
+            </div>
+            <div className="modal-body">
+              {notificationToMark && (
+                <p>Are you sure you want to mark "<strong>{notificationToMark.title}</strong>" as read?</p>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowMarkAsReadModal(false)}>Cancel</button>
+              <button type="button" className="btn btn-success" onClick={handleMarkAsRead}>
+                <FaCheckSquare className="me-1" /> Mark as Read
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Modal Backdrops */}
       {showNotificationModal && <div className="modal-backdrop fade show"></div>}
+      {showMarkAsReadModal && <div className="modal-backdrop fade show"></div>}
     </div>
   );
 };

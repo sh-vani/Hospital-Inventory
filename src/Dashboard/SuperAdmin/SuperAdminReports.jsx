@@ -1,42 +1,28 @@
 import React, { useState } from 'react';
 import { Bar } from 'react-chartjs-2';
 import { 
-  FaDownload, FaChartLine, FaSearch, FaCalendarAlt, FaBuilding,
-  FaTable, FaFilePdf, FaFileExcel, FaTimes
+  FaDownload, FaChartLine, FaTable, FaSearch, FaBuilding,
+  FaFilePdf, FaFileExcel
 } from 'react-icons/fa';
 
 const SuperAdminReports = () => {
   // State for form inputs
-  const [reportType, setReportType] = useState('Inventory Report');
+  const [reportType, setReportType] = useState('Stock Ledger');
   const [facility, setFacility] = useState('All Facilities');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   
   // State for modals
-  const [showMonthlyModal, setShowMonthlyModal] = useState(false);
-  const [showFacilityModal, setShowFacilityModal] = useState(false);
-  const [showExpiryModal, setShowExpiryModal] = useState(false);
-  const [showCustomModal, setShowCustomModal] = useState(false);
+  const [showStockLedgerModal, setShowStockLedgerModal] = useState(false);
+  const [showRequisitionModal, setShowRequisitionModal] = useState(false);
+  const [showFacilityUsageModal, setShowFacilityUsageModal] = useState(false);
   const [showGeneratedModal, setShowGeneratedModal] = useState(false);
   
   // State for generated report data
   const [generatedReport, setGeneratedReport] = useState(null);
   
-  // Chart data and options
-  const reportChartData = {
-    labels: ['Q1', 'Q2', 'Q3', 'Q4'],
-    datasets: [
-      {
-        label: 'Inventory Value',
-        data: [65, 59, 80, 81],
-        backgroundColor: '#3498db',
-        borderRadius: 8,
-        barThickness: 40
-      }
-    ]
-  };
-  
-  const reportChartOptions = {
+  // Chart options (shared)
+  const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -45,7 +31,6 @@ const SuperAdminReports = () => {
       },
       title: {
         display: true,
-        text: 'Quarterly Inventory Value',
         font: {
           size: 16,
           weight: 'bold'
@@ -72,13 +57,26 @@ const SuperAdminReports = () => {
   };
   
   // Mock data for different report types
-  const monthlyInventoryData = {
+  const stockLedgerData = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
     datasets: [
       {
-        label: 'Inventory Value',
+        label: 'Stock Value',
         data: [120, 150, 180, 90, 160, 200],
         backgroundColor: '#4e73df',
+        borderRadius: 8,
+        barThickness: 30
+      }
+    ]
+  };
+  
+  const requisitionData = {
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    datasets: [
+      {
+        label: 'Requisition Count',
+        data: [42, 38, 55, 32, 48, 60],
+        backgroundColor: '#e74a3b',
         borderRadius: 8,
         barThickness: 30
       }
@@ -98,55 +96,80 @@ const SuperAdminReports = () => {
     ]
   };
   
-  const expiryData = {
-    labels: ['Jan 2024', 'Feb 2024', 'Mar 2024', 'Apr 2024', 'May 2024'],
-    datasets: [
-      {
-        label: 'Items Expiring',
-        data: [12, 19, 8, 15, 10],
-        backgroundColor: '#f6c23e',
-        borderRadius: 8,
-        barThickness: 30
-      }
-    ]
-  };
-  
-  // Mock report data for table view
-  const reportTableData = [
-    { id: 'DRG-001', name: 'Paracetamol 500mg', category: 'Pharmaceutical', stock: 150, value: 7500 },
-    { id: 'DRG-002', name: 'Amoxicillin 250mg', category: 'Pharmaceutical', stock: 80, value: 4000 },
-    { id: 'SUP-001', name: 'Surgical Gloves', category: 'Medical Supply', stock: 200, value: 6000 },
-    { id: 'CON-001', name: 'Syringe 5ml', category: 'Consumable', stock: 500, value: 2500 }
+  // Mock report data for table views
+  const stockLedgerTableData = [
+    { id: 'DRG-001', name: 'Paracetamol 500mg', category: 'Pharmaceutical', opening: 100, received: 50, issued: 30, closing: 120, value: 7500 },
+    { id: 'DRG-002', name: 'Amoxicillin 250mg', category: 'Pharmaceutical', opening: 80, received: 20, issued: 15, closing: 85, value: 4000 },
+    { id: 'SUP-001', name: 'Surgical Gloves', category: 'Medical Supply', opening: 150, received: 100, issued: 50, closing: 200, value: 6000 },
+    { id: 'CON-001', name: 'Syringe 5ml', category: 'Consumable', opening: 400, received: 200, issued: 100, closing: 500, value: 2500 }
+  ];
+
+  const requisitionTableData = [
+    { id: 'REQ-101', facility: 'Kumasi Hospital', items: 12, status: 'Approved', date: '2023-06-15', value: 3200 },
+    { id: 'REQ-102', facility: 'Accra Hospital', items: 8, status: 'Pending', date: '2023-06-18', value: 1800 },
+    { id: 'REQ-103', facility: 'Takoradi Clinic', items: 15, status: 'Approved', date: '2023-06-20', value: 4500 },
+    { id: 'REQ-104', facility: 'Cape Coast Hospital', items: 10, status: 'Rejected', date: '2023-06-22', value: 2200 }
+  ];
+
+  const facilityUsageTableData = [
+    { facility: 'Main Warehouse', usage: '85%', items: 1250, value: 12500 },
+    { facility: 'Kumasi Hospital', usage: '65%', items: 850, value: 8500 },
+    { facility: 'Accra Hospital', usage: '75%', items: 950, value: 9500 },
+    { facility: 'Takoradi Clinic', usage: '45%', items: 420, value: 4200 },
+    { facility: 'Cape Coast Hospital', usage: '60%', items: 680, value: 6800 }
   ];
   
   // Modal handlers
-  const openMonthlyModal = () => {
-    setShowMonthlyModal(true);
-  };
-  
-  const openFacilityModal = () => {
-    setShowFacilityModal(true);
-  };
-  
-  const openExpiryModal = () => {
-    setShowExpiryModal(true);
-  };
-  
-  const openCustomModal = () => {
-    setShowCustomModal(true);
-  };
+  const openStockLedgerModal = () => setShowStockLedgerModal(true);
+  const openRequisitionModal = () => setShowRequisitionModal(true);
+  const openFacilityUsageModal = () => setShowFacilityUsageModal(true);
   
   const handleGenerateReport = (e) => {
     e.preventDefault();
-    // In a real app, this would generate the report based on form inputs
+    let reportData;
+    
+    switch(reportType) {
+      case 'Stock Ledger':
+        reportData = stockLedgerTableData;
+        break;
+      case 'Requisition Summary':
+        reportData = requisitionTableData;
+        break;
+      case 'Facility-wise Usage':
+        reportData = facilityUsageTableData;
+        break;
+      default:
+        reportData = stockLedgerTableData;
+    }
+    
     setGeneratedReport({
       type: reportType,
       facility: facility,
       dateFrom: dateFrom,
       dateTo: dateTo,
-      data: reportTableData
+      data: reportData
     });
     setShowGeneratedModal(true);
+  };
+  
+  // Get chart data based on report type
+  const getChartData = (type) => {
+    switch(type) {
+      case 'Stock Ledger': return stockLedgerData;
+      case 'Requisition Summary': return requisitionData;
+      case 'Facility-wise Usage': return facilityUsageData;
+      default: return stockLedgerData;
+    }
+  };
+
+  // Get chart title based on report type
+  const getChartTitle = (type) => {
+    switch(type) {
+      case 'Stock Ledger': return 'Monthly Stock Value';
+      case 'Requisition Summary': return 'Monthly Requisition Count';
+      case 'Facility-wise Usage': return 'Facility Usage Percentage';
+      default: return 'Report Data';
+    }
   };
   
   return (
@@ -173,11 +196,9 @@ const SuperAdminReports = () => {
                     value={reportType}
                     onChange={(e) => setReportType(e.target.value)}
                   >
-                    <option>Inventory Report</option>
-                    <option>Consumption Report</option>
-                    <option>Requisition Report</option>
-                    <option>Dispatch Report</option>
-                    <option>Expiry Report</option>
+                    <option>Stock Ledger</option>
+                    <option>Requisition Summary</option>
+                    <option>Facility-wise Usage</option>
                   </select>
                 </div>
                 <div className="mb-3">
@@ -226,7 +247,19 @@ const SuperAdminReports = () => {
               <h5 className="mb-0 fw-bold">Report Preview</h5>
             </div>
             <div className="card-body" style={{ height: '300px' }}>
-              <Bar data={reportChartData} options={reportChartOptions} />
+              <Bar 
+                data={getChartData(reportType)} 
+                options={{
+                  ...chartOptions,
+                  plugins: {
+                    ...chartOptions.plugins,
+                    title: {
+                      ...chartOptions.plugins.title,
+                      text: getChartTitle(reportType)
+                    }
+                  }
+                }} 
+              />
             </div>
           </div>
         </div>
@@ -239,47 +272,36 @@ const SuperAdminReports = () => {
         </div>
         <div className="card-body">
           <div className="row">
-            <div className="col-md-3 col-sm-6 mb-3">
+            <div className="col-md-4 col-sm-6 mb-3">
               <div className="card border-0 shadow-sm h-100">
                 <div className="card-body text-center p-3">
                   <div className="bg-primary bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
-                    <FaCalendarAlt className="text-primary fa-2x" />
+                    <FaTable className="text-primary fa-2x" />
                   </div>
-                  <h6 className="fw-bold">Monthly Inventory</h6>
-                  <button className="btn btn-sm btn-outline-primary mt-2" onClick={openMonthlyModal}>Generate</button>
+                  <h6 className="fw-bold">Stock Ledger</h6>
+                  <button className="btn btn-sm btn-outline-primary mt-2" onClick={openStockLedgerModal}>Generate</button>
                 </div>
               </div>
             </div>
-            <div className="col-md-3 col-sm-6 mb-3">
+            <div className="col-md-4 col-sm-6 mb-3">
+              <div className="card border-0 shadow-sm h-100">
+                <div className="card-body text-center p-3">
+                  <div className="bg-danger bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
+                    <FaSearch className="text-danger fa-2x" />
+                  </div>
+                  <h6 className="fw-bold">Requisition Summary</h6>
+                  <button className="btn btn-sm btn-outline-primary mt-2" onClick={openRequisitionModal}>Generate</button>
+                </div>
+              </div>
+            </div>
+            <div className="col-md-4 col-sm-6 mb-3">
               <div className="card border-0 shadow-sm h-100">
                 <div className="card-body text-center p-3">
                   <div className="bg-success bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                     <FaBuilding className="text-success fa-2x" />
                   </div>
-                  <h6 className="fw-bold">Facility Usage</h6>
-                  <button className="btn btn-sm btn-outline-primary mt-2" onClick={openFacilityModal}>Generate</button>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-3 col-sm-6 mb-3">
-              <div className="card border-0 shadow-sm h-100">
-                <div className="card-body text-center p-3">
-                  <div className="bg-warning bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
-                    <FaDownload className="text-warning fa-2x" />
-                  </div>
-                  <h6 className="fw-bold">Expiry Report</h6>
-                  <button className="btn btn-sm btn-outline-primary mt-2" onClick={openExpiryModal}>Generate</button>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-3 col-sm-6 mb-3">
-              <div className="card border-0 shadow-sm h-100">
-                <div className="card-body text-center p-3">
-                  <div className="bg-info bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
-                    <FaSearch className="text-info fa-2x" />
-                  </div>
-                  <h6 className="fw-bold">Custom Report</h6>
-                  <button className="btn btn-sm btn-outline-primary mt-2" onClick={openCustomModal}>Generate</button>
+                  <h6 className="fw-bold">Facility-wise Usage</h6>
+                  <button className="btn btn-sm btn-outline-primary mt-2" onClick={openFacilityUsageModal}>Generate</button>
                 </div>
               </div>
             </div>
@@ -287,33 +309,66 @@ const SuperAdminReports = () => {
         </div>
       </div>
 
-      {/* Monthly Inventory Modal */}
-      {showMonthlyModal && (
+      {/* Stock Ledger Modal */}
+      {showStockLedgerModal && (
         <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-lg">
+          <div className="modal-dialog modal-xl">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Monthly Inventory Report</h5>
-                <button type="button" className="btn-close" onClick={() => setShowMonthlyModal(false)}></button>
+                <h5 className="modal-title">Stock Ledger Report</h5>
+                <button type="button" className="btn-close" onClick={() => setShowStockLedgerModal(false)}></button>
               </div>
               <div className="modal-body">
                 <div className="mb-4">
-                  <Bar data={monthlyInventoryData} options={{
-                    ...reportChartOptions,
-                    plugins: {
-                      ...reportChartOptions.plugins,
-                      title: {
-                        ...reportChartOptions.plugins.title,
-                        text: 'Monthly Inventory Value'
+                  <Bar 
+                    data={stockLedgerData} 
+                    options={{
+                      ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        title: {
+                          ...chartOptions.plugins.title,
+                          text: 'Monthly Stock Value'
+                        }
                       }
-                    }
-                  }} />
+                    }} 
+                  />
                 </div>
-                <div className="d-flex justify-content-between">
+                <div className="table-responsive">
+                  <table className="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>Item ID</th>
+                        <th>Item Name</th>
+                        <th>Category</th>
+                        <th>Opening Stock</th>
+                        <th>Received</th>
+                        <th>Issued</th>
+                        <th>Closing Stock</th>
+                        <th>Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stockLedgerTableData.map((item, index) => (
+                        <tr key={index}>
+                          <td>{item.id}</td>
+                          <td>{item.name}</td>
+                          <td>{item.category}</td>
+                          <td>{item.opening}</td>
+                          <td>{item.received}</td>
+                          <td>{item.issued}</td>
+                          <td>{item.closing}</td>
+                          <td>${item.value}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="d-flex justify-content-between mt-4">
                   <div>
                     <h6>Summary</h6>
-                    <p>Total Inventory Value: <span className="fw-bold">$48,500</span></p>
-                    <p>Average Monthly Value: <span className="fw-bold">$8,083</span></p>
+                    <p>Total Items: <span className="fw-bold">{stockLedgerTableData.length}</span></p>
+                    <p>Total Stock Value: <span className="fw-bold">${stockLedgerTableData.reduce((sum, item) => sum + item.value, 0)}</span></p>
                   </div>
                   <div className="d-flex align-items-end">
                     <button className="btn btn-primary me-2">
@@ -330,27 +385,110 @@ const SuperAdminReports = () => {
         </div>
       )}
 
-      {/* Facility Usage Modal */}
-      {showFacilityModal && (
+      {/* Requisition Summary Modal */}
+      {showRequisitionModal && (
         <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-lg">
+          <div className="modal-dialog modal-xl">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Facility Usage Report</h5>
-                <button type="button" className="btn-close" onClick={() => setShowFacilityModal(false)}></button>
+                <h5 className="modal-title">Requisition Summary Report</h5>
+                <button type="button" className="btn-close" onClick={() => setShowRequisitionModal(false)}></button>
               </div>
               <div className="modal-body">
                 <div className="mb-4">
-                  <Bar data={facilityUsageData} options={{
-                    ...reportChartOptions,
-                    plugins: {
-                      ...reportChartOptions.plugins,
-                      title: {
-                        ...reportChartOptions.plugins.title,
-                        text: 'Facility Usage Percentage'
+                  <Bar 
+                    data={requisitionData} 
+                    options={{
+                      ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        title: {
+                          ...chartOptions.plugins.title,
+                          text: 'Monthly Requisition Count'
+                        }
                       }
-                    }
-                  }} />
+                    }} 
+                  />
+                </div>
+                <div className="table-responsive">
+                  <table className="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>Req ID</th>
+                        <th>Facility</th>
+                        <th>Items</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {requisitionTableData.map((item, index) => (
+                        <tr key={index}>
+                          <td>{item.id}</td>
+                          <td>{item.facility}</td>
+                          <td>{item.items}</td>
+                          <td>
+                            <span className={`badge ${
+                              item.status === 'Approved' ? 'bg-success' : 
+                              item.status === 'Pending' ? 'bg-warning' : 'bg-danger'
+                            }`}>
+                              {item.status}
+                            </span>
+                          </td>
+                          <td>{item.date}</td>
+                          <td>${item.value}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="d-flex justify-content-between mt-4">
+                  <div>
+                    <h6>Summary</h6>
+                    <p>Total Requisitions: <span className="fw-bold">{requisitionTableData.length}</span></p>
+                    <p>Total Value: <span className="fw-bold">${requisitionTableData.reduce((sum, item) => sum + item.value, 0)}</span></p>
+                    <p>Approved: <span className="fw-bold">2</span>, Pending: <span className="fw-bold">1</span>, Rejected: <span className="fw-bold">1</span></p>
+                  </div>
+                  <div className="d-flex align-items-end">
+                    <button className="btn btn-primary me-2">
+                      <FaFilePdf className="me-2" /> Export PDF
+                    </button>
+                    <button className="btn btn-success">
+                      <FaFileExcel className="me-2" /> Export Excel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Facility-wise Usage Modal */}
+      {showFacilityUsageModal && (
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog modal-xl">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Facility-wise Usage Report</h5>
+                <button type="button" className="btn-close" onClick={() => setShowFacilityUsageModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <div className="mb-4">
+                  <Bar 
+                    data={facilityUsageData} 
+                    options={{
+                      ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        title: {
+                          ...chartOptions.plugins.title,
+                          text: 'Facility Usage Percentage'
+                        }
+                      }
+                    }} 
+                  />
                 </div>
                 <div className="table-responsive">
                   <table className="table table-sm">
@@ -363,227 +501,33 @@ const SuperAdminReports = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr>
-                        <td>Main Warehouse</td>
-                        <td>85%</td>
-                        <td>1,250</td>
-                        <td>$12,500</td>
-                      </tr>
-                      <tr>
-                        <td>Kumasi Hospital</td>
-                        <td>65%</td>
-                        <td>850</td>
-                        <td>$8,500</td>
-                      </tr>
-                      <tr>
-                        <td>Accra Hospital</td>
-                        <td>75%</td>
-                        <td>950</td>
-                        <td>$9,500</td>
-                      </tr>
-                      <tr>
-                        <td>Takoradi Clinic</td>
-                        <td>45%</td>
-                        <td>420</td>
-                        <td>$4,200</td>
-                      </tr>
-                      <tr>
-                        <td>Cape Coast Hospital</td>
-                        <td>60%</td>
-                        <td>680</td>
-                        <td>$6,800</td>
-                      </tr>
+                      {facilityUsageTableData.map((item, index) => (
+                        <tr key={index}>
+                          <td>{item.facility}</td>
+                          <td>{item.usage}</td>
+                          <td>{item.items}</td>
+                          <td>${item.value}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
-                <div className="d-flex justify-content-end mt-3">
-                  <button className="btn btn-primary me-2">
-                    <FaFilePdf className="me-2" /> Export PDF
-                  </button>
-                  <button className="btn btn-success">
-                    <FaFileExcel className="me-2" /> Export Excel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Expiry Report Modal */}
-      {showExpiryModal && (
-        <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Expiry Report</h5>
-                <button type="button" className="btn-close" onClick={() => setShowExpiryModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <div className="mb-4">
-                  <Bar data={expiryData} options={{
-                    ...reportChartOptions,
-                    plugins: {
-                      ...reportChartOptions.plugins,
-                      title: {
-                        ...reportChartOptions.plugins.title,
-                        text: 'Items Expiring by Month'
-                      }
-                    }
-                  }} />
-                </div>
-                <div className="alert alert-warning">
-                  <strong>Attention:</strong> 64 items are expiring within the next 3 months. Please take necessary action.
-                </div>
-                <div className="table-responsive">
-                  <table className="table table-sm">
-                    <thead>
-                      <tr>
-                        <th>Item ID</th>
-                        <th>Item Name</th>
-                        <th>Category</th>
-                        <th>Expiry Date</th>
-                        <th>Quantity</th>
-                        <th>Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>DRG-0421</td>
-                        <td>Paracetamol 500mg</td>
-                        <td>Pharmaceutical</td>
-                        <td>15 Jan 2024</td>
-                        <td>120</td>
-                        <td>$600</td>
-                      </tr>
-                      <tr>
-                        <td>DRG-2087</td>
-                        <td>Amoxicillin 250mg</td>
-                        <td>Pharmaceutical</td>
-                        <td>28 Feb 2024</td>
-                        <td>80</td>
-                        <td>$400</td>
-                      </tr>
-                      <tr>
-                        <td>CON-1543</td>
-                        <td>Syringe 5ml</td>
-                        <td>Consumable</td>
-                        <td>10 Mar 2024</td>
-                        <td>200</td>
-                        <td>$1,000</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div className="d-flex justify-content-end mt-3">
-                  <button className="btn btn-primary me-2">
-                    <FaFilePdf className="me-2" /> Export PDF
-                  </button>
-                  <button className="btn btn-success">
-                    <FaFileExcel className="me-2" /> Export Excel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Custom Report Modal */}
-      {showCustomModal && (
-        <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Custom Report Builder</h5>
-                <button type="button" className="btn-close" onClick={() => setShowCustomModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <form>
-                  <div className="row mb-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Report Type</label>
-                      <select className="form-select">
-                        <option>Inventory Report</option>
-                        <option>Consumption Report</option>
-                        <option>Requisition Report</option>
-                        <option>Dispatch Report</option>
-                        <option>Expiry Report</option>
-                      </select>
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Facility</label>
-                      <select className="form-select">
-                        <option>All Facilities</option>
-                        <option>Main Warehouse</option>
-                        <option>Kumasi Branch Hospital</option>
-                        <option>Accra Central Hospital</option>
-                        <option>Takoradi Clinic</option>
-                        <option>Cape Coast Hospital</option>
-                      </select>
-                    </div>
+                <div className="d-flex justify-content-between mt-4">
+                  <div>
+                    <h6>Summary</h6>
+                    <p>Average Usage: <span className="fw-bold">66%</span></p>
+                    <p>Total Items Consumed: <span className="fw-bold">{facilityUsageTableData.reduce((sum, item) => sum + item.items, 0)}</span></p>
+                    <p>Total Value: <span className="fw-bold">${facilityUsageTableData.reduce((sum, item) => sum + item.value, 0)}</span></p>
                   </div>
-                  <div className="row mb-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Date From</label>
-                      <input type="date" className="form-control" />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Date To</label>
-                      <input type="date" className="form-control" />
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Report Columns</label>
-                    <div className="form-check">
-                      <input className="form-check-input" type="checkbox" id="col1" defaultChecked />
-                      <label className="form-check-label" htmlFor="col1">
-                        Item ID
-                      </label>
-                    </div>
-                    <div className="form-check">
-                      <input className="form-check-input" type="checkbox" id="col2" defaultChecked />
-                      <label className="form-check-label" htmlFor="col2">
-                        Item Name
-                      </label>
-                    </div>
-                    <div className="form-check">
-                      <input className="form-check-input" type="checkbox" id="col3" defaultChecked />
-                      <label className="form-check-label" htmlFor="col3">
-                        Category
-                      </label>
-                    </div>
-                    <div className="form-check">
-                      <input className="form-check-input" type="checkbox" id="col4" />
-                      <label className="form-check-label" htmlFor="col4">
-                        Stock Quantity
-                      </label>
-                    </div>
-                    <div className="form-check">
-                      <input className="form-check-input" type="checkbox" id="col5" />
-                      <label className="form-check-label" htmlFor="col5">
-                        Value
-                      </label>
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Chart Type</label>
-                    <select className="form-select">
-                      <option>Bar Chart</option>
-                      <option>Line Chart</option>
-                      <option>Pie Chart</option>
-                      <option>No Chart</option>
-                    </select>
-                  </div>
-                  <div className="d-flex justify-content-end">
-                    <button type="button" className="btn btn-secondary me-2" onClick={() => setShowCustomModal(false)}>
-                      Cancel
+                  <div className="d-flex align-items-end">
+                    <button className="btn btn-primary me-2">
+                      <FaFilePdf className="me-2" /> Export PDF
                     </button>
-                    <button type="button" className="btn btn-primary">
-                      Generate Report
+                    <button className="btn btn-success">
+                      <FaFileExcel className="me-2" /> Export Excel
                     </button>
                   </div>
-                </form>
+                </div>
               </div>
             </div>
           </div>
@@ -602,7 +546,7 @@ const SuperAdminReports = () => {
               <div className="modal-body">
                 <div className="d-flex justify-content-between mb-4">
                   <div>
-                    <p><strong>Date Range:</strong> {generatedReport.dateFrom} to {generatedReport.dateTo}</p>
+                    <p><strong>Date Range:</strong> {generatedReport.dateFrom || 'N/A'} to {generatedReport.dateTo || 'N/A'}</p>
                     <p><strong>Generated On:</strong> {new Date().toLocaleDateString()}</p>
                   </div>
                   <div>
@@ -616,47 +560,132 @@ const SuperAdminReports = () => {
                 </div>
                 
                 <div className="mb-4">
-                  <Bar data={reportChartData} options={{
-                    ...reportChartOptions,
-                    plugins: {
-                      ...reportChartOptions.plugins,
-                      title: {
-                        ...reportChartOptions.plugins.title,
-                        text: generatedReport.type
+                  <Bar 
+                    data={getChartData(generatedReport.type)} 
+                    options={{
+                      ...chartOptions,
+                      plugins: {
+                        ...chartOptions.plugins,
+                        title: {
+                          ...chartOptions.plugins.title,
+                          text: getChartTitle(generatedReport.type)
+                        }
                       }
-                    }
-                  }} />
+                    }} 
+                  />
                 </div>
                 
                 <div className="table-responsive">
-                  <table className="table table-sm">
-                    <thead>
-                      <tr>
-                        <th>Item ID</th>
-                        <th>Item Name</th>
-                        <th>Category</th>
-                        <th>Stock</th>
-                        <th>Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {generatedReport.data.map((item, index) => (
-                        <tr key={index}>
-                          <td>{item.id}</td>
-                          <td>{item.name}</td>
-                          <td>{item.category}</td>
-                          <td>{item.stock}</td>
-                          <td>${item.value}</td>
+                  {generatedReport.type === 'Stock Ledger' && (
+                    <table className="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>Item ID</th>
+                          <th>Item Name</th>
+                          <th>Category</th>
+                          <th>Opening Stock</th>
+                          <th>Received</th>
+                          <th>Issued</th>
+                          <th>Closing Stock</th>
+                          <th>Value</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {generatedReport.data.map((item, index) => (
+                          <tr key={index}>
+                            <td>{item.id}</td>
+                            <td>{item.name}</td>
+                            <td>{item.category}</td>
+                            <td>{item.opening}</td>
+                            <td>{item.received}</td>
+                            <td>{item.issued}</td>
+                            <td>{item.closing}</td>
+                            <td>${item.value}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                  
+                  {generatedReport.type === 'Requisition Summary' && (
+                    <table className="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>Req ID</th>
+                          <th>Facility</th>
+                          <th>Items</th>
+                          <th>Status</th>
+                          <th>Date</th>
+                          <th>Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {generatedReport.data.map((item, index) => (
+                          <tr key={index}>
+                            <td>{item.id}</td>
+                            <td>{item.facility}</td>
+                            <td>{item.items}</td>
+                            <td>
+                              <span className={`badge ${
+                                item.status === 'Approved' ? 'bg-success' : 
+                                item.status === 'Pending' ? 'bg-warning' : 'bg-danger'
+                              }`}>
+                                {item.status}
+                              </span>
+                            </td>
+                            <td>{item.date}</td>
+                            <td>${item.value}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                  
+                  {generatedReport.type === 'Facility-wise Usage' && (
+                    <table className="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>Facility</th>
+                          <th>Usage %</th>
+                          <th>Items Consumed</th>
+                          <th>Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {generatedReport.data.map((item, index) => (
+                          <tr key={index}>
+                            <td>{item.facility}</td>
+                            <td>{item.usage}</td>
+                            <td>{item.items}</td>
+                            <td>${item.value}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
                 
                 <div className="mt-4 p-3 bg-light rounded">
                   <h6>Report Summary</h6>
-                  <p>Total Items: <span className="fw-bold">{generatedReport.data.length}</span></p>
-                  <p>Total Stock Value: <span className="fw-bold">${generatedReport.data.reduce((sum, item) => sum + item.value, 0)}</span></p>
+                  {generatedReport.type === 'Stock Ledger' && (
+                    <>
+                      <p>Total Items: <span className="fw-bold">{generatedReport.data.length}</span></p>
+                      <p>Total Stock Value: <span className="fw-bold">${generatedReport.data.reduce((sum, item) => sum + item.value, 0)}</span></p>
+                    </>
+                  )}
+                  {generatedReport.type === 'Requisition Summary' && (
+                    <>
+                      <p>Total Requisitions: <span className="fw-bold">{generatedReport.data.length}</span></p>
+                      <p>Total Value: <span className="fw-bold">${generatedReport.data.reduce((sum, item) => sum + item.value, 0)}</span></p>
+                    </>
+                  )}
+                  {generatedReport.type === 'Facility-wise Usage' && (
+                    <>
+                      <p>Total Facilities: <span className="fw-bold">{generatedReport.data.length}</span></p>
+                      <p>Total Items Consumed: <span className="fw-bold">{generatedReport.data.reduce((sum, item) => sum + item.items, 0)}</span></p>
+                      <p>Total Value: <span className="fw-bold">${generatedReport.data.reduce((sum, item) => sum + item.value, 0)}</span></p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -665,7 +694,7 @@ const SuperAdminReports = () => {
       )}
 
       {/* Modal Backdrop */}
-      {(showMonthlyModal || showFacilityModal || showExpiryModal || showCustomModal || showGeneratedModal) && (
+      {(showStockLedgerModal || showRequisitionModal || showFacilityUsageModal || showGeneratedModal) && (
         <div className="modal-backdrop show"></div>
       )}
     </div>
