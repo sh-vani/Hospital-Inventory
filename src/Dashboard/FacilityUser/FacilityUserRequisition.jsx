@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTrash, FaExclamationTriangle, FaBoxOpen, FaClock, FaEdit } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -196,8 +197,13 @@ const FacilityUserRequisition = () => {
         return null;
     }
   };
+=======
+import React from 'react'
+>>>>>>> 5c4fb0c3bf28ad42f8458398e2e2458036e9aa1f
 
+function FacilityUserRequisition() {
   return (
+<<<<<<< HEAD
     <div className="container py-4">
       <div className="card shadow">
         <div className="card-header text-black">
@@ -540,3 +546,10 @@ const FacilityUserRequisition = () => {
 };
 
 export default FacilityUserRequisition;
+=======
+    <div>FacilityUserRequisition</div>
+  )
+}
+
+export default FacilityUserRequisition
+>>>>>>> 5c4fb0c3bf28ad42f8458398e2e2458036e9aa1f
