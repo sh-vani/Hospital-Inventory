@@ -1,70 +1,90 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import BaseUrl from "../Api/BaseUrl";
 
 const Login = () => {
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState("Warehouse Admin");
-  const [isLoading, setIsLoading] = useState(false); // Optional: for future loading state
+  const [selectedRole, setSelectedRole] = useState("Super Admin");
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Define default credentials for each role
+  // All roles + credentials for dropdown
   const roleCredentials = {
     "Super Admin": {
-      username: "superadmin",
-      password: "super123",
-      redirect: "/superadmin/dashboard",
+      email: "superadmin@hospital.com",
+      password: "123",
     },
     "Warehouse Admin": {
-      username: "warehouse",
-      password: "warehouse123",
-      redirect: "/warehouse/dashboard",
+      email: "warehouse@hospital.com",
+      password: "123",
     },
     "Facility Admin": {
-      username: "facility",
-      password: "facility123",
-      redirect: "/facility/dashboard",
+      email: "hospital.admin@hospital.com",
+      password: "123",
     },
     "Facility User": {
-      username: "user",
-      password: "user123",
-      redirect: "/user/dashboard",
+      email: "alice.brown@hospital.com",
+      password: "123",
     },
+  };
+
+  // Role-wise redirects
+  const roleRedirects = {
+    super_admin: "/superadmin/dashboard",
+    warehouse_admin: "/warehouse/dashboard",
+    facility_admin: "/facility/dashboard",
+    facility_user: "/user/dashboard",
   };
 
   const handleRoleChange = (e) => {
     const role = e.target.value;
     setSelectedRole(role);
-    setUsername(roleCredentials[role].username);
+    setEmail(roleCredentials[role].email);
     setPassword(roleCredentials[role].password);
-    setShowPassword(true); // ✅ autofill hone ke baad password visible ho jaye
+    setShowPassword(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate small delay for UX
-    setTimeout(() => {
-      const matchedRole = Object.values(roleCredentials).find(
-        (role) => role.username === username && role.password === password
-      );
+    try {
+      // ✅ API call
+      const response = await fetch(`${BaseUrl}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-      if (matchedRole) {
-        localStorage.setItem(
-          "userRole",
-          Object.keys(roleCredentials).find(
-            (key) => roleCredentials[key].username === username
-          )
-        );
-        localStorage.setItem("username", username);
-        navigate(matchedRole.redirect);
+      const data = await response.json();
+
+      if (data.success) {
+        const role = data.data?.user?.role;
+
+        // Save token & user info
+        localStorage.setItem("token", data.data?.token);
+        localStorage.setItem("role", role);
+        localStorage.setItem("user", JSON.stringify(data.data?.user));
+
+        // ✅ Redirect based on role
+        if (role && roleRedirects[role]) {
+          navigate(roleRedirects[role]);
+        } else {
+          alert("Unknown role received from server.");
+        }
       } else {
-        alert("Invalid username or password. Please try again.");
+        alert("Invalid email or password. Please try again.");
       }
+    } catch (error) {
+      console.error("Login Error:", error);
+      alert("Something went wrong. Please try again later.");
+    } finally {
       setIsLoading(false);
-    }, 600);
+    }
   };
 
   return (
@@ -80,7 +100,6 @@ const Login = () => {
         }}
       >
         <div className="row g-0">
-          {/* Image Column - Hidden on Mobile */}
           <div className="col-md-6 d-none d-md-block">
             <img
               src="https://www.shutterstock.com/image-illustration/online-consultation-doctor-on-smartphone-600nw-2150820867.jpg"
@@ -94,17 +113,14 @@ const Login = () => {
             />
           </div>
 
-          {/* Form Column */}
           <div className="col-md-6 d-flex flex-column p-5 bg-white">
             <div className="text-center mb-5">
-              <div className="d-flex align-items-center justify-content-center mb-3">
-                <h2
-                  className="fw-bold ms-3 mb-0"
-                  style={{ color: "#0056b3", fontSize: "1.8rem" }}
-                >
-                  FRANCIS FOSU GROUP
-                </h2>
-              </div>
+              <h2
+                className="fw-bold ms-3 mb-0"
+                style={{ color: "#0056b3", fontSize: "1.8rem" }}
+              >
+                FRANCIS FOSU GROUP
+              </h2>
               <h3
                 className="fw-bold mb-2"
                 style={{ color: "#0056b3", fontSize: "1.4rem" }}
@@ -133,12 +149,6 @@ const Login = () => {
                     borderRadius: "0",
                     transition: "background-color 0.3s ease",
                   }}
-                  onFocus={(e) =>
-                    (e.target.style.backgroundColor = "#eef5ff")
-                  }
-                  onBlur={(e) =>
-                    (e.target.style.backgroundColor = "#f8fbff")
-                  }
                 >
                   {Object.keys(roleCredentials).map((role) => (
                     <option key={role} value={role}>
@@ -148,42 +158,27 @@ const Login = () => {
                 </select>
               </div>
 
-              {/* Username Field */}
+              {/* Email Field */}
               <div className="mb-4">
                 <label
                   className="form-label fw-semibold"
                   style={{ color: "#0056b3", fontSize: "1.05rem" }}
                 >
-                  Username
+                  Email
                 </label>
-                <div className="input-group">
-                  <span
-                    className="input-group-text bg-light border-0 border-bottom"
-                    style={{
-                      borderBottom: "2px solid #0056b3",
-                      backgroundColor: "#f8fbff",
-                    }}
-                  >
-                    <i
-                      className="bi bi-person-fill"
-                      style={{ color: "#0056b3", fontSize: "1.2rem" }}
-                    ></i>
-                  </span>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg py-3 border-0 border-bottom"
-                    placeholder="Enter your username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    required
-                    style={{
-                      borderBottom: "2px solid #0056b3",
-                      backgroundColor: "#f8fbff",
-                      fontSize: "1rem",
-                      paddingLeft: "12px",
-                    }}
-                  />
-                </div>
+                <input
+                  type="email"
+                  className="form-control form-control-lg py-3 border-0 border-bottom"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  style={{
+                    borderBottom: "2px solid #0056b3",
+                    backgroundColor: "#f8fbff",
+                    fontSize: "1rem",
+                  }}
+                />
               </div>
 
               {/* Password Field */}
@@ -195,18 +190,6 @@ const Login = () => {
                   Password
                 </label>
                 <div className="input-group">
-                  <span
-                    className="input-group-text bg-light border-0 border-bottom"
-                    style={{
-                      borderBottom: "2px solid #0056b3",
-                      backgroundColor: "#f8fbff",
-                    }}
-                  >
-                    <i
-                      className="bi bi-lock-fill"
-                      style={{ color: "#0056b3", fontSize: "1.2rem" }}
-                    ></i>
-                  </span>
                   <input
                     type={showPassword ? "text" : "password"}
                     className="form-control form-control-lg py-3 border-0 border-bottom"
@@ -218,104 +201,33 @@ const Login = () => {
                       borderBottom: "2px solid #0056b3",
                       backgroundColor: "#f8fbff",
                       fontSize: "1rem",
-                      paddingLeft: "12px",
                     }}
                   />
                   <button
-                    className="btn btn-light border-0 border-bottom d-flex align-items-center"
+                    className="btn btn-light border-0 border-bottom"
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    style={{
-                      borderBottom: "2px solid #0056b3",
-                      backgroundColor: "#f8fbff",
-                      width: "50px",
-                    }}
                   >
                     {showPassword ? (
-                      <i
-                        className="bi bi-eye-slash"
-                        style={{ color: "#0056b3", fontSize: "1.2rem" }}
-                      ></i>
+                      <i className="bi bi-eye-slash"></i>
                     ) : (
-                      <i
-                        className="bi bi-eye"
-                        style={{ color: "#0056b3", fontSize: "1.2rem" }}
-                      ></i>
+                      <i className="bi bi-eye"></i>
                     )}
                   </button>
                 </div>
               </div>
 
-              {/* Remember Me & Forgot Password */}
-              <div className="d-flex justify-content-between align-items-center mb-4">
-                <div className="form-check">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    id="remember"
-                    style={{ borderColor: "#0056b3", accentColor: "#0056b3" }}
-                  />
-                  <label
-                    className="form-check-label ms-2"
-                    htmlFor="remember"
-                    style={{ color: "#0056b3", fontSize: "0.95rem" }}
-                  >
-                    Remember me
-                  </label>
-                </div>
-                <a
-                  href="#"
-                  className="text-decoration-none"
-                  style={{
-                    color: "#0056b3",
-                    fontSize: "0.95rem",
-                    fontWeight: "500",
-                  }}
-                >
-                  Forgot Password?
-                </a>
-              </div>
-
-              {/* Login Button */}
               <button
                 type="submit"
-                className="btn w-100 py-3 fw-bold text-white position-relative overflow-hidden"
+                className="btn w-100 py-3 fw-bold text-white"
                 style={{
                   backgroundColor: "#0056b3",
-                  border: "none",
                   fontSize: "1.1rem",
                   borderRadius: "8px",
-                  transition: "all 0.3s ease",
-                  boxShadow: "0 4px 12px rgba(0, 86, 179, 0.3)",
                 }}
                 disabled={isLoading}
-                onMouseOver={(e) => {
-                  e.target.style.backgroundColor = "#004494";
-                  e.target.style.transform = "translateY(-2px)";
-                  e.target.style.boxShadow =
-                    "0 6px 16px rgba(0, 86, 179, 0.4)";
-                }}
-                onMouseOut={(e) => {
-                  if (!isLoading) {
-                    e.target.style.backgroundColor = "#0056b3";
-                    e.target.style.transform = "translateY(0)";
-                    e.target.style.boxShadow =
-                      "0 4px 12px rgba(0, 86, 179, 0.3)";
-                  }
-                }}
               >
-                {isLoading ? (
-                  <span
-                    className="spinner-border spinner-border-sm"
-                    role="status"
-                    aria-hidden="true"
-                  ></span>
-                ) : (
-                  <>
-                    <i className="bi bi-box-arrow-in-right me-2"></i> Login to
-                    System
-                  </>
-                )}
+                {isLoading ? "Logging in..." : "Login to System"}
               </button>
             </form>
           </div>

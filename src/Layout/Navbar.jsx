@@ -86,12 +86,12 @@ const Navbar = ({ toggleSidebar }) => {
       {/* Notification and User */}
       <div className="d-flex align-items-center gap-3 position-relative">
         {/* Notification */}
-        <div className="position-relative">
+        {/* <div className="position-relative">
           <FaBell size={18} style={{ color: '#fff' }} />
           <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
             3
           </span>
-        </div>
+        </div> */}
         
         {/* User Profile */}
         <div className="dropdown" ref={dropdownRef}>

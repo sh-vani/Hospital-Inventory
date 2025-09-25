@@ -1,118 +1,159 @@
 import React, { useState } from 'react';
-
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 
 const FacilitySettings = () => {
-  const [generalSettings, setGeneralSettings] = useState({
-    systemName: 'Hospital Warehouse Management System',
-    defaultLanguage: 'French',
-    dateFormat: 'DD/MM/YYYY',
-    timeFormat: '12-hour'
+  const [notifications, setNotifications] = useState({
+    lowStockAlert: true,
+    expiryAlert: true,
+    requisitionSubmitted: true,
+    requisitionApproved: true,
+    requisitionRejected: true,
+    deliveryReceived: true
   });
 
-  const [inventorySettings, setInventorySettings] = useState({
-    lowStockThreshold: 10,
-    expiryWarningDays: 30,
-    autoReorderEnabled: true,
-    defaultReorderQuantity: 50
+  const [approvalWorkflows, setApprovalWorkflows] = useState({
+    requisitionApproval: 'Single',
+    bulkRequisitionApproval: 'Multi-level',
+    highValueThreshold: 5000,
+    autoApproveLowValue: false
   });
 
-  const handleGeneralChange = (e) => {
-    const { name, value } = e.target;
-    setGeneralSettings(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleInventoryChange = (e) => {
-    const { name, value } = e.target;
-    setInventorySettings(prev => ({ ...prev, [name]: parseInt(value) || value }));
-  };
-
-  const handleToggleChange = () => {
-    setInventorySettings(prev => ({
+  // Handle notification toggle
+  const handleNotificationToggle = (setting) => {
+    setNotifications(prev => ({
       ...prev,
-      autoReorderEnabled: !prev.autoReorderEnabled
+      [setting]: !prev[setting]
     }));
   };
 
-  const handleSaveGeneral = () => {
-    alert('General settings saved!');
+  // Handle approval workflow change
+  const handleApprovalChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setApprovalWorkflows(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : (name === 'highValueThreshold' ? parseInt(value) || 0 : value)
+    }));
   };
 
-  const handleSaveInventory = () => {
-    alert('Inventory settings saved!');
+  // Save settings
+  const handleSaveNotifications = () => {
+    alert('Notification settings saved!');
+  };
+
+  const handleSaveWorkflows = () => {
+    alert('Approval workflow settings saved!');
   };
 
   return (
     <div className="container-fluid p-4">
-      <h2 className="mb-4">System Settings</h2>
+      <h1 className="mb-0">Settings</h1>
+      <p className="text-muted mb-4">
+        Manage alerts and approvals for smoother operations.
+      </p>
+
 
       <div className="row">
-        {/* General Settings Card */}
+        {/* Notifications Card */}
         <div className="col-md-6 mb-4">
           <div className="card shadow-sm border">
             <div className="card-header bg-white py-3">
-              <h5 className="mb-0">General Settings</h5>
+              <h5 className="mb-0">Notifications</h5>
             </div>
             <div className="card-body">
-              <div className="mb-3">
-                <label htmlFor="systemName" className="form-label">System Name</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  id="systemName"
-                  name="systemName"
-                  value={generalSettings.systemName}
-                  onChange={handleGeneralChange}
-                />
+              <div className="mb-3 form-check">
+                <div className="d-flex align-items-center">
+                  <input
+                    type="checkbox"
+                    className="form-check-input me-2"
+                    id="lowStockAlert"
+                    checked={notifications.lowStockAlert}
+                    onChange={() => handleNotificationToggle('lowStockAlert')}
+                  />
+                  <label htmlFor="lowStockAlert" className="form-check-label">
+                    Low stock alerts
+                  </label>
+                </div>
               </div>
 
-              <div className="mb-3">
-                <label htmlFor="defaultLanguage" className="form-label">Default Language</label>
-                <select
-                  className="form-select"
-                  id="defaultLanguage"
-                  name="defaultLanguage"
-                  value={generalSettings.defaultLanguage}
-                  onChange={handleGeneralChange}
-                >
-                  <option value="English">English</option>
-                  <option value="French">French</option>
-                  <option value="Spanish">Spanish</option>
-                  <option value="German">German</option>
-                </select>
+              <div className="mb-3 form-check">
+                <div className="d-flex align-items-center">
+                  <input
+                    type="checkbox"
+                    className="form-check-input me-2"
+                    id="expiryAlert"
+                    checked={notifications.expiryAlert}
+                    onChange={() => handleNotificationToggle('expiryAlert')}
+                  />
+                  <label htmlFor="expiryAlert" className="form-check-label">
+                    Expiry alerts
+                  </label>
+                </div>
               </div>
 
-              <div className="mb-3">
-                <label htmlFor="dateFormat" className="form-label">Date Format</label>
-                <select
-                  className="form-select"
-                  id="dateFormat"
-                  name="dateFormat"
-                  value={generalSettings.dateFormat}
-                  onChange={handleGeneralChange}
-                >
-                  <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                  <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                  <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                </select>
+              <div className="mb-3 form-check">
+                <div className="d-flex align-items-center">
+                  <input
+                    type="checkbox"
+                    className="form-check-input me-2"
+                    id="requisitionSubmitted"
+                    checked={notifications.requisitionSubmitted}
+                    onChange={() => handleNotificationToggle('requisitionSubmitted')}
+                  />
+                  <label htmlFor="requisitionSubmitted" className="form-check-label">
+                    Requisition submitted
+                  </label>
+                </div>
               </div>
 
-              <div className="mb-3">
-                <label htmlFor="timeFormat" className="form-label">Time Format</label>
-                <select
-                  className="form-select"
-                  id="timeFormat"
-                  name="timeFormat"
-                  value={generalSettings.timeFormat}
-                  onChange={handleGeneralChange}
-                >
-                  <option value="12-hour">12-hour</option>
-                  <option value="24-hour">24-hour</option>
-                </select>
+              <div className="mb-3 form-check">
+                <div className="d-flex align-items-center">
+                  <input
+                    type="checkbox"
+                    className="form-check-input me-2"
+                    id="requisitionApproved"
+                    checked={notifications.requisitionApproved}
+                    onChange={() => handleNotificationToggle('requisitionApproved')}
+                  />
+                  <label htmlFor="requisitionApproved" className="form-check-label">
+                    Requisition approved
+                  </label>
+                </div>
+              </div>
+
+              <div className="mb-3 form-check">
+                <div className="d-flex align-items-center">
+                  <input
+                    type="checkbox"
+                    className="form-check-input me-2"
+                    id="requisitionRejected"
+                    checked={notifications.requisitionRejected}
+                    onChange={() => handleNotificationToggle('requisitionRejected')}
+                  />
+                  <label htmlFor="requisitionRejected" className="form-check-label">
+                    Requisition rejected
+                  </label>
+                </div>
+              </div>
+
+              <div className="mb-3 form-check">
+                <div className="d-flex align-items-center">
+                  <input
+                    type="checkbox"
+                    className="form-check-input me-2"
+                    id="deliveryReceived"
+                    checked={notifications.deliveryReceived}
+                    onChange={() => handleNotificationToggle('deliveryReceived')}
+                  />
+                  <label htmlFor="deliveryReceived" className="form-check-label">
+                    Delivery received
+                  </label>
+                </div>
               </div>
 
               <button
                 className="btn btn-primary"
-                onClick={handleSaveGeneral}
+                onClick={handleSaveNotifications}
               >
                 Save Settings
               </button>
@@ -120,50 +161,60 @@ const FacilitySettings = () => {
           </div>
         </div>
 
-        {/* Inventory Settings Card */}
+        {/* Approval Workflows Card */}
         <div className="col-md-6 mb-4">
           <div className="card shadow-sm border">
             <div className="card-header bg-white py-3">
-              <h5 className="mb-0">Inventory Settings</h5>
+              <h5 className="mb-0">Approval Workflows</h5>
             </div>
             <div className="card-body">
               <div className="mb-3">
-                <label htmlFor="lowStockThreshold" className="form-label">Low Stock Threshold</label>
-                <div className="input-group">
-                  <input
-                    type="number"
-                    className="form-control"
-                    id="lowStockThreshold"
-                    name="lowStockThreshold"
-                    value={inventorySettings.lowStockThreshold}
-                    onChange={handleInventoryChange}
-                  />
-                  <span className="input-group-text">
-                    <i className="bi bi-arrow-up"></i>
-                  </span>
-                </div>
-                <small className="text-muted mt-1 d-block">
-                  Number of units at which an item is considered low stock
-                </small>
+                <label htmlFor="requisitionApproval" className="form-label">Requisition Approval</label>
+                <select
+                  className="form-select"
+                  id="requisitionApproval"
+                  name="requisitionApproval"
+                  value={approvalWorkflows.requisitionApproval}
+                  onChange={handleApprovalChange}
+                >
+                  <option value="Single">Single-level approval</option>
+                  <option value="Multi-level">Multi-level approval</option>
+                  <option value="None">No approval required</option>
+                </select>
               </div>
 
               <div className="mb-3">
-                <label htmlFor="expiryWarningDays" className="form-label">Expiry Warning Days</label>
+                <label htmlFor="bulkRequisitionApproval" className="form-label">Bulk Requisition Approval</label>
+                <select
+                  className="form-select"
+                  id="bulkRequisitionApproval"
+                  name="bulkRequisitionApproval"
+                  value={approvalWorkflows.bulkRequisitionApproval}
+                  onChange={handleApprovalChange}
+                >
+                  <option value="Single">Single-level approval</option>
+                  <option value="Multi-level">Multi-level approval</option>
+                  <option value="None">No approval required</option>
+                </select>
+              </div>
+
+              <div className="mb-3">
+                <label htmlFor="highValueThreshold" className="form-label">High Value Threshold ($)</label>
                 <div className="input-group">
                   <input
                     type="number"
                     className="form-control"
-                    id="expiryWarningDays"
-                    name="expiryWarningDays"
-                    value={inventorySettings.expiryWarningDays}
-                    onChange={handleInventoryChange}
+                    id="highValueThreshold"
+                    name="highValueThreshold"
+                    value={approvalWorkflows.highValueThreshold}
+                    onChange={handleApprovalChange}
                   />
                   <span className="input-group-text">
                     <i className="bi bi-arrow-up"></i>
                   </span>
                 </div>
                 <small className="text-muted mt-1 d-block">
-                  Number of days before expiry to show warnings
+                  Requisitions above this amount require additional approval
                 </small>
               </div>
 
@@ -172,39 +223,20 @@ const FacilitySettings = () => {
                   <input
                     type="checkbox"
                     className="form-check-input me-2"
-                    id="autoReorderEnabled"
-                    checked={inventorySettings.autoReorderEnabled}
-                    onChange={handleToggleChange}
+                    id="autoApproveLowValue"
+                    name="autoApproveLowValue"
+                    checked={approvalWorkflows.autoApproveLowValue}
+                    onChange={handleApprovalChange}
                   />
-                  <label htmlFor="autoReorderEnabled" className="form-check-label">
-                    Enable automatic reordering
+                  <label htmlFor="autoApproveLowValue" className="form-check-label">
+                    Auto-approve low-value requisitions
                   </label>
                 </div>
               </div>
 
-              <div className="mb-3">
-                <label htmlFor="defaultReorderQuantity" className="form-label">Default Reorder Quantity</label>
-                <div className="input-group">
-                  <input
-                    type="number"
-                    className="form-control"
-                    id="defaultReorderQuantity"
-                    name="defaultReorderQuantity"
-                    value={inventorySettings.defaultReorderQuantity}
-                    onChange={handleInventoryChange}
-                  />
-                  <span className="input-group-text">
-                    <i className="bi bi-arrow-up"></i>
-                  </span>
-                </div>
-                <small className="text-muted mt-1 d-block">
-                  Default quantity to reorder when stock is low
-                </small>
-              </div>
-
               <button
                 className="btn btn-primary"
-                onClick={handleSaveInventory}
+                onClick={handleSaveWorkflows}
               >
                 Save Settings
               </button>

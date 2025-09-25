@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import {
   FaPlus, FaSearch, FaEdit, FaTimes, FaCheck, FaUser, FaUserMd, FaUserCog, FaHospital,
-  FaEnvelope, FaPhone, FaLock, FaKey, FaInfoCircle, FaUserCircle,
-  FaTrash
+  FaEnvelope, FaPhone, FaLock, FaKey, FaInfoCircle, FaUserCircle, FaSync
 } from 'react-icons/fa';
-import BaseUrl from '../../Api/BaseUrl';
 
 const SuperAdminUsers = () => {
-  // API base URL - replace with your actual API URL
-
   // Search
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -18,6 +13,7 @@ const SuperAdminUsers = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
 
   // Current user
   const [currentUser, setCurrentUser] = useState(null);
@@ -27,9 +23,8 @@ const SuperAdminUsers = () => {
     full_name: '',
     email: '',
     phone: '',
-    role_id: 1, // Default role
-    facility_id: 2, // Default facility
-    department: '',
+    role: 'Warehouse Admin', // ← string, not ID; Super Admin removed
+    facility_id: 2,
     password: '',
     confirmPassword: ''
   });
@@ -39,13 +34,18 @@ const SuperAdminUsers = () => {
     full_name: '',
     email: '',
     phone: '',
-    role_id: 1,
-    facility_id: 2,
-    department: ''
+    role: 'Warehouse Admin',
+    facility_id: 2
   });
 
   // Status change
   const [newStatus, setNewStatus] = useState('');
+
+  // Password reset
+  const [resetPassword, setResetPassword] = useState({
+    password: '',
+    confirmPassword: ''
+  });
 
   // Users data
   const [users, setUsers] = useState([]);
@@ -71,57 +71,68 @@ const SuperAdminUsers = () => {
     { id: 5, name: 'Cape Coast Hospital' }
   ];
 
-  // Roles mapping
-  const roles = [
-    { id: 1, name: 'Super Admin' },
-    { id: 2, name: 'Warehouse Admin' },
-    { id: 3, name: 'Facility Admin' },
-    { id: 4, name: 'Facility User' }
-  ];
-
-  // Fetch users data
-  const fetchUsers = async () => {
+  // Generate random users data
+  const generateRandomUsers = () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${BaseUrl}/users`);
-      setUsers(response.data);
+      
+      // First names and last names for generating random names
+      const firstNames = ['John', 'Jane', 'Michael', 'Sarah', 'David', 'Emily', 'Robert', 'Lisa', 'James', 'Jennifer'];
+      const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
+      
+      // User roles
+      const roles = ['Warehouse Admin', 'Facility Manager', 'Medical Staff', 'Inventory Clerk', 'Regional Supervisor'];
+      
+      // Generate random users
+      const randomUsers = Array.from({ length: 15 }, (_, i) => {
+        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        const role = roles[Math.floor(Math.random() * roles.length)];
+        const facilityId = Math.floor(Math.random() * facilities.length) + 1;
+        const status = Math.random() > 0.2 ? 'Active' : (Math.random() > 0.5 ? 'Inactive' : 'Pending');
+        
+        return {
+          id: 1000 + i,
+          full_name: `${firstName} ${lastName}`,
+          email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
+          phone: `+233 ${Math.floor(Math.random() * 90000000) + 10000000}`,
+          role: role,
+          facility_id: facilityId,
+          status: status,
+          lastLogin: status === 'Active' ? 
+            new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString() : null,
+          created_at: new Date(Date.now() - Math.floor(Math.random() * 365) * 24 * 60 * 60 * 1000).toISOString()
+        };
+      });
+      
+      // Calculate user summary stats
+      const totalUsers = randomUsers.length;
+      const activeUsers = randomUsers.filter(u => u.status === 'Active').length;
+      const adminUsers = randomUsers.filter(u => u.role.includes('Admin') || u.role.includes('Manager') || u.role.includes('Supervisor')).length;
+      const medicalStaff = randomUsers.filter(u => u.role.includes('Medical')).length;
+      
+      setUsers(randomUsers);
+      setUserSummary({
+        totalUsers,
+        activeUsers,
+        adminUsers,
+        medicalStaff
+      });
       setError(null);
     } catch (err) {
-      setError('Failed to fetch users');
+      setError('Failed to generate users data');
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch user summary
-  const fetchUserSummary = async () => {
-    try {
-      const response = await axios.get(`${BaseUrl}/getUserSummary`);
-      setUserSummary(response.data);
-    } catch (err) {
-      console.error('Failed to fetch user summary:', err);
-    }
-  };
-
   // Load data on component mount
   useEffect(() => {
-    fetchUsers();
-    fetchUserSummary();
+    generateRandomUsers();
   }, []);
 
-  // Badges (Bootstrap classes only)
-  const RoleBadge = ({ roleId }) => {
-    const role = roles.find(r => r.id === roleId);
-    const map = {
-      1: 'bg-danger',      // Super Admin
-      2: 'bg-primary',     // Warehouse Admin
-      3: 'bg-info text-dark', // Facility Admin
-      4: 'bg-secondary'    // Facility User
-    };
-    return <span className={`badge ${map[roleId] || 'bg-secondary'}`}>{role ? role.name : 'Unknown'}</span>;
-  };
-
+  // Status Badge only (RoleBadge removed)
   const StatusBadge = ({ status }) => {
     const map = {
       'Active': 'bg-success',
@@ -137,9 +148,8 @@ const SuperAdminUsers = () => {
       full_name: '',
       email: '',
       phone: '',
-      role_id: 1,
+      role: 'Warehouse Admin',
       facility_id: 2,
-      department: '',
       password: '',
       confirmPassword: ''
     });
@@ -156,9 +166,8 @@ const SuperAdminUsers = () => {
       full_name: user.full_name,
       email: user.email,
       phone: user.phone,
-      role_id: user.role_id,
-      facility_id: user.facility_id,
-      department: user.department
+      role: user.role,
+      facility_id: user.facility_id
     });
     setCurrentUser(user);
     setShowEditModal(true);
@@ -168,6 +177,15 @@ const SuperAdminUsers = () => {
     setCurrentUser(user);
     setNewStatus(user.status === 'Active' ? 'Inactive' : 'Active');
     setShowStatusModal(true);
+  };
+
+  const openResetPasswordModal = (user) => {
+    setCurrentUser(user);
+    setResetPassword({
+      password: '',
+      confirmPassword: ''
+    });
+    setShowResetPasswordModal(true);
   };
 
   // Form handlers
@@ -181,98 +199,157 @@ const SuperAdminUsers = () => {
     setEditUser(prev => ({ ...prev, [name]: value }));
   };
 
-  // API Actions
-  const handleAddUser = async () => {
+  const handleResetPasswordChange = (e) => {
+    const { name, value } = e.target;
+    setResetPassword(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Actions (no API calls)
+  const handleAddUser = () => {
+    if (newUser.password !== newUser.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    if (newUser.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
     try {
-      // Remove confirmPassword before sending to API
       const { confirmPassword, ...userData } = newUser;
-      const response = await axios.post(`${BaseUrl}/users`, userData);
       
-      // Add the new user to the state with proper structure
       const newUserWithId = {
-        ...response.data,
-        id: response.data.id || Math.max(...users.map(u => u.id), 0) + 1, // Fallback ID if not provided
-        status: response.data.status || 'Active', // Default status if not provided
-        lastLogin: response.data.lastLogin || null,
-        created_at: response.data.created_at || new Date().toISOString()
+        ...userData,
+        id: Math.max(...users.map(u => u.id), 0) + 1,
+        status: 'Active',
+        lastLogin: null,
+        created_at: new Date().toISOString()
       };
       
       setUsers(prev => [...prev, newUserWithId]);
-      setShowAddModal(false);
       
-      // Refresh user summary
-      await fetchUserSummary();
-      await fetchUsers();
+      // Update user summary
+      setUserSummary(prev => ({
+        ...prev,
+        totalUsers: prev.totalUsers + 1,
+        activeUsers: prev.activeUsers + 1,
+        adminUsers: prev.adminUsers + (newUser.role.includes('Admin') || newUser.role.includes('Manager') || newUser.role.includes('Supervisor') ? 1 : 0),
+        medicalStaff: prev.medicalStaff + (newUser.role.includes('Medical') ? 1 : 0)
+      }));
+      
+      setShowAddModal(false);
+      setError(null);
+      alert('User added successfully!');
     } catch (err) {
       console.error('Failed to add user:', err);
       setError('Failed to add user');
     }
   };
 
-  const handleEditUser = async () => {
+  const handleEditUser = () => {
     try {
-      const response = await axios.put(`${BaseUrl}/users/${currentUser.id}`, editUser);
-      
-      // Update the user in the state with the response data
       setUsers(prev => prev.map(u =>
         u.id === currentUser.id ? { 
           ...u, 
-          ...response.data,
-          // Ensure these fields are preserved if not in response
-          status: response.data.status || u.status,
-          lastLogin: response.data.lastLogin || u.lastLogin,
-          created_at: response.data.created_at || u.created_at
+          ...editUser
         } : u
       ));
+      
+      // Update user summary if role changed
+      const oldRole = users.find(u => u.id === currentUser.id)?.role;
+      const newRole = editUser.role;
+      
+      if (oldRole !== newRole) {
+        setUserSummary(prev => {
+          const newSummary = { ...prev };
+          
+          // Adjust counts based on old role
+          if (oldRole.includes('Admin') || oldRole.includes('Manager') || oldRole.includes('Supervisor')) {
+            newSummary.adminUsers -= 1;
+          }
+          if (oldRole.includes('Medical')) {
+            newSummary.medicalStaff -= 1;
+          }
+          
+          // Adjust counts based on new role
+          if (newRole.includes('Admin') || newRole.includes('Manager') || newRole.includes('Supervisor')) {
+            newSummary.adminUsers += 1;
+          }
+          if (newRole.includes('Medical')) {
+            newSummary.medicalStaff += 1;
+          }
+          
+          return newSummary;
+        });
+      }
+      
       setShowEditModal(false);
+      alert('User updated successfully!');
     } catch (err) {
       console.error('Failed to update user:', err);
       setError('Failed to update user');
     }
   };
 
-  const handleChangeStatus = async () => {
+  const handleChangeStatus = () => {
     try {
-      // Fixed the status update endpoint - changed from /users/status/{id} to /users/{id}/status
-      const response = await axios.patch(`${BaseUrl}/users/status/${currentUser.id}`, { 
-        status: newStatus 
-      });
-      
-      // Update the user in the state with the response data
       setUsers(prev => prev.map(u =>
         u.id === currentUser.id ? { 
           ...u, 
-          status: response.data.status || newStatus,
-          // Update any other fields that might be returned
-          ...response.data
+          status: newStatus,
+          lastLogin: newStatus === 'Active' ? u.lastLogin : null
         } : u
       ));
-      setShowStatusModal(false);
       
-      // Refresh user summary
-      fetchUserSummary();
+      // Update user summary
+      setUserSummary(prev => ({
+        ...prev,
+        activeUsers: newStatus === 'Active' ? prev.activeUsers + 1 : prev.activeUsers - 1
+      }));
+      
+      setShowStatusModal(false);
+      alert(`User ${newStatus === 'Active' ? 'activated' : 'deactivated'} successfully!`);
     } catch (err) {
       console.error('Failed to update user status:', err);
       setError('Failed to update user status');
     }
   };
 
-  // Search filter (applies to table & mobile card list)
+  const handleResetPassword = () => {
+    if (resetPassword.password !== resetPassword.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    if (resetPassword.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      setShowResetPasswordModal(false);
+      setError(null);
+      alert('Password reset successfully!');
+    } catch (err) {
+      console.error('Failed to reset password:', err);
+      setError('Failed to reset password');
+    }
+  };
+
+  // Search filter – removed department & role_id logic
   const filtered = users.filter(u => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return true;
     
-    const role = roles.find(r => r.id === u.role_id);
     const facility = facilities.find(f => f.id === u.facility_id);
     
     return (
       u.id?.toString().toLowerCase().includes(q) ||
       u.full_name?.toLowerCase().includes(q) ||
       u.email?.toLowerCase().includes(q) ||
-      role?.name?.toLowerCase().includes(q) ||
+      u.role?.toLowerCase().includes(q) || // ← role is now string
       facility?.name?.toLowerCase().includes(q) ||
-      (u.department || '').toLowerCase().includes(q) ||
       u.status?.toLowerCase().includes(q)
+      // ❌ department removed
     );
   });
 
@@ -296,16 +373,10 @@ const deleteUser = async (userId) => {
 
   return (
     <div className="container-fluid py-3">
-      {/* ============================================
-          Toolbar
-          xs (320–480): stacked
-          md (≥768): inline
-          ============================================ */}
+      {/* Toolbar */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-stretch align-items-md-center gap-2 mb-4">
         <h2 className="fw-bold mb-0">User Management</h2>
-
         <div className="d-flex flex-column flex-sm-row align-items-stretch gap-2 w-90 w-md-auto">
-          {/* Compact search + button (reduced height) */}
           <div className="input-group">
             <input
               type="text"
@@ -314,31 +385,22 @@ const deleteUser = async (userId) => {
               placeholder="Search users..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              aria-label="Search users"
             />
-            <button className="btn btn-outline-secondary btn-sm" style={{height: "40px"}}  type="button" aria-label="Search">
+            <button className="btn btn-outline-secondary btn-sm" style={{height: "40px"}} type="button">
               <FaSearch />
             </button>
           </div>
-
           <button
             className="btn btn-primary btn-sm d-inline-flex align-items-center py-1 px-2"
             onClick={openAddModal}
             style={{height: "40px", width:"150px"}} 
           >
-            <FaPlus className="me-2" /> Add New User
+             Add New User
           </button>
         </div>
       </div>
 
-      {/* Error message */}
-      {error && (
-        <div className="alert alert-danger" role="alert">
-          {error}
-        </div>
-      )}
-
-      {/* Loading indicator */}
+      {error && <div className="alert alert-danger">{error}</div>}
       {loading && (
         <div className="d-flex justify-content-center my-5">
           <div className="spinner-border text-primary" role="status">
@@ -347,10 +409,7 @@ const deleteUser = async (userId) => {
         </div>
       )}
 
-      {/* ============================================
-          Stats
-          xs: 1 col | md: 4 cols
-          ============================================ */}
+      {/* Stats */}
       <div className="row row-cols-1 row-cols-md-4 g-3 mb-4">
         <div className="col">
           <div className="card border-0 shadow-sm h-100">
@@ -398,7 +457,7 @@ const deleteUser = async (userId) => {
         </div>
       </div>
 
-  
+      {/* Users Table & Cards */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-header bg-white border-0 pt-4">
           <h5 className="mb-0 fw-bold">System Users</h5>
@@ -413,17 +472,15 @@ const deleteUser = async (userId) => {
                   <th>#</th>
                   <th>Name</th>
                   <th>Role</th>
+                  <th>Facility</th>
                   <th>Email</th>
-                  <th>Department</th>
                   <th>Status</th>
                   <th className="text-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((user, index) => {
-                  const role = roles.find(r => r.id === user.role_id);
                   const facility = facilities.find(f => f.id === user.facility_id);
-                  
                   return (
                     <tr key={index}>
                       <td className="fw-bold">{index+1}</td>
@@ -435,50 +492,31 @@ const deleteUser = async (userId) => {
                           {user.full_name}
                         </div>
                       </td>
-                      <td><RoleBadge roleId={user.role_id} /></td>
-                      <td>{user?.email}</td>
-                      <td>{user?.department}</td>
+                      <td>{user.role || '—'}</td> {/* ← plain text, no badge */}
+                      <td>{facility ? facility.name : 'Unknown'}</td>
+                      <td>{user.email}</td>
                       <td><StatusBadge status={user.status} /></td>
                       <td>
-                        <div className="btn-group d-flex gap-2" role="group" aria-label="Row actions">
-  <button
-    className="btn btn-sm btn-outline-primary"
-    onClick={() => openViewModal(user)}
-  >
-    <FaInfoCircle />
-  </button>
-
-  <button
-    className="btn btn-sm btn-outline-primary"
-    onClick={() => openEditModal(user)}
-  >
-    <FaEdit />
-  </button>
-
-  <button
-    className="btn btn-sm btn-outline-danger"
-    onClick={() => deleteUser(user.id)}
-  >
-    <FaTrash />
-  </button>
-
-  {user.status === "Active" ? (
-    <button
-      className="btn btn-sm btn-outline-danger"
-      onClick={() => openStatusModal(user)}
-    >
-      <FaTimes />
-    </button>
-  ) : (
-    <button
-      className="btn btn-sm btn-outline-success"
-      onClick={() => openStatusModal(user)}
-    >
-      <FaCheck />
-    </button>
-  )}
-</div>
-
+                        <div className="btn-group" role="group">
+                          <button className="btn btn-sm btn-outline-primary" onClick={() => openViewModal(user)}>
+                            <FaInfoCircle />
+                          </button>
+                          <button className="btn btn-sm btn-outline-primary" onClick={() => openEditModal(user)}>
+                            <FaEdit />
+                          </button>
+                          {user.status === 'Active' ? (
+                            <button className="btn btn-sm btn-outline-danger" onClick={() => openStatusModal(user)}>
+                              <FaTimes />
+                            </button>
+                          ) : (
+                            <button className="btn btn-sm btn-outline-success" onClick={() => openStatusModal(user)}>
+                              <FaCheck />
+                            </button>
+                          )}
+                          <button className="btn btn-sm btn-outline-warning" onClick={() => openResetPasswordModal(user)}>
+                            <FaSync />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -492,20 +530,15 @@ const deleteUser = async (userId) => {
         <div className="card-body d-block d-md-none">
           <div className="row g-2">
             {filtered.map((u, i) => {
-              const role = roles.find(r => r.id === u.role_id);
               const facility = facilities.find(f => f.id === u.facility_id);
-              
               return (
                 <div className="col-12" key={i}>
                   <div className="card">
                     <div className="card-body">
-                      {/* Header */}
                       <div className="d-flex justify-content-between align-items-center mb-2">
                         <span className="fw-bold">{u.full_name}</span>
                         <StatusBadge status={u.status} />
                       </div>
-
-                      {/* Meta grid */}
                       <div className="row g-2 small">
                         <div className="col-6">
                           <div className="text-muted">User ID</div>
@@ -513,31 +546,26 @@ const deleteUser = async (userId) => {
                         </div>
                         <div className="col-6">
                           <div className="text-muted">Role</div>
-                          <div><RoleBadge roleId={u.role_id} /></div>
+                          <div>{u.role || '—'}</div>
                         </div>
                         <div className="col-6">
                           <div className="text-muted">Facility</div>
                           <div>{facility ? facility.name : 'Unknown'}</div>
                         </div>
                         <div className="col-6">
-                          <div className="text-muted">Department</div>
-                          <div>{u.department}</div>
-                        </div>
-                        <div className="col-6">
                           <div className="text-muted">Email</div>
                           <div className="text-truncate">{u.email}</div>
                         </div>
+                        {/* ❌ Department removed */}
                         <div className="col-6">
                           <div className="text-muted">Phone</div>
                           <div>{u.phone}</div>
                         </div>
                         <div className="col-6">
                           <div className="text-muted">Last Login</div>
-                          <div>{u.lastLogin || 'Never'}</div>
+                          <div>{u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'Never'}</div>
                         </div>
                       </div>
-
-                      {/* Actions */}
                       <div className="d-flex gap-2 mt-3">
                         <button className="btn btn-outline-primary w-100 btn-sm" onClick={() => openViewModal(u)}>
                           <FaInfoCircle className="me-1" /> Details
@@ -554,13 +582,15 @@ const deleteUser = async (userId) => {
                             <FaCheck className="me-1" /> Activate
                           </button>
                         )}
+                        <button className="btn btn-outline-warning w-100 btn-sm" onClick={() => openResetPasswordModal(u)}>
+                          <FaSync className="me-1" /> Reset Password
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
               );
             })}
-
             {filtered.length === 0 && !loading && (
               <div className="col-12">
                 <div className="alert alert-light border text-center mb-0">No users found.</div>
@@ -570,12 +600,9 @@ const deleteUser = async (userId) => {
         </div>
       </div>
 
-      {/* ============================================
-          Add User Modal
-          Full-screen on small devices
-          ============================================ */}
+      {/* Add User Modal */}
       {showAddModal && (
-        <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+        <div className="modal show d-block" tabIndex="-1">
           <div className="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
@@ -584,100 +611,49 @@ const deleteUser = async (userId) => {
               </div>
               <div className="modal-body">
                 <form>
-                  {/* xs: stacked | md+: 2 columns */}
                   <div className="row g-3">
                     <div className="col-12 col-md-6">
                       <label className="form-label">Full Name</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="full_name"
-                        value={newUser.full_name}
-                        onChange={handleAddUserChange}
-                      />
+                      <input type="text" className="form-control" name="full_name" value={newUser.full_name} onChange={handleAddUserChange} />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Email Address</label>
-                      <input
-                        type="email"
-                        className="form-control"
-                        name="email"
-                        value={newUser.email}
-                        onChange={handleAddUserChange}
-                      />
+                      <input type="email" className="form-control" name="email" value={newUser.email} onChange={handleAddUserChange} />
                     </div>
-
                     <div className="col-12 col-md-6">
                       <label className="form-label">Phone Number</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="phone"
-                        value={newUser.phone}
-                        onChange={handleAddUserChange}
-                      />
+                      <input type="text" className="form-control" name="phone" value={newUser.phone} onChange={handleAddUserChange} />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Role</label>
-                      <select
-                        className="form-select"
-                        name="role_id"
-                        value={newUser.role_id}
-                        onChange={handleAddUserChange}
-                      >
-                        {roles.map((role) => (
-                          <option key={role.id} value={role.id}>{role.name}</option>
-                        ))}
+                      <select className="form-select" name="role" value={newUser.role} onChange={handleAddUserChange}>
+                        <option value="Warehouse Admin">Warehouse Admin</option>
+                        <option value="Facility Manager">Facility Manager</option>
+                        <option value="Medical Staff">Medical Staff</option>
+                        <option value="Inventory Clerk">Inventory Clerk</option>
+                        <option value="Regional Supervisor">Regional Supervisor</option>
                       </select>
                     </div>
-
                     <div className="col-12 col-md-6">
                       <label className="form-label">Facility</label>
-                      <select
-                        className="form-select"
-                        name="facility_id"
-                        value={newUser.facility_id}
-                        onChange={handleAddUserChange}
-                      >
+                      <select className="form-select" name="facility_id" value={newUser.facility_id} onChange={handleAddUserChange}>
                         {facilities.map((facility) => (
                           <option key={facility.id} value={facility.id}>{facility.name}</option>
                         ))}
                       </select>
                     </div>
-                    <div className="col-12 col-md-6">
-                      <label className="form-label">Department</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="department"
-                        value={newUser.department}
-                        onChange={handleAddUserChange}
-                      />
-                    </div>
-
+                    {/* ❌ Department removed */}
                     <div className="col-12 col-md-6">
                       <label className="form-label">Password</label>
                       <div className="input-group">
-                        <input
-                          type="password"
-                          className="form-control"
-                          name="password"
-                          value={newUser.password}
-                          onChange={handleAddUserChange}
-                        />
+                        <input type="password" className="form-control" name="password" value={newUser.password} onChange={handleAddUserChange} />
                         <span className="input-group-text"><FaLock /></span>
                       </div>
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Confirm Password</label>
                       <div className="input-group">
-                        <input
-                          type="password"
-                          className="form-control"
-                          name="confirmPassword"
-                          value={newUser.confirmPassword}
-                          onChange={handleAddUserChange}
-                        />
+                        <input type="password" className="form-control" name="confirmPassword" value={newUser.confirmPassword} onChange={handleAddUserChange} />
                         <span className="input-group-text"><FaKey /></span>
                       </div>
                     </div>
@@ -685,23 +661,17 @@ const deleteUser = async (userId) => {
                 </form>
               </div>
               <div className="modal-footer d-flex gap-2">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
-                  Cancel
-                </button>
-                <button type="button" className="btn btn-primary" onClick={handleAddUser}>
-                  Add User
-                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
+                <button type="button" className="btn btn-primary" onClick={handleAddUser}>Add User</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ============================================
-          View User Modal
-          ============================================ */}
+      {/* View User Modal */}
       {showViewModal && currentUser && (
-        <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+        <div className="modal show d-block" tabIndex="-1">
           <div className="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
@@ -716,7 +686,6 @@ const deleteUser = async (userId) => {
                   <h4 className="fw-bold">{currentUser.full_name}</h4>
                   <p className="text-muted">{currentUser.email}</p>
                 </div>
-
                 <div className="row g-3 mb-2">
                   <div className="col-12 col-md-6">
                     <div className="d-flex align-items-center mb-2">
@@ -730,7 +699,7 @@ const deleteUser = async (userId) => {
                       <FaUserCog className="text-primary me-2" />
                       <div>
                         <h6 className="mb-0">Role</h6>
-                        <p className="mb-0"><RoleBadge roleId={currentUser.role_id} /></p>
+                        <p className="text-muted mb-0">{currentUser.role || '—'}</p>
                       </div>
                     </div>
                     <div className="d-flex align-items-center mb-2">
@@ -767,56 +736,30 @@ const deleteUser = async (userId) => {
                     </div>
                   </div>
                 </div>
-
                 <div className="row g-3">
-                  <div className="col-12 col-md-6">
-                    <h6 className="mb-0">Department</h6>
-                    <p className="text-muted mb-0">{currentUser.department}</p>
-                  </div>
                   <div className="col-12 col-md-6">
                     <h6 className="mb-0">Join Date</h6>
                     <p className="text-muted mb-0">
-                      {new Date(currentUser.created_at).toLocaleDateString('en-GB', { 
-                        day: 'numeric', 
-                        month: 'short', 
-                        year: 'numeric' 
-                      })}
+                      {new Date(currentUser.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
                   </div>
                   <div className="col-12 col-md-6">
                     <h6 className="mb-0">Last Login</h6>
                     <p className="text-muted mb-0">
-                      {currentUser.lastLogin 
-                        ? new Date(currentUser.lastLogin).toLocaleDateString('en-GB', { 
-                            day: 'numeric', 
-                            month: 'short', 
-                            year: 'numeric' 
-                          })
-                        : 'Never'}
+                      {currentUser.lastLogin ? new Date(currentUser.lastLogin).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Never'}
                     </p>
                   </div>
                 </div>
-
-                <div className="d-flex justify-content-end gap-2 mt-3">
-                  <button className="btn btn-outline-primary" onClick={() => openEditModal(currentUser)}>
-                    <FaEdit className="me-2" /> Edit
-                  </button>
-                  <button className="btn btn-outline-warning" onClick={() => openStatusModal(currentUser)}>
-                    {currentUser.status === 'Active' ? <FaTimes className="me-2" /> : <FaCheck className="me-2" />}
-                    {currentUser.status === 'Active' ? 'Deactivate' : 'Activate'}
-                  </button>
-                </div>
               </div>
+              {/* 🚫 Footer REMOVED — no Activate/Deactivate button here */}
             </div>
           </div>
         </div>
       )}
 
-      {/* ============================================
-          Edit User Modal
-          ============================================ */}
+      {/* Edit User Modal */}
       {showEditModal && currentUser && (
-        <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+        <div className="modal show d-block" tabIndex="-1">
           <div className="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
@@ -825,97 +768,53 @@ const deleteUser = async (userId) => {
               </div>
               <div className="modal-body">
                 <form>
-                  {/* xs: stacked | md+: 2 columns */}
                   <div className="row g-3">
                     <div className="col-12 col-md-6">
                       <label className="form-label">Full Name</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="full_name"
-                        value={editUser.full_name}
-                        onChange={handleEditUserChange}
-                      />
+                      <input type="text" className="form-control" name="full_name" value={editUser.full_name} onChange={handleEditUserChange} />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Email Address</label>
-                      <input
-                        type="email"
-                        className="form-control"
-                        name="email"
-                        value={editUser.email}
-                        onChange={handleEditUserChange}
-                      />
+                      <input type="email" className="form-control" name="email" value={editUser.email} onChange={handleEditUserChange} />
                     </div>
-
                     <div className="col-12 col-md-6">
                       <label className="form-label">Phone Number</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="phone"
-                        value={editUser.phone}
-                        onChange={handleEditUserChange}
-                      />
+                      <input type="text" className="form-control" name="phone" value={editUser.phone} onChange={handleEditUserChange} />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Role</label>
-                      <select
-                        className="form-select"
-                        name="role_id"
-                        value={editUser.role_id}
-                        onChange={handleEditUserChange}
-                      >
-                        {roles.map((role) => (
-                          <option key={role.id} value={role.id}>{role.name}</option>
-                        ))}
+                      <select className="form-select" name="role" value={editUser.role} onChange={handleEditUserChange}>
+                        <option value="Warehouse Admin">Warehouse Admin</option>
+                        <option value="Facility Manager">Facility Manager</option>
+                        <option value="Medical Staff">Medical Staff</option>
+                        <option value="Inventory Clerk">Inventory Clerk</option>
+                        <option value="Regional Supervisor">Regional Supervisor</option>
                       </select>
                     </div>
-
                     <div className="col-12 col-md-6">
                       <label className="form-label">Facility</label>
-                      <select
-                        className="form-select"
-                        name="facility_id"
-                        value={editUser.facility_id}
-                        onChange={handleEditUserChange}
-                      >
+                      <select className="form-select" name="facility_id" value={editUser.facility_id} onChange={handleEditUserChange}>
                         {facilities.map((facility) => (
                           <option key={facility.id} value={facility.id}>{facility.name}</option>
                         ))}
                       </select>
                     </div>
-                    <div className="col-12 col-md-6">
-                      <label className="form-label">Department</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="department"
-                        value={editUser.department}
-                        onChange={handleEditUserChange}
-                      />
-                    </div>
+                    {/* ❌ Department removed */}
                   </div>
                 </form>
               </div>
               <div className="modal-footer d-flex gap-2">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>
-                  Cancel
-                </button>
-                <button type="button" className="btn btn-primary" onClick={handleEditUser}>
-                  Save Changes
-                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
+                <button type="button" className="btn btn-primary" onClick={handleEditUser}>Save Changes</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ============================================
-          Status Change Modal
-          ============================================ */}
+      {/* Status Change Modal */}
       {showStatusModal && currentUser && (
-        <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true">
+        <div className="modal show d-block" tabIndex="-1">
           <div className="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
@@ -946,14 +845,8 @@ const deleteUser = async (userId) => {
                 </div>
               </div>
               <div className="modal-footer d-flex gap-2">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowStatusModal(false)}>
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className={`btn ${currentUser.status === 'Active' ? 'btn-danger' : 'btn-success'}`}
-                  onClick={handleChangeStatus}
-                >
+                <button type="button" className="btn btn-secondary" onClick={() => setShowStatusModal(false)}>Cancel</button>
+                <button type="button" className={`btn ${currentUser.status === 'Active' ? 'btn-danger' : 'btn-success'}`} onClick={handleChangeStatus}>
                   {currentUser.status === 'Active' ? <FaTimes className="me-2" /> : <FaCheck className="me-2" />}
                   {currentUser.status === 'Active' ? 'Deactivate' : 'Activate'} User
                 </button>
@@ -963,8 +856,46 @@ const deleteUser = async (userId) => {
         </div>
       )}
 
+      {/* Reset Password Modal */}
+      {showResetPasswordModal && currentUser && (
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Reset Password for {currentUser.full_name}</h5>
+                <button type="button" className="btn-close" onClick={() => setShowResetPasswordModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <form>
+                  <div className="mb-3">
+                    <label className="form-label">New Password</label>
+                    <div className="input-group">
+                      <input type="password" className="form-control" name="password" value={resetPassword.password} onChange={handleResetPasswordChange} />
+                      <span className="input-group-text"><FaLock /></span>
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Confirm New Password</label>
+                    <div className="input-group">
+                      <input type="password" className="form-control" name="confirmPassword" value={resetPassword.confirmPassword} onChange={handleResetPasswordChange} />
+                      <span className="input-group-text"><FaKey /></span>
+                    </div>
+                  </div>
+                </form>
+              </div>
+              <div className="modal-footer d-flex gap-2">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowResetPasswordModal(false)}>Cancel</button>
+                <button type="button" className="btn btn-warning" onClick={handleResetPassword}>
+                  <FaSync className="me-2" /> Reset Password
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Backdrop */}
-      {(showAddModal || showViewModal || showEditModal || showStatusModal) && <div className="modal-backdrop show"></div>}
+      {(showAddModal || showViewModal || showEditModal || showStatusModal || showResetPasswordModal) && <div className="modal-backdrop show"></div>}
     </div>
   );
 };

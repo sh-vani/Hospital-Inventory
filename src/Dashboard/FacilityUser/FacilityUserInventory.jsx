@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaSearch, FaFileCsv, FaFilePdf, FaFilter, FaCalendarAlt, FaBox, FaBarcode, FaHourglassHalf, FaExchangeAlt, FaBalanceScale, FaInfoCircle, FaExclamationTriangle } from 'react-icons/fa';
+import { FaSearch, FaFileCsv, FaFilePdf, FaFilter, FaBox, FaBarcode, FaHourglassHalf, FaInfoCircle, FaExclamationTriangle } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 const FacilityUserInventory = () => {
@@ -19,10 +19,7 @@ const FacilityUserInventory = () => {
         batch: 'B789',
         lot: 'L456',
         expiryDate: '2024-06-15',
-        issueDate: '2023-10-25',
         balance: 85,
-        status: 'Received',
-        transactionType: 'Received'
       },
       {
         id: 2,
@@ -30,10 +27,7 @@ const FacilityUserInventory = () => {
         batch: 'B234',
         lot: 'L789',
         expiryDate: '2024-05-20',
-        issueDate: '2023-10-20',
         balance: 120,
-        status: 'Received',
-        transactionType: 'Received'
       },
       {
         id: 3,
@@ -41,10 +35,7 @@ const FacilityUserInventory = () => {
         batch: 'B567',
         lot: 'L123',
         expiryDate: '2025-01-10',
-        issueDate: '2023-10-18',
         balance: 0,
-        status: 'Issued',
-        transactionType: 'Issued'
       },
       {
         id: 4,
@@ -52,10 +43,7 @@ const FacilityUserInventory = () => {
         batch: 'B901',
         lot: 'L345',
         expiryDate: '2024-03-05',
-        issueDate: '2023-10-15',
         balance: 15,
-        status: 'Received',
-        transactionType: 'Received'
       },
       {
         id: 5,
@@ -63,10 +51,7 @@ const FacilityUserInventory = () => {
         batch: 'B678',
         lot: 'L567',
         expiryDate: '2024-12-01',
-        issueDate: '2023-10-10',
         balance: 0,
-        status: 'Issued',
-        transactionType: 'Issued'
       },
       {
         id: 6,
@@ -74,10 +59,7 @@ const FacilityUserInventory = () => {
         batch: 'B345',
         lot: 'L890',
         expiryDate: '2024-09-15',
-        issueDate: '2023-10-05',
         balance: 60,
-        status: 'Received',
-        transactionType: 'Received'
       },
       {
         id: 7,
@@ -85,10 +67,7 @@ const FacilityUserInventory = () => {
         batch: 'B012',
         lot: 'L234',
         expiryDate: '2025-06-30',
-        issueDate: '2023-09-28',
         balance: 3,
-        status: 'Received',
-        transactionType: 'Received'
       },
       {
         id: 8,
@@ -96,10 +75,7 @@ const FacilityUserInventory = () => {
         batch: 'B456',
         lot: 'L678',
         expiryDate: '2024-11-20',
-        issueDate: '2023-09-25',
         balance: 0,
-        status: 'Issued',
-        transactionType: 'Issued'
       }
     ];
     
@@ -128,29 +104,17 @@ const FacilityUserInventory = () => {
   // Handle CSV export
   const handleExportCSV = () => {
     alert('Exporting data to CSV');
-    // In a real app, this would generate and download a CSV file
   };
 
   // Handle PDF export
   const handleExportPDF = () => {
     alert('Exporting data to PDF');
-    // In a real app, this would generate and download a PDF file
   };
 
   // Format date for display
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
-  };
-
-  // Get status badge class
-  const getStatusBadgeClass = (status) => {
-    switch(status?.toLowerCase()) {
-      case 'received': return 'bg-success';
-      case 'issued': return 'bg-primary';
-      case 'pending': return 'bg-warning';
-      default: return 'bg-secondary';
-    }
   };
 
   // Calculate days until expiry
@@ -168,17 +132,6 @@ const FacilityUserInventory = () => {
     if (days <= 30) return { text: 'Expiring Soon', class: 'text-warning' };
     if (days <= 90) return { text: 'Near Expiry', class: 'text-info' };
     return { text: 'Good', class: 'text-success' };
-  };
-
-  // Get card background color based on type
-  const getCardBgColor = (type) => {
-    switch(type) {
-      case 'total': return '#e8f5e9'; // Very light green
-      case 'received': return '#e1f5fe'; // Very light blue
-      case 'issued': return '#fff8e1'; // Very light yellow
-      case 'expiring': return '#ffebee'; // Very light red
-      default: return '#f5f5f5'; // Very light gray
-    }
   };
 
   return (
@@ -203,7 +156,7 @@ const FacilityUserInventory = () => {
       {/* Summary Cards - Responsive */}
       <div className="row g-3 mb-4">
         <div className="col-6 col-md-3">
-          <div className="card border-0 shadow-sm h-100" style={{ backgroundColor: getCardBgColor('total') }}>
+          <div className="card border-0 shadow-sm h-100" style={{ backgroundColor: '#e8f5e9' }}>
             <div className="card-body d-flex flex-column justify-content-center">
               <div className="d-flex align-items-center justify-content-center">
                 <div className="me-3">
@@ -220,41 +173,7 @@ const FacilityUserInventory = () => {
           </div>
         </div>
         <div className="col-6 col-md-3">
-          <div className="card border-0 shadow-sm h-100" style={{ backgroundColor: getCardBgColor('received') }}>
-            <div className="card-body d-flex flex-column justify-content-center">
-              <div className="d-flex align-items-center justify-content-center">
-                <div className="me-3">
-                  <div className="bg-white bg-opacity-50 p-2 rounded-circle">
-                    <FaExchangeAlt size={20} className="text-success" />
-                  </div>
-                </div>
-                <div>
-                  <h6 className="card-subtitle text-muted">Received</h6>
-                  <h5 className="mb-0">{inventoryData.filter(item => item.transactionType === 'Received').length}</h5>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="col-6 col-md-3">
-          <div className="card border-0 shadow-sm h-100" style={{ backgroundColor: getCardBgColor('issued') }}>
-            <div className="card-body d-flex flex-column justify-content-center">
-              <div className="d-flex align-items-center justify-content-center">
-                <div className="me-3">
-                  <div className="bg-white bg-opacity-50 p-2 rounded-circle">
-                    <FaBalanceScale size={20} className="text-warning" />
-                  </div>
-                </div>
-                <div>
-                  <h6 className="card-subtitle text-muted">Issued</h6>
-                  <h5 className="mb-0">{inventoryData.filter(item => item.transactionType === 'Issued').length}</h5>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="col-6 col-md-3">
-          <div className="card border-0 shadow-sm h-100" style={{ backgroundColor: getCardBgColor('expiring') }}>
+          <div className="card border-0 shadow-sm h-100" style={{ backgroundColor: '#ffebee' }}>
             <div className="card-body d-flex flex-column justify-content-center">
               <div className="d-flex align-items-center justify-content-center">
                 <div className="me-3">
@@ -267,6 +186,40 @@ const FacilityUserInventory = () => {
                   <h5 className="mb-0">
                     {inventoryData.filter(item => getDaysUntilExpiry(item.expiryDate) <= 30).length}
                   </h5>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-6 col-md-3">
+          <div className="card border-0 shadow-sm h-100" style={{ backgroundColor: '#e1f5fe' }}>
+            <div className="card-body d-flex flex-column justify-content-center">
+              <div className="d-flex align-items-center justify-content-center">
+                <div className="me-3">
+                  <div className="bg-white bg-opacity-50 p-2 rounded-circle">
+                    <FaBox size={20} className="text-success" />
+                  </div>
+                </div>
+                <div>
+                  <h6 className="card-subtitle text-muted">Available Items</h6>
+                  <h5 className="mb-0">{inventoryData.filter(item => item.balance > 0).length}</h5>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-6 col-md-3">
+          <div className="card border-0 shadow-sm h-100" style={{ backgroundColor: '#fff8e1' }}>
+            <div className="card-body d-flex flex-column justify-content-center">
+              <div className="d-flex align-items-center justify-content-center">
+                <div className="me-3">
+                  <div className="bg-white bg-opacity-50 p-2 rounded-circle">
+                    <FaBox size={20} className="text-warning" />
+                  </div>
+                </div>
+                <div>
+                  <h6 className="card-subtitle text-muted">Out of Stock</h6>
+                  <h5 className="mb-0">{inventoryData.filter(item => item.balance === 0).length}</h5>
                 </div>
               </div>
             </div>
@@ -320,13 +273,9 @@ const FacilityUserInventory = () => {
               <table className="table table-hover mb-0">
                 <thead className="table-light">
                   <tr>
-                    <th>Item Name</th>
-                    <th>Batch</th>
-                    <th>Lot</th>
-                    <th>Expiry Date</th>
-                    <th>Issue Date</th>
-                    <th>Balance</th>
-                    <th>Status</th>
+                    <th>Item</th>
+                    <th>Available Qty</th>
+                    <th>Remarks</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -334,6 +283,7 @@ const FacilityUserInventory = () => {
                     filteredData.map((item) => {
                       const daysUntilExpiry = getDaysUntilExpiry(item.expiryDate);
                       const expiryStatus = getExpiryStatus(daysUntilExpiry);
+                      const isOutOfStock = item.balance === 0;
                       
                       return (
                         <tr key={item.id}>
@@ -344,48 +294,37 @@ const FacilityUserInventory = () => {
                               </div>
                               <div>
                                 <div>{item.itemName}</div>
-                                <small className="text-muted">ID: {item.id}</small>
+                                <small className="text-muted">
+                                  Batch: {item.batch} | Lot: {item.lot}
+                                </small>
                               </div>
                             </div>
                           </td>
                           <td>
                             <div className="d-flex align-items-center">
                               <FaBarcode className="text-muted me-2" />
-                              {item.batch}
-                            </div>
-                          </td>
-                          <td>{item.lot}</td>
-                          <td>
-                            <div>
-                              <div>{formatDate(item.expiryDate)}</div>
-                              <small className={expiryStatus.class}>
-                                {expiryStatus.text} ({daysUntilExpiry > 0 ? `${daysUntilExpiry} days` : `${Math.abs(daysUntilExpiry)} days ago`})
-                              </small>
-                            </div>
-                          </td>
-                          <td>
-                            <div className="d-flex align-items-center">
-                              <FaCalendarAlt className="text-muted me-2" />
-                              {formatDate(item.issueDate)}
-                            </div>
-                          </td>
-                          <td>
-                            <div className="d-flex align-items-center">
-                              <FaBalanceScale className="text-muted me-2" />
                               {item.balance} units
                             </div>
                           </td>
                           <td>
-                            <span className={`badge ${getStatusBadgeClass(item.status)}`}>
-                              {item.status}
-                            </span>
+                            <div>
+                              {isOutOfStock ? (
+                                <span className="badge bg-danger">Out of Stock</span>
+                              ) : (
+                                <span className="badge bg-success">In Stock</span>
+                              )}
+                              <div className={`mt-2 ${expiryStatus.class}`}>
+                                <FaExclamationTriangle className="me-1" />
+                                {expiryStatus.text} ({daysUntilExpiry > 0 ? `${daysUntilExpiry} days` : `${Math.abs(daysUntilExpiry)} days ago`})
+                              </div>
+                            </div>
                           </td>
                         </tr>
                       );
                     })
                   ) : (
                     <tr>
-                      <td colSpan="7" className="text-center py-4">
+                      <td colSpan="3" className="text-center py-4">
                         <div className="text-muted">
                           <FaBox size={24} className="mb-2" />
                           <p>No inventory items found matching your search criteria.</p>
@@ -402,7 +341,7 @@ const FacilityUserInventory = () => {
 
       {/* About Personal Inventory View Section - Responsive */}
       <div className="card border-0 shadow-sm mt-4">
-        <div className="card-header  text-black">
+        <div className="card-header text-black">
           <h5 className="mb-0 d-flex align-items-center">
             <FaInfoCircle className="me-2" /> About Personal Inventory View
           </h5>
@@ -421,7 +360,7 @@ const FacilityUserInventory = () => {
                   </div>
                   <p className="card-text">
                     This view shows all items you have requested or received in the last 90 days. 
-                    Each item displays detailed information including batch and lot numbers for traceability.
+                    Each item displays batch and lot numbers for traceability.
                   </p>
                   
                   <div className="mt-4">
@@ -429,15 +368,15 @@ const FacilityUserInventory = () => {
                     <ul className="list-unstyled">
                       <li className="d-flex align-items-center mb-2">
                         <FaSearch className="text-primary me-2 flex-shrink-0" />
-                        <span>Comprehensive search by item name, batch, or lot</span>
+                        <span>Search by item name, batch, or lot</span>
                       </li>
                       <li className="d-flex align-items-center mb-2">
-                        <FaCalendarAlt className="text-primary me-2 flex-shrink-0" />
-                        <span>Issue dates for all transactions</span>
+                        <FaBox className="text-primary me-2 flex-shrink-0" />
+                        <span>Current available quantity tracking</span>
                       </li>
                       <li className="d-flex align-items-center">
-                        <FaBox className="text-primary me-2 flex-shrink-0" />
-                        <span>Current balance tracking for each item</span>
+                        <FaExclamationTriangle className="text-primary me-2 flex-shrink-0" />
+                        <span>Expiry alerts with color-coded status</span>
                       </li>
                     </ul>
                   </div>
