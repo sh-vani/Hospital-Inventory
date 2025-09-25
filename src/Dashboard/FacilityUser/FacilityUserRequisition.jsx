@@ -5,8 +5,10 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 const FacilityUserRequisition = () => {
   // State for form data
   const [department, setDepartment] = useState('');
-  const [requester, setRequester] = useState('');
-  const [priority, setPriority] = useState('Medium');
+  const [username, setUsername] = useState('');
+  const [duration, setDuration] = useState('');
+  const [durationUnit, setDurationUnit] = useState('days');
+  const [notes, setNotes] = useState('');
   const [items, setItems] = useState([]);
   const [suggestedItems, setSuggestedItems] = useState([]);
   const [departmentStockLevels, setDepartmentStockLevels] = useState([]);
@@ -23,21 +25,21 @@ const FacilityUserRequisition = () => {
   // Simulate fetching user session data
   useEffect(() => {
     setDepartment('Pharmacy');
-    setRequester('Dr. Sharma');
+    setUsername('Dr. Sharma');
 
     const mockSuggestedItems = [
-      { id: 1, code: 'MED-001', name: 'Paracetamol 500mg', currentStock: 5, minLevel: 20, trigger: 'Low Stock', expiryDate: '2025-06-15' },
-      { id: 2, code: 'SUP-005', name: 'Antiseptic Solution', currentStock: 0, minLevel: 10, trigger: 'Out of Stock', expiryDate: '2025-03-10' },
-      { id: 3, code: 'MED-003', name: 'Insulin Pens', currentStock: 15, minLevel: 25, trigger: 'Near Expiry', expiryDate: '2024-12-01' }
+      { id: 1, name: 'Paracetamol 500mg', currentStock: 5, minLevel: 20, trigger: 'Low Stock', expiryDate: '2025-06-15' },
+      { id: 2, name: 'Antiseptic Solution', currentStock: 0, minLevel: 10, trigger: 'Out of Stock', expiryDate: '2025-03-10' },
+      { id: 3, name: 'Insulin Pens', currentStock: 15, minLevel: 25, trigger: 'Near Expiry', expiryDate: '2024-12-01' }
     ];
 
     const mockDepartmentStockLevels = [
-      { id: 101, code: 'MED-001', name: 'Paracetamol 500mg', currentStock: 50, minLevel: 100, trigger: 'Department Low Stock' },
-      { id: 102, code: 'SUP-005', name: 'Antiseptic Solution', currentStock: 0, minLevel: 50, trigger: 'Department Out of Stock' },
-      { id: 103, code: 'MED-003', name: 'Insulin Pens', currentStock: 30, minLevel: 40, trigger: 'Department Low Stock' },
-      { id: 104, code: 'SUP-010', name: 'Surgical Gloves', currentStock: 200, minLevel: 150, trigger: 'Normal Stock' },
-      { id: 105, code: 'SUP-015', name: 'Face Masks', currentStock: 10, minLevel: 100, trigger: 'Department Low Stock' },
-      { id: 106, code: 'MED-005', name: 'Syringes', currentStock: 0, minLevel: 200, trigger: 'Department Out of Stock' }
+      { id: 101, name: 'Paracetamol 500mg', currentStock: 50, minLevel: 100, trigger: 'Department Low Stock' },
+      { id: 102, name: 'Antiseptic Solution', currentStock: 0, minLevel: 50, trigger: 'Department Out of Stock' },
+      { id: 103, name: 'Insulin Pens', currentStock: 30, minLevel: 40, trigger: 'Department Low Stock' },
+      { id: 104, name: 'Surgical Gloves', currentStock: 200, minLevel: 150, trigger: 'Normal Stock' },
+      { id: 105, name: 'Face Masks', currentStock: 10, minLevel: 100, trigger: 'Department Low Stock' },
+      { id: 106, name: 'Syringes', currentStock: 0, minLevel: 200, trigger: 'Department Out of Stock' }
     ];
 
     setSuggestedItems(mockSuggestedItems);
@@ -46,8 +48,7 @@ const FacilityUserRequisition = () => {
     setItems(
       mockSuggestedItems.map(item => ({
         ...item,
-        requestedQuantity: item.minLevel - item.currentStock > 0 ? item.minLevel - item.currentStock : 10,
-        remarks: ''
+        requestedQuantity: item.minLevel - item.currentStock > 0 ? item.minLevel - item.currentStock : 10
       }))
     );
   }, []);
@@ -58,8 +59,7 @@ const FacilityUserRequisition = () => {
       setItems(
         suggestedItems.map(item => ({
           ...item,
-          requestedQuantity: item.minLevel - item.currentStock > 0 ? item.minLevel - item.currentStock : 10,
-          remarks: ''
+          requestedQuantity: item.minLevel - item.currentStock > 0 ? item.minLevel - item.currentStock : 10
         }))
       );
     } else {
@@ -68,40 +68,40 @@ const FacilityUserRequisition = () => {
         .map(item => ({
           ...item,
           requestedQuantity: item.minLevel - item.currentStock > 0 ? item.minLevel - item.currentStock : 10,
-          remarks: '', // department-level not tracked
-          expiryDate: ''
+          expiryDate: '' // department-level not tracked
         }));
       setItems(bulkItems);
     }
   }, [requisitionType, suggestedItems, departmentStockLevels]);
 
-  // Add / remove / quantity / remarks
+  // Add / remove / quantity
   const handleAddItem = () => {
     const newItem = {
       id: items.length > 0 ? Math.max(...items.map(item => item.id)) + 1 : 1,
-      code: '',
       name: '',
       currentStock: 0,
       minLevel: 0,
       trigger: 'Manual Add',
       expiryDate: '',
-      requestedQuantity: 1,
-      remarks: ''
+      requestedQuantity: 1
     };
     setItems([...items, newItem]);
   };
-
   const handleRemoveItem = (id) => setItems(items.filter(item => item.id !== id));
-  
   const handleQuantityChange = (id, quantity) =>
     setItems(items.map(item => (item.id === id ? { ...item, requestedQuantity: parseInt(quantity) || 0 } : item)));
-    
-  const handleRemarksChange = (id, remarks) =>
-    setItems(items.map(item => (item.id === id ? { ...item, remarks: remarks } : item)));
 
-  // Submit
+  // Submit (individual uses global Duration+Notes; bulk has none)
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (requisitionType === 'individual') {
+      if (!duration || !notes) {
+        alert('Please fill in Duration and Notes.');
+        return;
+      }
+    }
+
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
@@ -112,17 +112,17 @@ const FacilityUserRequisition = () => {
           setItems(
             suggestedItems.map(item => ({
               ...item,
-              requestedQuantity: item.minLevel - item.currentStock > 0 ? item.minLevel - item.currentStock : 10,
-              remarks: ''
+              requestedQuantity: item.minLevel - item.currentStock > 0 ? item.minLevel - item.currentStock : 10
             }))
           );
+          setNotes('');
+          setDuration('');
         } else {
           const bulkItems = departmentStockLevels
             .filter(item => item.currentStock < item.minLevel)
             .map(item => ({
               ...item,
               requestedQuantity: item.minLevel - item.currentStock > 0 ? item.minLevel - item.currentStock : 10,
-              remarks: '',
               expiryDate: ''
             }));
           setItems(bulkItems);
@@ -139,12 +139,10 @@ const FacilityUserRequisition = () => {
       .map(item => ({
         ...item,
         requestedQuantity: item.minLevel - item.currentStock > 0 ? item.minLevel - item.currentStock : 10,
-        remarks: '',
         selected: true
       }));
     setSelectedBulkItems(preSelected);
   };
-  
   const handleCloseBulkModal = () => {
     setShowBulkModal(false);
     setSelectedBulkItems([]);
@@ -157,11 +155,8 @@ const FacilityUserRequisition = () => {
 
   const handleBulkQuantityChange = (id, quantity) =>
     setSelectedBulkItems(selectedBulkItems.map(item => (item.id === id ? { ...item, requestedQuantity: parseInt(quantity) || 0 } : item)));
-    
-  const handleBulkRemarksChange = (id, remarks) =>
-    setSelectedBulkItems(selectedBulkItems.map(item => (item.id === id ? { ...item, remarks: remarks } : item)));
 
-  // Bulk submit
+  // Bulk submit (no duration/notes required)
   const handleBulkSubmit = (e) => {
     e.preventDefault();
     const selectedItems = selectedBulkItems.filter(item => item.selected);
@@ -206,7 +201,7 @@ const FacilityUserRequisition = () => {
     <div className="container py-4">
       <div className="card shadow">
         <div className="card-header text-black">
-          <h4 className="mb-0">Create New Requisition</h4>
+          <h4 className="mb-0">Create Requisition</h4>
           <p className="mb-0">Submit requisition to Facility Admin</p>
         </div>
 
@@ -226,24 +221,9 @@ const FacilityUserRequisition = () => {
                 <input type="text" className="form-control" value={department} disabled />
               </div>
               <div className="col-md-6">
-                <label className="form-label">Requester</label>
-                <input type="text" className="form-control" value={requester} disabled />
+                <label className="form-label">Username</label>
+                <input type="text" className="form-control" value={username} disabled />
               </div>
-            </div>
-
-            {/* Priority */}
-            <div className="mb-3">
-              <label className="form-label">Priority</label>
-              <select 
-                className="form-select" 
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-              >
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-                <option value="Urgent">Urgent</option>
-              </select>
             </div>
 
             {/* Requisition Type */}
@@ -282,10 +262,48 @@ const FacilityUserRequisition = () => {
               </div>
             </div>
 
+            {/* Duration + Notes only for Individual */}
+            {requisitionType === 'individual' && (
+              <div className="row mb-3">
+                <div className="col-md-6">
+                  <label className="form-label">Duration <span className="text-danger">*</span></label>
+                  <div className="input-group">
+                    <input
+                      type="number"
+                      className="form-control"
+                      value={duration}
+                      onChange={(e) => setDuration(e.target.value)}
+                      min="1"
+                      required
+                    />
+                    <select
+                      className="form-select"
+                      value={durationUnit}
+                      onChange={(e) => setDurationUnit(e.target.value)}
+                    >
+                      <option value="days">Days</option>
+                      <option value="weeks">Weeks</option>
+                    </select>
+                  </div>
+                  <div className="form-text">How many days/weeks should this requisition cover?</div>
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label">Notes <span className="text-danger">*</span></label>
+                  <textarea
+                    className="form-control"
+                    rows="3"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    required
+                  ></textarea>
+                </div>
+              </div>
+            )}
+
             {/* Items */}
             <div className="mb-4">
               <div className="d-flex justify-content-between align-items-center mb-3">
-                <h5>Items</h5>
+                <h5>Requisition Items</h5>
                 <div>
                   {requisitionType === 'bulk' && (
                     <button
@@ -308,32 +326,18 @@ const FacilityUserRequisition = () => {
                 <table className="table table-hover">
                   <thead className="table-light">
                     <tr>
-                      <th>Item Code</th>
                       <th>Item Name</th>
-                      <th>Quantity</th>
-                      <th>Remarks (Optional)</th>
-                      <th>Actions</th>
+                      <th>Current Stock</th>
+                      <th>Min Level</th>
+                      <th>Trigger</th>
+                      <th>Expiry Date</th>
+                      <th>Requested Qty</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {items.map((item) => (
                       <tr key={item.id}>
-                        <td>
-                          {item.trigger === 'Manual Add' ? (
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              placeholder="Enter item code"
-                              value={item.code}
-                              onChange={(e) => {
-                                const updated = items.map(i => i.id === item.id ? { ...i, code: e.target.value } : i);
-                                setItems(updated);
-                              }}
-                            />
-                          ) : (
-                            item.code
-                          )}
-                        </td>
                         <td>
                           {item.trigger === 'Manual Add' ? (
                             <input
@@ -350,6 +354,13 @@ const FacilityUserRequisition = () => {
                             item.name
                           )}
                         </td>
+                        <td>{item.currentStock}</td>
+                        <td>{item.minLevel}</td>
+                        <td>
+                          {getTriggerIcon(item.trigger)}
+                          {item.trigger}
+                        </td>
+                        <td>{item.expiryDate || '-'}</td>
                         <td>
                           <input
                             type="number"
@@ -357,15 +368,6 @@ const FacilityUserRequisition = () => {
                             min="1"
                             value={item.requestedQuantity}
                             onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            placeholder="Optional remarks"
-                            value={item.remarks}
-                            onChange={(e) => handleRemarksChange(item.id, e.target.value)}
                           />
                         </td>
                         <td>
@@ -390,23 +392,20 @@ const FacilityUserRequisition = () => {
 
             {/* Submit */}
             <div className="d-grid gap-2 d-md-flex justify-content-md-end">
-              <button type="button" className="btn btn-outline-secondary me-2">
-                Cancel
-              </button>
               <button type="submit" className="btn btn-primary" disabled={loading}>
                 {loading ? (
                   <>
                     <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    Creating...
+                    Submitting...
                   </>
-                ) : 'Create'}
+                ) : 'Submit Requisition'}
               </button>
             </div>
           </form>
         </div>
       </div>
 
-      {/* Bulk Requisition Modal */}
+      {/* Bulk Requisition Modal (no Duration/Notes) */}
       <div className={`modal fade ${showBulkModal ? 'show' : ''}`} id="bulkRequisitionModal" tabIndex="-1" aria-labelledby="bulkRequisitionModalLabel" aria-hidden={!showBulkModal} style={{ display: showBulkModal ? 'block' : 'none' }}>
         <div className="modal-dialog modal-dialog-centered modal-lg">
           <div className="modal-content">
@@ -429,16 +428,16 @@ const FacilityUserRequisition = () => {
                       <thead className="table-light sticky-top">
                         <tr>
                           <th width="40px">Select</th>
-                          <th>Item Code</th>
                           <th>Item Name</th>
-                          <th className="text-center">Quantity</th>
-                          <th>Remarks (Optional)</th>
+                          <th className="text-center">Stock</th>
+                          <th className="text-center">Min</th>
+                          <th className="text-center">Qty</th>
                         </tr>
                       </thead>
                       <tbody>
                         {departmentStockLevels.map((item) => {
                           const bulkItem = selectedBulkItems.find(i => i.id === item.id) ||
-                            { ...item, selected: false, requestedQuantity: 0, remarks: '' };
+                            { ...item, selected: false, requestedQuantity: 0 };
 
                           return (
                             <tr key={item.id}>
@@ -452,7 +451,6 @@ const FacilityUserRequisition = () => {
                                   />
                                 </div>
                               </td>
-                              <td className="small">{item.code}</td>
                               <td className="small">
                                 <div>{item.name}</div>
                                 <div className="text-muted">
@@ -460,6 +458,8 @@ const FacilityUserRequisition = () => {
                                   <small>{item.trigger}</small>
                                 </div>
                               </td>
+                              <td className="text-center small">{item.currentStock}</td>
+                              <td className="text-center small">{item.minLevel}</td>
                               <td className="text-center">
                                 <input
                                   type="number"
@@ -469,16 +469,6 @@ const FacilityUserRequisition = () => {
                                   onChange={(e) => handleBulkQuantityChange(item.id, e.target.value)}
                                   disabled={!bulkItem.selected}
                                   style={{ width: '70px' }}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm"
-                                  placeholder="Optional remarks"
-                                  value={bulkItem.remarks}
-                                  onChange={(e) => handleBulkRemarksChange(item.id, e.target.value)}
-                                  disabled={!bulkItem.selected}
                                 />
                               </td>
                             </tr>
@@ -497,9 +487,9 @@ const FacilityUserRequisition = () => {
                     {bulkLoading ? (
                       <>
                         <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Creating...
+                        Submitting...
                       </>
-                    ) : 'Create'}
+                    ) : 'Submit Bulk Requisition'}
                   </button>
                 </div>
               </form>

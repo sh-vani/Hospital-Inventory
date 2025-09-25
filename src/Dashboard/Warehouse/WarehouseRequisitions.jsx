@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaPlus, FaSearch, FaEye, FaFilePdf } from 'react-icons/fa';
+import axios from 'axios';
+import BaseUrl from '../../Api/BaseUrl';
 
 const WarehouseRequisitions = () => {
   // State for search
@@ -17,99 +19,89 @@ const WarehouseRequisitions = () => {
   
   // State for new requisition form
   const [newRequisition, setNewRequisition] = useState({
-    facility: '',
+    facility_id: '',
     department: '',
-    requestedBy: '',
+    requested_by: '',
     items: '',
     priority: 'Medium',
     reason: ''
   });
   
-  // Mock data for requisitions (admin can create, view, approve, reject)
-  const [requisitions, setRequisitions] = useState([
-    { 
-      id: '#REQ-0042', 
-      facility: 'Kumasi Branch Hospital', 
-      department: 'Emergency', 
-      requestedBy: 'Dr. Amoah', 
-      date: '24 Oct 2023', 
-      items: '12 items', 
-      priority: 'High', 
-      status: 'Pending Review',
-      details: [
-        { name: 'Paracetamol 500mg', quantity: 100, unit: 'Tablets' },
-        { name: 'Surgical Gloves', quantity: 50, unit: 'Pairs' },
-        { name: 'Syringe 5ml', quantity: 200, unit: 'Pieces' }
-      ],
-      approvedBy: null,
-      approvedDate: null,
-      rejectedBy: null,
-      rejectedDate: null,
-      rejectionReason: null
-    },
-    { 
-      id: '#REQ-0040', 
-      facility: 'Takoradi Clinic', 
-      department: 'Pharmacy', 
-      requestedBy: 'Dr. Mensah', 
-      date: '22 Oct 2023', 
-      items: '5 items', 
-      priority: 'Medium', 
-      status: 'Submitted',
-      details: [
-        { name: 'Amoxicillin 250mg', quantity: 50, unit: 'Capsules' },
-        { name: 'Bandages', quantity: 30, unit: 'Pieces' }
-      ],
-      approvedBy: null,
-      approvedDate: null,
-      rejectedBy: null,
-      rejectedDate: null,
-      rejectionReason: null
-    },
-    { 
-      id: '#REQ-0038', 
-      facility: 'Accra Central Hospital', 
-      department: 'Laboratory', 
-      requestedBy: 'Lab Tech. Ama', 
-      date: '20 Oct 2023', 
-      items: '7 items', 
-      priority: 'Low', 
-      status: 'Approved',
-      details: [
-        { name: 'Test Tubes', quantity: 100, unit: 'Pieces' },
-        { name: 'Gloves', quantity: 20, unit: 'Pairs' }
-      ],
-      approvedBy: 'Admin User',
-      approvedDate: '26 Oct 2023',
-      rejectedBy: null,
-      rejectedDate: null,
-      rejectionReason: null,
-      documents: {
-        pickList: true,
-        packingList: true,
-        gdn: true
-      }
-    },
-    { 
-      id: '#REQ-0037', 
-      facility: 'Cape Coast Clinic', 
-      department: 'OPD', 
-      requestedBy: 'Nurse Kofi', 
-      date: '19 Oct 2023', 
-      items: '3 items', 
-      priority: 'High', 
-      status: 'Rejected',
-      details: [
-        { name: 'Thermometers', quantity: 10, unit: 'Pieces' }
-      ],
-      approvedBy: null,
-      approvedDate: null,
-      rejectedBy: 'Admin User',
-      rejectedDate: '25 Oct 2023',
-      rejectionReason: 'Insufficient budget allocation this quarter.',
-      documents: null
+  // State for requisitions data
+  const [requisitions, setRequisitions] = useState([]);
+  
+  // State for dashboard counts
+  const [dashboardCounts, setDashboardCounts] = useState({
+    pending: 0,
+    approved: 0,
+    rejected: 0
+  });
+  
+  // State for loading
+  const [loading, setLoading] = useState(true);
+  
+  // Fetch requisitions and dashboard counts on component mount
+  useEffect(() => {
+    fetchRequisitions();
+    fetchDashboardCounts();
+  }, []);
+  
+  // Function to fetch requisitions from API
+  const fetchRequisitions = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${BaseUrl}/requisitions`);
+      
+      // Transform API data to match the component's expected format
+      const transformedData = response.data.map(req => ({
+        id: req.id,
+        facility: req.facility_name || `Facility ${req.facility_id}`,
+        department: req.department,
+        requestedBy: req.requested_by,
+        date: new Date(req.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        items: JSON.parse(req.items).length > 0 ? `${JSON.parse(req.items).length} items` : 'No items',
+        priority: req.priority,
+        status: req.status,
+        details: JSON.parse(req.items),
+        approvedBy: req.status === 'Approved' ? 'Admin User' : null,
+        approvedDate: req.status === 'Approved' ? new Date().toLocaleDateString('en-GB') : null,
+        rejectedBy: req.status === 'Rejected' ? 'Admin User' : null,
+        rejectedDate: req.status === 'Rejected' ? new Date().toLocaleDateString('en-GB') : null,
+        rejectionReason: req.status === 'Rejected' ? req.reason : null,
+        documents: req.status === 'Approved' ? {
+          pickList: true,
+          packingList: true,
+          gdn: true
+        } : null
+      }));
+      
+      setRequisitions(transformedData);
+    } catch (error) {
+      console.error('Error fetching requisitions:', error);
+      // Fallback to mock data if API fails
+     
+      
+        
+    } finally {
+      setLoading(false);    
     }
-  ]);
+  };
+  
+  // Function to fetch dashboard counts
+  const fetchDashboardCounts = async () => {
+    try {
+      const response = await axios.get(`${BaseUrl}/dashboard/counts`);
+      setDashboardCounts(response.data.data);
+    } catch (error) {
+      console.error('Error fetching dashboard counts:', error);
+      // Fallback to default counts if API fails
+      setDashboardCounts({
+        pending: 0,
+        approved: 0,      
+        rejected: 0
+      });
+    }
+  };
   
   // Priority badge component
   const PriorityBadge = ({ priority }) => {
@@ -145,9 +137,9 @@ const WarehouseRequisitions = () => {
   // Modal handlers
   const openCreateModal = () => {
     setNewRequisition({
-      facility: '',
+      facility_id: '',
       department: '',
-      requestedBy: '',
+      requested_by: '',
       items: '',
       priority: 'Medium',
       reason: ''
@@ -176,78 +168,147 @@ const WarehouseRequisitions = () => {
   };
   
   // Action handlers
-  const handleCreateRequisition = () => {
-    if (!newRequisition.facility || !newRequisition.department || !newRequisition.requestedBy) {
+  const handleCreateRequisition = async () => {
+    if (!newRequisition.facility_id || !newRequisition.department || !newRequisition.requested_by) {
       alert('Please fill Facility, Department, and Requested By fields.');
       return;
     }
 
-    const newItem = {
-      id: `#REQ-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
-      facility: newRequisition.facility,
-      department: newRequisition.department,
-      requestedBy: newRequisition.requestedBy,
-      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-      items: newRequisition.items || 'Not specified',
-      priority: newRequisition.priority,
-      status: 'Submitted',
-      details: [],
-      approvedBy: null,
-      approvedDate: null,
-      rejectedBy: null,
-      rejectedDate: null,
-      rejectionReason: null
-    };
-    
-    setRequisitions([newItem, ...requisitions]);
-    setShowCreateModal(false);
+    try {
+      // Prepare items array for API
+      const itemsArray = newRequisition.items.split(',').map(item => {
+        const [item_id, qty] = item.trim().split('-');
+        return {
+          item_id: item_id ? item_id.trim() : '',
+          qty: qty ? parseInt(qty.trim()) : 1
+        };
+      });
+
+      const apiData = {
+        facility_id: parseInt(newRequisition.facility_id),
+        department: newRequisition.department,
+        requested_by: newRequisition.requested_by,
+        priority: newRequisition.priority,
+        items: JSON.stringify(itemsArray),
+        reason: newRequisition.reason
+      };
+
+      // Call API to create requisition
+      const response = await axios.post(`${BaseUrl}/requisitions`, apiData);
+      
+      // Create new item for local state
+      const newItem = {
+        id: response.data.id ? `#REQ-${response.data.id}` : `#REQ-${Math.floor(Math.random() * 10000)}`,
+        facility: `Facility ${newRequisition.facility_id}`,
+        department: newRequisition.department,
+        requestedBy: newRequisition.requested_by,
+        date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        items: itemsArray.length > 0 ? `${itemsArray.length} items` : 'No items',
+        priority: newRequisition.priority,
+        status: 'Submitted',
+        details: itemsArray,
+        approvedBy: null,
+        approvedDate: null,
+        rejectedBy: null,
+        rejectedDate: null,
+        rejectionReason: null
+      };
+      
+      setRequisitions([newItem, ...requisitions]);
+      setShowCreateModal(false);
+      
+      // Refresh dashboard counts
+      fetchDashboardCounts();
+      
+      alert('Requisition created successfully!');
+    } catch (error) {
+      console.error('Error creating requisition:', error);
+      alert('Failed to create requisition. Please try again.');
+    }
   };
 
-  const handleApprove = (reqId) => {
-    const now = new Date().toLocaleDateString('en-GB');
-
-    setRequisitions(
-      requisitions.map(req =>
-        req.id === reqId
-          ? {
-              ...req,
-              status: 'Approved',
-              approvedBy: 'Admin User',
-              approvedDate: now,
-              documents: {
-                pickList: true,
-                packingList: true,
-                gdn: true
+  const handleApprove = async (reqId) => {
+    alert(`Approving requisition ${reqId}... Documents will be generated.`);
+    try {
+      // Extract numeric ID from requisition ID (e.g., #REQ-1 -> 1)
+      const numericId = reqId.replace('#REQ-', '');
+      
+      // Call API to update requisition status
+      await axios.patch(`${BaseUrl}/requisitions/status/${reqId}`, {
+        status: 'Approved',
+        reason: ''
+      });
+      
+      // Update local state
+      const now = new Date().toLocaleDateString('en-GB');
+      setRequisitions(
+        requisitions.map(req =>
+          req.id === reqId
+            ? {
+                ...req,
+                status: 'Approved',
+                approvedBy: 'Admin User',
+                approvedDate: now,
+                documents: {
+                  pickList: true,
+                  packingList: true,
+                  gdn: true
+                }
               }
-            }
-          : req
-      )
-    );
+            : req
+        )
+      );
 
-    alert(`Requisition ${reqId} approved. Documents generated.`);
+      // Refresh dashboard counts
+      fetchDashboardCounts();
+      
+      alert(`Requisition ${reqId} approved. Documents generated.`);
+    } catch (error) {
+      console.error('Error approving requisition:', error);
+      alert('Failed to approve requisition. Please try again.');
+    }
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!rejectionReason.trim()) {
       alert('Please provide a reason for rejection.');
       return;
     }
 
-    setRequisitions(
-      requisitions.map(req =>
-        req.id === rejectingRequisition.id
-          ? {
-              ...req,
-              status: 'Rejected',
-              rejectedBy: 'Admin User',
-              rejectedDate: new Date().toLocaleDateString('en-GB'),
-              rejectionReason: rejectionReason
-            }
-          : req
-      )
-    );
+    try {
+      // Extract numeric ID from requisition ID (e.g., #REQ-1 -> 1)
+      const numericId = rejectingRequisition.id.replace('#REQ-', '');
+      
+      // Call API to update requisition status
+      await axios.post(`${BaseUrl}/requisitions/status/${numericId}`, {
+        status: 'Rejected',
+        reason: rejectionReason
+      });
+      
+      // Update local state
+      setRequisitions(
+        requisitions.map(req =>
+          req.id === rejectingRequisition.id
+            ? {
+                ...req,
+                status: 'Rejected',
+                rejectedBy: 'Admin User',
+                rejectedDate: new Date().toLocaleDateString('en-GB'),
+                rejectionReason: rejectionReason
+              }
+            : req
+        )
+      );
 
-    setShowRejectModal(false);
+      // Refresh dashboard counts
+      fetchDashboardCounts();
+      
+      setShowRejectModal(false);
+      alert('Requisition rejected successfully.');
+    } catch (error) {
+      console.error('Error rejecting requisition:', error);
+      alert('Failed to reject requisition. Please try again.');
+    }
   };
 
   const downloadPDF = (docType, req) => {
@@ -321,9 +382,7 @@ const WarehouseRequisitions = () => {
                   <FaEye size={24} className="text-warning" />
                 </div>
                 <div>
-                  <h5 className="card-title text-warning fw-bold mb-0">
-                    {requisitions.filter(r => r.status === 'Submitted' || r.status === 'Pending Review').length}
-                  </h5>
+                  <h5 className="card-title text-warning fw-bold mb-0">{dashboardCounts.pending}</h5>
                   <p className="card-text text-muted">Awaiting Action</p>
                 </div>
               </div>
@@ -338,9 +397,7 @@ const WarehouseRequisitions = () => {
                   <FaEye size={24} className="text-success" />
                 </div>
                 <div>
-                  <h5 className="card-title text-success fw-bold mb-0">
-                    {requisitions.filter(r => r.status === 'Approved').length}
-                  </h5>
+                  <h5 className="card-title text-success fw-bold mb-0">{dashboardCounts.approved}</h5>
                   <p className="card-text text-muted">Approved</p>
                 </div>
               </div>
@@ -355,9 +412,7 @@ const WarehouseRequisitions = () => {
                   <FaEye size={24} className="text-danger" />
                 </div>
                 <div>
-                  <h5 className="card-title text-danger fw-bold mb-0">
-                    {requisitions.filter(r => r.status === 'Rejected').length}
-                  </h5>
+                  <h5 className="card-title text-danger fw-bold mb-0">{dashboardCounts.rejected}</h5>
                   <p className="card-text text-muted">Rejected</p>
                 </div>
               </div>
@@ -392,54 +447,68 @@ const WarehouseRequisitions = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredRequisitions.map((req, index) => (
-                  <tr key={index}>
-                    <td><span className="fw-bold">{req.id}</span></td>
-                    <td>{req.facility}</td>
-                    <td>{req.department}</td>
-                    <td>{req.requestedBy}</td>
-                    <td>{req.date}</td>
-                    <td>{req.items}</td>
-                    <td><PriorityBadge priority={req.priority} /></td>
-                    <td><StatusBadge status={req.status} /></td>
-                    <td>
-                      <div className="d-flex gap-1">
-                        <button 
-                          className="btn btn-sm btn-outline-primary" 
-                          onClick={() => openViewModal(req)}
-                        >
-                          <FaEye />
-                        </button>
-
-                        {/* APPROVE BUTTON */}
-                        {['Submitted', 'Pending Review'].includes(req.status) && (
-                          <button 
-                            className="btn btn-sm btn-success"
-                            onClick={() => handleApprove(req.id)}
-                            title="Approve Requisition"
-                          >
-                            Approve
-                          </button>
-                        )}
-
-                        {/* REJECT BUTTON */}
-                        {['Submitted', 'Pending Review'].includes(req.status) && (
-                          <button 
-                            className="btn btn-sm btn-danger"
-                            onClick={() => openRejectModal(req)}
-                            title="Reject Requisition"
-                          >
-                            Reject
-                          </button>
-                        )}
+                {loading ? (
+                  <tr>
+                    <td colSpan="9" className="text-center py-4">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredRequisitions.map((req) => (
+                    <tr key={req.id}>
+                      <td>
+                        <span className="fw-bold">
+                          {req.id}
+                        </span>
+                      </td>
+                      <td>{req.facility}</td>
+                      <td>{req.department}</td>
+                      <td>{req.requestedBy}</td>
+                      <td>{req.date}</td>
+                      <td>{req.items}</td>
+                      <td><PriorityBadge priority={req.priority} /></td>
+                      <td><StatusBadge status={req.status} /></td>
+                      <td>
+                        <div className="d-flex gap-1">
+                          <button 
+                            className="btn btn-sm btn-outline-primary" 
+                            onClick={() => openViewModal(req)}
+                          >
+                            <FaEye />
+                          </button>
+
+                          {/* APPROVE BUTTON */}
+                          {['Submitted', 'Pending Review'].includes(req.status) && (
+                            <button 
+                              className="btn btn-sm btn-success"
+                              onClick={() => handleApprove(req.id)}
+                              title="Approve Requisition"
+                            >
+                              Approve
+                            </button>
+                          )}
+
+                          {/* REJECT BUTTON */}
+                          {['Submitted', 'Pending Review'].includes(req.status) && (
+                            <button 
+                              className="btn btn-sm btn-danger"
+                              onClick={() => openRejectModal(req)}
+                              title="Reject Requisition"
+                            >
+                              Reject
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
-          {filteredRequisitions.length === 0 && (
+          {!loading && filteredRequisitions.length === 0 && (
             <div className="p-4 text-center text-muted">
               No requisitions found matching your search.
             </div>
@@ -464,14 +533,14 @@ const WarehouseRequisitions = () => {
                 <form>
                   <div className="row mb-3">
                     <div className="col-md-6">
-                      <label className="form-label fw-medium">Facility <span className="text-danger">*</span></label>
+                      <label className="form-label fw-medium">Facility ID <span className="text-danger">*</span></label>
                       <input 
-                        type="text" 
+                        type="number" 
                         className="form-control form-control-lg"
-                        name="facility"
-                        value={newRequisition.facility}
+                        name="facility_id"
+                        value={newRequisition.facility_id}
                         onChange={handleInputChange}
-                        placeholder="e.g. Kumasi Branch Hospital"
+                        placeholder="e.g. 1"
                         required
                       />
                     </div>
@@ -494,8 +563,8 @@ const WarehouseRequisitions = () => {
                       <input 
                         type="text" 
                         className="form-control form-control-lg"
-                        name="requestedBy"
-                        value={newRequisition.requestedBy}
+                        name="requested_by"
+                        value={newRequisition.requested_by}
                         onChange={handleInputChange}
                         placeholder="Your Name / Role"
                         required
@@ -523,8 +592,9 @@ const WarehouseRequisitions = () => {
                       value={newRequisition.items}
                       onChange={handleInputChange}
                       rows="3"
-                      placeholder="List items and quantities (e.g. Paracetamol 500mg - 100 tablets)"
+                      placeholder="List items and quantities (e.g. DRG-0421-10, DRG-0422-5)"
                     ></textarea>
+                    <div className="form-text">Format: item_id-quantity (comma separated for multiple items)</div>
                   </div>
                   <div className="mb-3">
                     <label className="form-label fw-medium">Reason for Requisition</label>
@@ -578,22 +648,20 @@ const WarehouseRequisitions = () => {
                 </div>
                 
                 <h6 className="border-bottom pb-2 mb-3">Items Requested:</h6>
-                {currentRequisition.details.length > 0 ? (
+                {currentRequisition.details && currentRequisition.details.length > 0 ? (
                   <div className="table-responsive">
                     <table className="table table-sm table-bordered">
                       <thead className="table-light">
                         <tr>
-                          <th>Item Name</th>
+                          <th>Item ID</th>
                           <th>Quantity</th>
-                          <th>Unit</th>
                         </tr>
                       </thead>
                       <tbody>
                         {currentRequisition.details.map((item, index) => (
                           <tr key={index}>
-                            <td>{item.name}</td>
-                            <td>{item.quantity}</td>
-                            <td>{item.unit}</td>
+                            <td>{item.item_id || item.name}</td>
+                            <td>{item.qty || item.quantity} {item.unit || ''}</td>
                           </tr>
                         ))}
                       </tbody>
