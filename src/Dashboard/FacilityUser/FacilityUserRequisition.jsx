@@ -623,7 +623,7 @@ const FacilityUserRequisition = () => {
             </div>
             <div className="col-md-6">
               <h6><span className="badge bg-danger me-2">Urgent</span> Priority</h6>
-              <p>Immediate processing for critical items.</p>
+              <p>Immediate process for critical items.</p>
             </div>
           </div>
         </div>
