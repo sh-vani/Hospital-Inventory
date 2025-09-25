@@ -3,8 +3,6 @@ import {
   FaHospital, FaClinicMedical, FaFirstAid, FaWarehouse, FaMapMarkerAlt, FaPhone, FaEnvelope,
   FaEdit, FaTrash, FaSave, FaInfoCircle, FaBox, FaClipboardList, FaUserPlus
 } from 'react-icons/fa';
-import axios from 'axios';
-import BaseUrl from '../../Api/BaseUrl';
 
 const SuperAdminFacilities = () => {
   // State for modals
@@ -42,36 +40,87 @@ const SuperAdminFacilities = () => {
   // State for error
   const [error, setError] = useState(null);
   
-  // Fetch facilities data on component mount
+  // Generate random facilities data on component mount
   useEffect(() => {
-    fetchFacilities();
+    generateRandomFacilities();
   }, []);
   
-  // Function to fetch facilities
-  const fetchFacilities = async () => {
+  // Function to generate random facilities
+  const generateRandomFacilities = () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${BaseUrl}/facilities`);
-      // Transform the response data to match the component's expected format
-      const transformedData = response.data.map(facility => ({
-        id: facility.id,
-        name: facility.name,
-        type: facility.type,
-        address: facility.address,
-        phone: facility.phone,
-        email: facility.email,
-        description: facility.description,
-        capacity: facility.capacity,
-        services: facility.services,
-        inventoryLevel: facility.inventory_level,
-        pendingRequisitions: facility.pending_requisitions,
-        admin: facility.admin || 'Not Assigned' // Assuming admin info comes from API
+      
+      // Facility types
+      const facilityTypes = [
+        'Hospital', 
+        'Regional Facility', 
+        'Metropolitan Facility', 
+        'Community Health Center', 
+        'Central Storage Facility', 
+        'Coastal Regional Facility'
+      ];
+      
+      // Facility names
+      const hospitalNames = [
+        'City General Hospital',
+        'Regional Medical Center',
+        'Metropolitan Hospital',
+        'Community Health Center',
+        'Central Medical Warehouse',
+        'Coastal Regional Hospital'
+      ];
+      
+      // Locations
+      const locations = [
+        '123 Main Street, Accra',
+        '456 Health Avenue, Kumasi',
+        '789 Medical Boulevard, Takoradi',
+        '101 Wellness Road, Tamale',
+        '202 Care Lane, Cape Coast',
+        '303 Recovery Drive, Ho'
+      ];
+      
+      // Services
+      const servicesList = [
+        'Emergency Care, General Surgery, Maternity',
+        'Outpatient Services, Laboratory, Pharmacy',
+        'Diagnostic Imaging, Physical Therapy, Cardiology',
+        'Pediatrics, Neonatal Care, Immunization',
+        'Storage, Distribution, Inventory Management',
+        'Emergency Response, Trauma Care, Ambulance Services'
+      ];
+      
+      // Admin emails
+      const adminEmails = [
+        'admin@facility1.com',
+        'manager@facility2.com',
+        'director@facility3.com',
+        'supervisor@facility4.com',
+        'Not Assigned',
+        'administrator@facility6.com'
+      ];
+      
+      // Generate random facilities
+      const randomFacilities = Array.from({ length: 6 }, (_, i) => ({
+        id: `FAC-${1000 + i}`,
+        name: hospitalNames[i],
+        type: facilityTypes[i],
+        address: locations[i],
+        phone: `+233 ${Math.floor(Math.random() * 90000000) + 10000000}`,
+        email: `contact@facility${i+1}.com`,
+        description: `This is a ${facilityTypes[i].toLowerCase()} providing comprehensive healthcare services to the community. Established in ${2010 + i}, it has been serving the region with dedication and excellence.`,
+        capacity: `${Math.floor(Math.random() * 400) + 100} beds`,
+        services: servicesList[i],
+        inventoryLevel: ['Good', 'Low', 'Critical'][Math.floor(Math.random() * 3)],
+        pendingRequisitions: Math.floor(Math.random() * 10),
+        admin: adminEmails[i]
       }));
-      setFacilities(transformedData);
+      
+      setFacilities(randomFacilities);
       setError(null);
     } catch (err) {
-      setError('Failed to fetch facilities. Please try again later.');
-      console.error('Error fetching facilities:', err);
+      setError('Failed to generate facilities data. Please try again later.');
+      console.error('Error generating facilities:', err);
     } finally {
       setLoading(false);
     }
@@ -125,83 +174,46 @@ const SuperAdminFacilities = () => {
   };
   
   // Action handlers
-  const handleEditFacility = async () => {
-    try {
-      // Prepare data for API
-      const facilityData = {
-        name: editFacility.name,
-        type: editFacility.type,
-        phone: editFacility.phone,
-        email: editFacility.email,
-        address: editFacility.address,
-        capacity: editFacility.capacity,
-        services: editFacility.services,
-        inventory_level: editFacility.inventory_level,
-        pending_requisitions: parseInt(editFacility.pending_requisitions),
-        description: editFacility.description
-      };
-      
-      // Call API to update facility
-      await axios.put(`${BaseUrl}/facilities/${currentFacility.id}`, facilityData);
-      
-      // Update the facility in the state
-      const updatedFacilities = facilities.map(facility => 
-        facility.id === currentFacility.id 
-          ? { 
-              ...editFacility, 
-              id: currentFacility.id,
-              inventoryLevel: editFacility.inventory_level,
-              pendingRequisitions: parseInt(editFacility.pending_requisitions)
-            } 
-          : facility
-      );
-      
-      setFacilities(updatedFacilities);
-      setShowEditModal(false);
-    } catch (err) {
-      console.error('Error updating facility:', err);
-      alert('Failed to update facility. Please try again.');
-    }
+  const handleEditFacility = () => {
+    // Update the facility in the state
+    const updatedFacilities = facilities.map(facility => 
+      facility.id === currentFacility.id 
+        ? { 
+            ...editFacility, 
+            id: currentFacility.id,
+            inventoryLevel: editFacility.inventory_level,
+            pendingRequisitions: parseInt(editFacility.pending_requisitions)
+          } 
+        : facility
+    );
+    
+    setFacilities(updatedFacilities);
+    setShowEditModal(false);
+    alert(`Facility ${currentFacility.name} has been updated successfully!`);
   };
   
-  const handleDeleteFacility = async () => {
-    try {
-      // Call API to delete facility
-      await axios.delete(`${BaseUrl}/facilities/${currentFacility.id}`);
-      
-      // Update the facilities list in state
-      const updatedFacilities = facilities.filter(facility => 
-        facility.id !== currentFacility.id
-      );
-      
-      setFacilities(updatedFacilities);
-      setShowDeleteModal(false);
-    } catch (err) {
-      console.error('Error deleting facility:', err);
-      alert('Failed to delete facility. Please try again.');
-    }
+  const handleDeleteFacility = () => {
+    // Update the facilities list in state
+    const updatedFacilities = facilities.filter(facility => 
+      facility.id !== currentFacility.id
+    );
+    
+    setFacilities(updatedFacilities);
+    setShowDeleteModal(false);
+    alert(`Facility ${currentFacility.name} has been deleted successfully!`);
   };
   
-  const handleAssignAdmin = async () => {
-    try {
-      // Call API to assign admin
-      await axios.post(`${BaseUrl}/facilities/${currentFacility.id}/assign-admin`, {
-        admin_email: adminEmail
-      });
-      
-      // Update the facility in the state
-      const updatedFacilities = facilities.map(facility => 
-        facility.id === currentFacility.id 
-          ? { ...facility, admin: adminEmail } 
-          : facility
-      );
-      
-      setFacilities(updatedFacilities);
-      setShowAssignAdminModal(false);
-    } catch (err) {
-      console.error('Error assigning admin:', err);
-      alert('Failed to assign admin. Please try again.');
-    }
+  const handleAssignAdmin = () => {
+    // Update the facility in the state
+    const updatedFacilities = facilities.map(facility => 
+      facility.id === currentFacility.id 
+        ? { ...facility, admin: adminEmail } 
+        : facility
+    );
+    
+    setFacilities(updatedFacilities);
+    setShowAssignAdminModal(false);
+    alert(`Admin has been assigned to ${currentFacility.name} successfully!`);
   };
   
   // Get inventory level badge
