@@ -279,8 +279,91 @@ const SuperAdminInventory = () => {
         </div>
       )}
 
-      {/* Backdrop */}
-      {(showEditModal || showHistoryModal) && <div className="modal-backdrop show"></div>}
+      {/* View Item Modal */}
+      {showViewModal && viewItem && (
+        <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header border-bottom-0">
+                <h5 className="modal-title">Item Details: {viewItem.name}</h5>
+                <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Item ID:</div>
+                  <div className="col-6">{viewItem.id}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Name:</div>
+                  <div className="col-6">{viewItem.name}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Category:</div>
+                  <div className="col-6">{viewItem.category}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Stock:</div>
+                  <div className="col-6">{viewItem.stock} {viewItem.unit}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Unit:</div>
+                  <div className="col-6">{viewItem.unit}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Min Level:</div>
+                  <div className="col-6">{viewItem.minLevel}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Standard Cost:</div>
+                  <div className="col-6">₵{viewItem.standardCost?.toFixed(2)}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Moving Avg Cost:</div>
+                  <div className="col-6">₵{viewItem.movingAvgCost?.toFixed(2)}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Last PO Cost:</div>
+                  <div className="col-6">₵{viewItem.lastPOCost?.toFixed(2)}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Batch/Lot No:</div>
+                  <div className="col-6">{viewItem.batchNo || '—'}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Expiry Date:</div>
+                  <div className="col-6">{viewItem.expiryDate ? viewItem.expiryDate.split('-').reverse().join('/') : '—'}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">ABC Class:</div>
+                  <div className="col-6">
+                    <span className={`badge bg-${viewItem.abcClass === 'A' ? 'success' : viewItem.abcClass === 'B' ? 'warning' : 'info'} text-dark`}>
+                      {viewItem.abcClass}
+                    </span>
+                  </div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Transfer Price:</div>
+                  <div className="col-6">₵{viewItem.facilityTransferPrice?.toFixed(2)}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Status:</div>
+                  <div className="col-6">{getStatusBadge(calculateStatus(viewItem))}</div>
+                </div>
+              </div>
+              <div className="modal-footer border-top-0">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowViewModal(false)}>
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+          
+        </div>
+      )}
+      
+      {(showAddModal || showEditModal || showRestockModal || showBatchModal || showViewModal) && (
+        <div className="modal-backdrop fade show"></div>
+      )}
     </div>
   );
 };
