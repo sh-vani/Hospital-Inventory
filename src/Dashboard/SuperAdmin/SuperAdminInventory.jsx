@@ -839,6 +839,7 @@ const SuperAdminInventory = () => {
               </div>
             </div>
           </div>
+          
         </div>
       )}
       
