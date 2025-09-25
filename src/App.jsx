@@ -98,7 +98,7 @@ function App() {
               <Routes>
                   <Route path="/facility-admin/dashboard" element= {<FacilityDashboard/>}/>'
                   <Route path="/facility/dashboard" element= {<FacilityDashboard/>}/>'
-                 <Route path="/facility/requisitions" element={<FacilityRequisitions/>}/>'
+                   <Route path="/facility/requisitions" element={<FacilityRequisitions/>}/>'
                   <Route path="/facility/reports" element={<FacilityReports/>}/>'
                   <Route path="/facility/assets" element={<FacilityAssets/>}/>'
                   <Route path="/Facility/users" element={<FacilityUser/>}/>'
