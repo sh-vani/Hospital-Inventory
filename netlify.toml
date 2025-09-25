@@ -1,0 +1,16 @@
+[build]
+  command = "npm run build"
+  publish = "dist" # React (Vite) ka build output folder, agar CRA use kar rahe ho to "build"
+
+# React Router ke liye (SPA redirect)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# API redirect (agar backend alag server ya service pe chal raha ho)
+[[redirects]]
+  from = "/api/*"
+  to = "http://localhost:5000/api/:splat" # yaha apna backend ka URL/port do
+  status = 200
+  force = true
