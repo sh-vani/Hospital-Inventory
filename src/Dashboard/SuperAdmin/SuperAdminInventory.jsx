@@ -11,7 +11,16 @@ const SuperAdminInventory = () => {
       totalQty: 1200,
       inUse: 300,
       available: 900,
-      lastUpdated: '2023-10-24'
+      lastUpdated: '2023-10-24',
+      unit: 'tablets',
+      minLevel: 200,
+      standardCost: 0.50,
+      movingAvgCost: 0.52,
+      lastPOCost: 0.48,
+      batchNo: 'B1001',
+      expiryDate: '2025-12-31',
+      abcClass: 'A',
+      facilityTransferPrice: 0.55
     },
     {
       id: 'ITM-1002',
@@ -20,7 +29,16 @@ const SuperAdminInventory = () => {
       totalQty: 450,
       inUse: 150,
       available: 300,
-      lastUpdated: '2023-10-23'
+      lastUpdated: '2023-10-23',
+      unit: 'bags',
+      minLevel: 100,
+      standardCost: 5.00,
+      movingAvgCost: 5.20,
+      lastPOCost: 4.90,
+      batchNo: 'B1002',
+      expiryDate: '2024-10-15',
+      abcClass: 'A',
+      facilityTransferPrice: 5.50
     },
     {
       id: 'ITM-1003',
@@ -29,7 +47,16 @@ const SuperAdminInventory = () => {
       totalQty: 2000,
       inUse: 800,
       available: 1200,
-      lastUpdated: '2023-10-22'
+      lastUpdated: '2023-10-22',
+      unit: 'pairs',
+      minLevel: 500,
+      standardCost: 0.20,
+      movingAvgCost: 0.22,
+      lastPOCost: 0.18,
+      batchNo: 'B1003',
+      expiryDate: '2026-06-30',
+      abcClass: 'B',
+      facilityTransferPrice: 0.25
     },
     {
       id: 'ITM-1004',
@@ -38,7 +65,16 @@ const SuperAdminInventory = () => {
       totalQty: 85,
       inUse: 40,
       available: 45,
-      lastUpdated: '2023-10-20'
+      lastUpdated: '2023-10-20',
+      unit: 'pieces',
+      minLevel: 20,
+      standardCost: 15.00,
+      movingAvgCost: 15.50,
+      lastPOCost: 14.75,
+      batchNo: 'B1004',
+      expiryDate: null,
+      abcClass: 'C',
+      facilityTransferPrice: 16.00
     },
     {
       id: 'ITM-1005',
@@ -47,7 +83,16 @@ const SuperAdminInventory = () => {
       totalQty: 5000,
       inUse: 1200,
       available: 3800,
-      lastUpdated: '2023-10-24'
+      lastUpdated: '2023-10-24',
+      unit: 'pieces',
+      minLevel: 1000,
+      standardCost: 0.15,
+      movingAvgCost: 0.16,
+      lastPOCost: 0.14,
+      batchNo: 'B1005',
+      expiryDate: '2025-03-31',
+      abcClass: 'B',
+      facilityTransferPrice: 0.20
     },
     {
       id: 'ITM-1006',
@@ -56,7 +101,16 @@ const SuperAdminInventory = () => {
       totalQty: 600,
       inUse: 200,
       available: 400,
-      lastUpdated: '2023-10-21'
+      lastUpdated: '2023-10-21',
+      unit: 'kits',
+      minLevel: 150,
+      standardCost: 2.50,
+      movingAvgCost: 2.60,
+      lastPOCost: 2.40,
+      batchNo: 'B1006',
+      expiryDate: '2024-12-15',
+      abcClass: 'A',
+      facilityTransferPrice: 2.75
     }
   ];
 
@@ -64,7 +118,12 @@ const SuperAdminInventory = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewItem, setViewItem] = useState(null);
   const [currentItem, setCurrentItem] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [showBatchModal, setShowBatchModal] = useState(false);
 
   // === FILTER LOGIC ===
   const filteredInventory = mockInventory.filter(item => {
@@ -78,6 +137,12 @@ const SuperAdminInventory = () => {
   });
 
   // === MODAL HANDLERS ===
+  // View Modal Handler
+  const openViewModal = (item) => {
+    setViewItem(item);
+    setShowViewModal(true);
+  };
+  
   const openEditModal = (item) => {
     setCurrentItem(item);
     setShowEditModal(true);
@@ -88,33 +153,57 @@ const SuperAdminInventory = () => {
     setShowHistoryModal(true);
   };
 
+  const closeModalOnBackdrop = (e) => {
+    if (e.target === e.currentTarget) {
+      setShowViewModal(false);
+    }
+  };
+
   // === ACTION HANDLERS (UI-only) ===
   const handleSaveEdit = () => {
     alert(`Item ${currentItem.id} updated (UI demo)`);
     setShowEditModal(false);
   };
 
+  // === HELPER FUNCTIONS ===
+  const calculateStatus = (item) => {
+    if (item.available === 0) return 'out_of_stock';
+    if (item.available < item.minLevel) return 'low_stock';
+    return 'in_stock';
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'out_of_stock':
+        return <span className="badge bg-danger">Out of Stock</span>;
+      case 'low_stock':
+        return <span className="badge bg-warning text-dark">Low Stock</span>;
+      default:
+        return <span className="badge bg-success">In Stock</span>;
+    }
+  };
+
   return (
     <div className="container-fluid py-3">
       {/* ===== Top Toolbar ===== */}
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-  <h2 className="fw-bold mb-0">Inventory (Global View)</h2>
-  <div className="ms-auto" style={{ maxWidth: '320px', width: '100%' }}>
-    <div className="input-group">
-      <input
-        type="text"
-        className="form-control"
-        style={{ height: "40px" }}
-        placeholder="Search by Item Code, Name, or Category..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
-      <button className="btn btn-outline-secondary" style={{ height: "40px" }} type="button">
-        <FaSearch />
-      </button>
-    </div>
-  </div>
-</div>
+        <h2 className="fw-bold mb-0">Inventory (Global View)</h2>
+        <div className="ms-auto" style={{ maxWidth: '320px', width: '100%' }}>
+          <div className="input-group">
+            <input
+              type="text"
+              className="form-control"
+              style={{ height: "40px" }}
+              placeholder="Search by Item Code, Name, or Category..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <button className="btn btn-outline-secondary" style={{ height: "40px" }} type="button">
+              <FaSearch />
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* ===== TABLE ===== */}
       <div className="card border-0 shadow-sm">
@@ -162,6 +251,13 @@ const SuperAdminInventory = () => {
                           onClick={() => openHistoryModal(item)}
                         >
                           <FaHistory />
+                        </button>
+                        <button
+                          className="btn btn-sm btn-outline-success"
+                          title="View Details"
+                          onClick={() => openViewModal(item)}
+                        >
+                          View
                         </button>
                       </div>
                     </td>
@@ -303,7 +399,7 @@ const SuperAdminInventory = () => {
                 </div>
                 <div className="row mb-3">
                   <div className="col-6 fw-bold">Stock:</div>
-                  <div className="col-6">{viewItem.stock} {viewItem.unit}</div>
+                  <div className="col-6">{viewItem.available} {viewItem.unit}</div>
                 </div>
                 <div className="row mb-3">
                   <div className="col-6 fw-bold">Unit:</div>
@@ -357,7 +453,6 @@ const SuperAdminInventory = () => {
               </div>
             </div>
           </div>
-          
         </div>
       )}
       

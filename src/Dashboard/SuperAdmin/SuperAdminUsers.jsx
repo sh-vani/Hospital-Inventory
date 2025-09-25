@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import {
   FaPlus, FaSearch, FaEdit, FaTimes, FaCheck, FaUser, FaUserMd, FaUserCog, FaHospital,
   FaEnvelope, FaPhone, FaLock, FaKey, FaInfoCircle, FaUserCircle, FaSync
 } from 'react-icons/fa';
-import BaseUrl from '../../Api/BaseUrl';
 
 const SuperAdminUsers = () => {
   // Search
@@ -73,35 +71,65 @@ const SuperAdminUsers = () => {
     { id: 5, name: 'Cape Coast Hospital' }
   ];
 
-  // Fetch users data
-  const fetchUsers = async () => {
+  // Generate random users data
+  const generateRandomUsers = () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${BaseUrl}/users`);
-      setUsers(response.data);
+      
+      // First names and last names for generating random names
+      const firstNames = ['John', 'Jane', 'Michael', 'Sarah', 'David', 'Emily', 'Robert', 'Lisa', 'James', 'Jennifer'];
+      const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
+      
+      // User roles
+      const roles = ['Warehouse Admin', 'Facility Manager', 'Medical Staff', 'Inventory Clerk', 'Regional Supervisor'];
+      
+      // Generate random users
+      const randomUsers = Array.from({ length: 15 }, (_, i) => {
+        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        const role = roles[Math.floor(Math.random() * roles.length)];
+        const facilityId = Math.floor(Math.random() * facilities.length) + 1;
+        const status = Math.random() > 0.2 ? 'Active' : (Math.random() > 0.5 ? 'Inactive' : 'Pending');
+        
+        return {
+          id: 1000 + i,
+          full_name: `${firstName} ${lastName}`,
+          email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
+          phone: `+233 ${Math.floor(Math.random() * 90000000) + 10000000}`,
+          role: role,
+          facility_id: facilityId,
+          status: status,
+          lastLogin: status === 'Active' ? 
+            new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString() : null,
+          created_at: new Date(Date.now() - Math.floor(Math.random() * 365) * 24 * 60 * 60 * 1000).toISOString()
+        };
+      });
+      
+      // Calculate user summary stats
+      const totalUsers = randomUsers.length;
+      const activeUsers = randomUsers.filter(u => u.status === 'Active').length;
+      const adminUsers = randomUsers.filter(u => u.role.includes('Admin') || u.role.includes('Manager') || u.role.includes('Supervisor')).length;
+      const medicalStaff = randomUsers.filter(u => u.role.includes('Medical')).length;
+      
+      setUsers(randomUsers);
+      setUserSummary({
+        totalUsers,
+        activeUsers,
+        adminUsers,
+        medicalStaff
+      });
       setError(null);
     } catch (err) {
-      setError('Failed to fetch users');
+      setError('Failed to generate users data');
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch user summary
-  const fetchUserSummary = async () => {
-    try {
-      const response = await axios.get(`${BaseUrl}/getUserSummary`);
-      setUserSummary(response.data);
-    } catch (err) {
-      console.error('Failed to fetch user summary:', err);
-    }
-  };
-
   // Load data on component mount
   useEffect(() => {
-    fetchUsers();
-    fetchUserSummary();
+    generateRandomUsers();
   }, []);
 
   // Status Badge only (RoleBadge removed)
@@ -176,8 +204,8 @@ const SuperAdminUsers = () => {
     setResetPassword(prev => ({ ...prev, [name]: value }));
   };
 
-  // API Actions
-  const handleAddUser = async () => {
+  // Actions (no API calls)
+  const handleAddUser = () => {
     if (newUser.password !== newUser.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -189,67 +217,105 @@ const SuperAdminUsers = () => {
 
     try {
       const { confirmPassword, ...userData } = newUser;
-      const response = await axios.post(`${BaseUrl}/users`, userData);
       
       const newUserWithId = {
-        ...response.data,
-        id: response.data.id || Math.max(...users.map(u => u.id), 0) + 1,
-        status: response.data.status || 'Active',
-        lastLogin: response.data.lastLogin || null,
-        created_at: response.data.created_at || new Date().toISOString()
+        ...userData,
+        id: Math.max(...users.map(u => u.id), 0) + 1,
+        status: 'Active',
+        lastLogin: null,
+        created_at: new Date().toISOString()
       };
       
       setUsers(prev => [...prev, newUserWithId]);
+      
+      // Update user summary
+      setUserSummary(prev => ({
+        ...prev,
+        totalUsers: prev.totalUsers + 1,
+        activeUsers: prev.activeUsers + 1,
+        adminUsers: prev.adminUsers + (newUser.role.includes('Admin') || newUser.role.includes('Manager') || newUser.role.includes('Supervisor') ? 1 : 0),
+        medicalStaff: prev.medicalStaff + (newUser.role.includes('Medical') ? 1 : 0)
+      }));
+      
       setShowAddModal(false);
-      fetchUserSummary();
+      setError(null);
+      alert('User added successfully!');
     } catch (err) {
       console.error('Failed to add user:', err);
       setError('Failed to add user');
     }
   };
 
-  const handleEditUser = async () => {
+  const handleEditUser = () => {
     try {
-      const response = await axios.put(`${BaseUrl}/users/${currentUser.id}`, editUser);
-      
       setUsers(prev => prev.map(u =>
         u.id === currentUser.id ? { 
           ...u, 
-          ...response.data,
-          status: response.data.status || u.status,
-          lastLogin: response.data.lastLogin || u.lastLogin,
-          created_at: response.data.created_at || u.created_at
+          ...editUser
         } : u
       ));
+      
+      // Update user summary if role changed
+      const oldRole = users.find(u => u.id === currentUser.id)?.role;
+      const newRole = editUser.role;
+      
+      if (oldRole !== newRole) {
+        setUserSummary(prev => {
+          const newSummary = { ...prev };
+          
+          // Adjust counts based on old role
+          if (oldRole.includes('Admin') || oldRole.includes('Manager') || oldRole.includes('Supervisor')) {
+            newSummary.adminUsers -= 1;
+          }
+          if (oldRole.includes('Medical')) {
+            newSummary.medicalStaff -= 1;
+          }
+          
+          // Adjust counts based on new role
+          if (newRole.includes('Admin') || newRole.includes('Manager') || newRole.includes('Supervisor')) {
+            newSummary.adminUsers += 1;
+          }
+          if (newRole.includes('Medical')) {
+            newSummary.medicalStaff += 1;
+          }
+          
+          return newSummary;
+        });
+      }
+      
       setShowEditModal(false);
+      alert('User updated successfully!');
     } catch (err) {
       console.error('Failed to update user:', err);
       setError('Failed to update user');
     }
   };
 
-  const handleChangeStatus = async () => {
+  const handleChangeStatus = () => {
     try {
-      const response = await axios.patch(`${BaseUrl}/users/status/${currentUser.id}`, { 
-        status: newStatus 
-      });
-      
       setUsers(prev => prev.map(u =>
         u.id === currentUser.id ? { 
           ...u, 
-          status: response.data.status || newStatus,
-          ...response.data
+          status: newStatus,
+          lastLogin: newStatus === 'Active' ? u.lastLogin : null
         } : u
       ));
+      
+      // Update user summary
+      setUserSummary(prev => ({
+        ...prev,
+        activeUsers: newStatus === 'Active' ? prev.activeUsers + 1 : prev.activeUsers - 1
+      }));
+      
       setShowStatusModal(false);
-      fetchUserSummary();
+      alert(`User ${newStatus === 'Active' ? 'activated' : 'deactivated'} successfully!`);
     } catch (err) {
       console.error('Failed to update user status:', err);
       setError('Failed to update user status');
     }
   };
 
-  const handleResetPassword = async () => {
+  const handleResetPassword = () => {
     if (resetPassword.password !== resetPassword.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -260,15 +326,9 @@ const SuperAdminUsers = () => {
     }
 
     try {
-      const response = await axios.post(`${BaseUrl}/users/${currentUser.id}/reset-password`, {
-        password: resetPassword.password
-      });
-      
-      setUsers(prev => prev.map(u =>
-        u.id === currentUser.id ? { ...u, ...response.data } : u
-      ));
       setShowResetPasswordModal(false);
       setError(null);
+      alert('Password reset successfully!');
     } catch (err) {
       console.error('Failed to reset password:', err);
       setError('Failed to reset password');
@@ -485,7 +545,7 @@ const SuperAdminUsers = () => {
                         </div>
                         <div className="col-6">
                           <div className="text-muted">Last Login</div>
-                          <div>{u.lastLogin || 'Never'}</div>
+                          <div>{u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'Never'}</div>
                         </div>
                       </div>
                       <div className="d-flex gap-2 mt-3">
@@ -548,7 +608,13 @@ const SuperAdminUsers = () => {
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Role</label>
-                      <input type="text" className="form-control" name="role" value={newUser.role} onChange={handleAddUserChange} /> {/* ← text input */}
+                      <select className="form-select" name="role" value={newUser.role} onChange={handleAddUserChange}>
+                        <option value="Warehouse Admin">Warehouse Admin</option>
+                        <option value="Facility Manager">Facility Manager</option>
+                        <option value="Medical Staff">Medical Staff</option>
+                        <option value="Inventory Clerk">Inventory Clerk</option>
+                        <option value="Regional Supervisor">Regional Supervisor</option>
+                      </select>
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Facility</label>
@@ -585,93 +651,93 @@ const SuperAdminUsers = () => {
         </div>
       )}
 
-{/* View User Modal */}
-{showViewModal && currentUser && (
-  <div className="modal show d-block" tabIndex="-1">
-    <div className="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h5 className="modal-title">User Details: {currentUser.full_name}</h5>
-          <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
+      {/* View User Modal */}
+      {showViewModal && currentUser && (
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">User Details: {currentUser.full_name}</h5>
+                <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <div className="text-center mb-4">
+                  <div className="bg-primary bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
+                    <FaUserCircle className="text-primary" style={{ fontSize: '3rem' }} />
+                  </div>
+                  <h4 className="fw-bold">{currentUser.full_name}</h4>
+                  <p className="text-muted">{currentUser.email}</p>
+                </div>
+                <div className="row g-3 mb-2">
+                  <div className="col-12 col-md-6">
+                    <div className="d-flex align-items-center mb-2">
+                      <FaUser className="text-primary me-2" />
+                      <div>
+                        <h6 className="mb-0">User ID</h6>
+                        <p className="text-muted mb-0">{currentUser.id}</p>
+                      </div>
+                    </div>
+                    <div className="d-flex align-items-center mb-2">
+                      <FaUserCog className="text-primary me-2" />
+                      <div>
+                        <h6 className="mb-0">Role</h6>
+                        <p className="text-muted mb-0">{currentUser.role || '—'}</p>
+                      </div>
+                    </div>
+                    <div className="d-flex align-items-center mb-2">
+                      <FaHospital className="text-primary me-2" />
+                      <div>
+                        <h6 className="mb-0">Facility</h6>
+                        <p className="text-muted mb-0">
+                          {facilities.find(f => f.id === currentUser.facility_id)?.name || 'Unknown'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="col-12 col-md-6">
+                    <div className="d-flex align-items-center mb-2">
+                      <FaEnvelope className="text-primary me-2" />
+                      <div>
+                        <h6 className="mb-0">Email</h6>
+                        <p className="text-muted mb-0">{currentUser.email}</p>
+                      </div>
+                    </div>
+                    <div className="d-flex align-items-center mb-2">
+                      <FaPhone className="text-primary me-2" />
+                      <div>
+                        <h6 className="mb-0">Phone</h6>
+                        <p className="text-muted mb-0">{currentUser.phone}</p>
+                      </div>
+                    </div>
+                    <div className="d-flex align-items-center mb-2">
+                      <FaCheck className="text-primary me-2" />
+                      <div>
+                        <h6 className="mb-0">Status</h6>
+                        <p className="mb-0"><StatusBadge status={currentUser.status} /></p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="row g-3">
+                  <div className="col-12 col-md-6">
+                    <h6 className="mb-0">Join Date</h6>
+                    <p className="text-muted mb-0">
+                      {new Date(currentUser.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <div className="col-12 col-md-6">
+                    <h6 className="mb-0">Last Login</h6>
+                    <p className="text-muted mb-0">
+                      {currentUser.lastLogin ? new Date(currentUser.lastLogin).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Never'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {/* 🚫 Footer REMOVED — no Activate/Deactivate button here */}
+            </div>
+          </div>
         </div>
-        <div className="modal-body">
-          <div className="text-center mb-4">
-            <div className="bg-primary bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
-              <FaUserCircle className="text-primary" style={{ fontSize: '3rem' }} />
-            </div>
-            <h4 className="fw-bold">{currentUser.full_name}</h4>
-            <p className="text-muted">{currentUser.email}</p>
-          </div>
-          <div className="row g-3 mb-2">
-            <div className="col-12 col-md-6">
-              <div className="d-flex align-items-center mb-2">
-                <FaUser className="text-primary me-2" />
-                <div>
-                  <h6 className="mb-0">User ID</h6>
-                  <p className="text-muted mb-0">{currentUser.id}</p>
-                </div>
-              </div>
-              <div className="d-flex align-items-center mb-2">
-                <FaUserCog className="text-primary me-2" />
-                <div>
-                  <h6 className="mb-0">Role</h6>
-                  <p className="text-muted mb-0">{currentUser.role || '—'}</p>
-                </div>
-              </div>
-              <div className="d-flex align-items-center mb-2">
-                <FaHospital className="text-primary me-2" />
-                <div>
-                  <h6 className="mb-0">Facility</h6>
-                  <p className="text-muted mb-0">
-                    {facilities.find(f => f.id === currentUser.facility_id)?.name || 'Unknown'}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="col-12 col-md-6">
-              <div className="d-flex align-items-center mb-2">
-                <FaEnvelope className="text-primary me-2" />
-                <div>
-                  <h6 className="mb-0">Email</h6>
-                  <p className="text-muted mb-0">{currentUser.email}</p>
-                </div>
-              </div>
-              <div className="d-flex align-items-center mb-2">
-                <FaPhone className="text-primary me-2" />
-                <div>
-                  <h6 className="mb-0">Phone</h6>
-                  <p className="text-muted mb-0">{currentUser.phone}</p>
-                </div>
-              </div>
-              <div className="d-flex align-items-center mb-2">
-                <FaCheck className="text-primary me-2" />
-                <div>
-                  <h6 className="mb-0">Status</h6>
-                  <p className="mb-0"><StatusBadge status={currentUser.status} /></p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="row g-3">
-            <div className="col-12 col-md-6">
-              <h6 className="mb-0">Join Date</h6>
-              <p className="text-muted mb-0">
-                {new Date(currentUser.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </p>
-            </div>
-            <div className="col-12 col-md-6">
-              <h6 className="mb-0">Last Login</h6>
-              <p className="text-muted mb-0">
-                {currentUser.lastLogin ? new Date(currentUser.lastLogin).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Never'}
-              </p>
-            </div>
-          </div>
-        </div>
-        {/* 🚫 Footer REMOVED — no Activate/Deactivate button here */}
-      </div>
-    </div>
-  </div>
-)}
+      )}
 
       {/* Edit User Modal */}
       {showEditModal && currentUser && (
@@ -699,7 +765,13 @@ const SuperAdminUsers = () => {
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Role</label>
-                      <input type="text" className="form-control" name="role" value={editUser.role} onChange={handleEditUserChange} /> {/* ← text input */}
+                      <select className="form-select" name="role" value={editUser.role} onChange={handleEditUserChange}>
+                        <option value="Warehouse Admin">Warehouse Admin</option>
+                        <option value="Facility Manager">Facility Manager</option>
+                        <option value="Medical Staff">Medical Staff</option>
+                        <option value="Inventory Clerk">Inventory Clerk</option>
+                        <option value="Regional Supervisor">Regional Supervisor</option>
+                      </select>
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Facility</label>
