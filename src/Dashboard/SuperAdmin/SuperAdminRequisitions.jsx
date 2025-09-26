@@ -1,76 +1,101 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
-  FaSearch, FaEye,  FaExchangeAlt
+  FaSearch, FaEye, FaExchangeAlt
 } from 'react-icons/fa';
+import BaseUrl from '../../Api/BaseUrl';
+import axiosInstance from '../../Api/axiosInstance';
 
 const SuperAdminRequisitions = () => {
-  // === STATIC MOCK DATA (Flattened for table: one row per primary item) ===
-  const mockRequisitions = [
-    {
-      id: '#REQ-0042',
-      facility: 'Kumasi Branch Hospital',
-      item: 'Paracetamol 500mg',
-      qty: 200,
-      status: 'Pending Review',
-      raisedOn: '2023-10-24',
-      details: [
-        { name: 'Paracetamol 500mg', quantity: 200, unit: 'Tablets' },
-        { name: 'IV Fluids (Normal Saline)', quantity: 50, unit: 'Bottles' }
-      ]
-    },
-    {
-      id: '#REQ-0041',
-      facility: 'Accra Central Hospital',
-      item: 'Gloves (Medium)',
-      qty: 100,
-      status: 'Approved',
-      raisedOn: '2023-10-23',
-      details: [
-        { name: 'Gloves (Medium)', quantity: 100, unit: 'Pairs' },
-        { name: 'Face Masks (Surgical)', quantity: 200, unit: 'Pieces' }
-      ]
-    },
-    {
-      id: '#REQ-0040',
-      facility: 'Takoradi Clinic',
-      item: 'Thermometers',
-      qty: 10,
-      status: 'Partially Approved',
-      raisedOn: '2023-10-22',
-      details: [
-        { name: 'Thermometers', quantity: 10, unit: 'Units' }
-      ]
-    },
-    {
-      id: '#REQ-0039',
-      facility: 'Cape Coast Hospital',
-      item: 'Test Kits (Malaria)',
-      qty: 300,
-      status: 'Rejected',
-      raisedOn: '2023-10-21',
-      details: [
-        { name: 'Test Kits (Malaria)', quantity: 300, unit: 'Kits' }
-      ],
-      rejectionReason: 'Budget exceeded for this category.'
-    }
-  ];
-
   // === STATE ===
+  const [requisitions, setRequisitions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('Pending');
   const [showViewModal, setShowViewModal] = useState(false);
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [currentRequisition, setCurrentRequisition] = useState(null);
   const [overrideStatus, setOverrideStatus] = useState('');
+  const [overrideRemarks, setOverrideRemarks] = useState('');
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10
+  });
+
+  // === FETCH REQUISITIONS ===
+  const fetchRequisitions = async (status = 'pending', page = 1) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await axiosInstance.get(`${BaseUrl}/requisitions?page=${page}&limit=10&status=${status}`);
+      if (response.data.success) {
+        setRequisitions(response.data.data.requisitions);
+        setPagination(response.data.data.pagination);
+      } else {
+        setError('Failed to fetch requisitions');
+      }
+    } catch (err) {
+      setError('Error fetching requisitions: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // === UPDATE REQUISITION STATUS ===
+  const updateRequisitionStatus = async (id, status, remarks) => {
+    try {
+      setUpdatingStatus(true);
+      const response = await axiosInstance.put(`${BaseUrl}/requisitions/${id}`, {
+        status,
+        remarks
+      });
+      
+      if (response.data.success) {
+        // Refresh requisitions based on active tab
+        let statusParam = 'pending';
+        if (activeTab === 'Approved') statusParam = 'approved';
+        else if (activeTab === 'Rejected') statusParam = 'rejected';
+        
+        fetchRequisitions(statusParam, pagination.currentPage);
+        setShowOverrideModal(false);
+        alert(`Status updated successfully to: ${status}`);
+      } else {
+        alert('Failed to update status');
+      }
+    } catch (err) {
+      alert('Error updating status: ' + err.message);
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  // === INITIAL LOAD ===
+  useEffect(() => {
+    fetchRequisitions('pending', 1);
+  }, []);
+
+  // === HANDLE TAB CHANGE ===
+  useEffect(() => {
+    let statusParam = 'pending';
+    if (activeTab === 'Approved') statusParam = 'approved';
+    else if (activeTab === 'Rejected') statusParam = 'rejected';
+    else if (activeTab === 'All') statusParam = '';
+    
+    fetchRequisitions(statusParam, 1);
+  }, [activeTab]);
 
   // === FILTER LOGIC ===
-  const filteredRequisitions = mockRequisitions.filter(req => {
+  const filteredRequisitions = requisitions.filter(req => {
     if (activeTab === 'Pending') {
-      return req.status === 'Pending Review' || req.status === 'Partially Approved';
+      return req.status === 'pending';
     } else if (activeTab === 'Approved') {
-      return req.status === 'Approved';
+      return req.status === 'approved';
     } else if (activeTab === 'Rejected') {
-      return req.status === 'Rejected';
+      return req.status === 'rejected';
     } else {
       return true;
     }
@@ -80,9 +105,9 @@ const SuperAdminRequisitions = () => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return true;
     return (
-      r.id.toLowerCase().includes(q) ||
-      r.facility.toLowerCase().includes(q) ||
-      r.item.toLowerCase().includes(q) ||
+      r.id.toString().toLowerCase().includes(q) ||
+      r.facility_name.toLowerCase().includes(q) ||
+      (r.items && r.items.length > 0 && r.items[0].item_name.toLowerCase().includes(q)) ||
       r.status.toLowerCase().includes(q)
     );
   });
@@ -90,12 +115,13 @@ const SuperAdminRequisitions = () => {
   // === BADGES ===
   const StatusBadge = ({ status }) => {
     const map = {
-      'Pending Review': 'bg-warning text-dark',
-      'Partially Approved': 'bg-info text-dark',
-      'Approved': 'bg-success',
-      'Rejected': 'bg-danger'
+      'pending': 'bg-warning text-dark',
+      'processing': 'bg-info text-dark',
+      'approved': 'bg-success',
+      'rejected': 'bg-danger'
     };
-    return <span className={`badge ${map[status] || 'bg-secondary'}`}>{status}</span>;
+    const displayStatus = status.charAt(0).toUpperCase() + status.slice(1);
+    return <span className={`badge ${map[status] || 'bg-secondary'}`}>{displayStatus}</span>;
   };
 
   // === MODAL HANDLERS ===
@@ -107,48 +133,82 @@ const SuperAdminRequisitions = () => {
   const openOverrideModal = (req) => {
     setCurrentRequisition(req);
     setOverrideStatus(req.status);
+    setOverrideRemarks(req.remarks || '');
     setShowOverrideModal(true);
   };
 
   // === ACTION HANDLERS ===
   const handleOverrideStatus = () => {
     if (!overrideStatus.trim()) return;
-    alert(`Status overridden to: ${overrideStatus} (UI demo)`);
-    setShowOverrideModal(false);
+    updateRequisitionStatus(currentRequisition.id, overrideStatus, overrideRemarks);
   };
+
+  // === PAGINATION HANDLER ===
+  const handlePageChange = (page) => {
+    let statusParam = 'pending';
+    if (activeTab === 'Approved') statusParam = 'approved';
+    else if (activeTab === 'Rejected') statusParam = 'rejected';
+    
+    fetchRequisitions(statusParam, page);
+  };
+
+  // === LOADING STATE ===
+  if (loading && requisitions.length === 0) {
+    return (
+      <div className="container-fluid py-3">
+        <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // === ERROR STATE ===
+  if (error && requisitions.length === 0) {
+    return (
+      <div className="container-fluid py-3">
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container-fluid py-3">
       {/* ===== Top Toolbar ===== */}
       <div className="d-flex flex-row flex-wrap justify-content-between align-items-center gap-2 mb-4">
-  <h2 className="fw-bold mb-0">Requisitions (Global)</h2>
-  <div className="ms-auto" style={{ maxWidth: '300px', width: '100%' }}>
-    <div className="input-group">
-      <input
-        type="text"
-        className="form-control"
-        style={{ height: "40px" }}
-        placeholder="Search requisitions..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
-      <button className="btn btn-outline-secondary" style={{ height: "40px" }} type="button">
-        <FaSearch />
-      </button>
-    </div>
-  </div>
-</div>
+        <h2 className="fw-bold mb-0">Requisitions (Global)</h2>
+        <div className="ms-auto" style={{ maxWidth: '300px', width: '100%' }}>
+          <div className="input-group">
+            <input
+              type="text"
+              className="form-control"
+              style={{ height: "40px" }}
+              placeholder="Search requisitions..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <button className="btn btn-outline-secondary" style={{ height: "40px" }} type="button">
+              <FaSearch />
+            </button>
+          </div>
+        </div>
+      </div>
+      
       {/* ===== Summary Cards ===== */}
       <div className="row row-cols-1 row-cols-md-3 g-3 mb-4">
         <div className="col">
           <div className="card border-0 shadow-sm h-100">
-            <div className="card-body bg-danger bg-opacity-10 p-4">
+            <div className="card-body bg-warning bg-opacity-10 p-4">
               <div className="d-flex align-items-center mb-2">
-                <FaEye className="text-danger me-2" size={24} />
-                <h5 className="card-title text-danger fw-bold mb-0">Pending</h5>
+                <FaEye className="text-warning me-2" size={24} />
+                <h5 className="card-title text-warning fw-bold mb-0">Pending</h5>
               </div>
               <p className="card-text text-muted ms-4 mb-0">
-                {mockRequisitions.filter(r => ['Pending Review', 'Partially Approved'].includes(r.status)).length} requisitions need review
+                {requisitions.filter(r => r.status === 'pending').length} requisitions need review
               </p>
             </div>
           </div>
@@ -161,7 +221,7 @@ const SuperAdminRequisitions = () => {
                 <h5 className="card-title text-success fw-bold mb-0">Approved</h5>
               </div>
               <p className="card-text text-muted ms-4 mb-0">
-                {mockRequisitions.filter(r => r.status === 'Approved').length} approved
+                {requisitions.filter(r => r.status === 'approved').length} approved
               </p>
             </div>
           </div>
@@ -174,7 +234,7 @@ const SuperAdminRequisitions = () => {
                 <h5 className="card-title text-danger fw-bold mb-0">Rejected</h5>
               </div>
               <p className="card-text text-muted ms-4 mb-0">
-                {mockRequisitions.filter(r => r.status === 'Rejected').length} rejected
+                {requisitions.filter(r => r.status === 'rejected').length} rejected
               </p>
             </div>
           </div>
@@ -230,12 +290,12 @@ const SuperAdminRequisitions = () => {
                 ) : (
                   filteredBySearch.map((req, i) => (
                     <tr key={i}>
-                      <td className="fw-bold">{req.id}</td>
-                      <td>{req.facility}</td>
-                      <td>{req.item}</td>
-                      <td>{req.qty}</td>
+                      <td className="fw-bold">#{req.id}</td>
+                      <td>{req.facility_name}</td>
+                      <td>{req.items && req.items.length > 0 ? req.items[0].item_name : 'N/A'}</td>
+                      <td>{req.total_quantity}</td>
                       <td><StatusBadge status={req.status} /></td>
-                      <td>{new Date(req.raisedOn).toLocaleDateString()}</td>
+                      <td>{new Date(req.created_at).toLocaleDateString()}</td>
                       <td>
                         <div className="btn-group" role="group">
                           <button
@@ -248,7 +308,7 @@ const SuperAdminRequisitions = () => {
                             className="btn btn-sm btn-outline-secondary"
                             onClick={() => openOverrideModal(req)}
                           >
-                            Override Status
+                            <FaExchangeAlt /> Override
                           </button>
                         </div>
                       </td>
@@ -272,21 +332,21 @@ const SuperAdminRequisitions = () => {
                     <div className="card">
                       <div className="card-body">
                         <div className="d-flex justify-content-between align-items-center mb-2">
-                          <span className="fw-bold">{req.id}</span>
+                          <span className="fw-bold">#{req.id}</span>
                           <StatusBadge status={req.status} />
                         </div>
                         <div className="row g-2 small">
-                          <div className="col-6"><div className="text-muted">Facility</div><div>{req.facility}</div></div>
-                          <div className="col-6"><div className="text-muted">Item</div><div>{req.item}</div></div>
-                          <div className="col-6"><div className="text-muted">Qty</div><div>{req.qty}</div></div>
-                          <div className="col-6"><div className="text-muted">Raised On</div><div>{new Date(req.raisedOn).toLocaleDateString()}</div></div>
+                          <div className="col-6"><div className="text-muted">Facility</div><div>{req.facility_name}</div></div>
+                          <div className="col-6"><div className="text-muted">Item</div><div>{req.items && req.items.length > 0 ? req.items[0].item_name : 'N/A'}</div></div>
+                          <div className="col-6"><div className="text-muted">Qty</div><div>{req.total_quantity}</div></div>
+                          <div className="col-6"><div className="text-muted">Raised On</div><div>{new Date(req.created_at).toLocaleDateString()}</div></div>
                         </div>
                         <div className="d-flex gap-2 mt-3">
                           <button className="btn btn-outline-primary flex-fill" onClick={() => openViewModal(req)}>
                             <FaEye className="me-1" /> View Detail
                           </button>
                           <button className="btn btn-outline-secondary flex-fill" onClick={() => openOverrideModal(req)}>
-                            Override Status
+                            <FaExchangeAlt className="me-1" /> Override
                           </button>
                         </div>
                       </div>
@@ -296,6 +356,34 @@ const SuperAdminRequisitions = () => {
               )}
             </div>
           </div>
+
+          {/* PAGINATION */}
+          {pagination.totalPages > 1 && (
+            <div className="d-flex justify-content-between align-items-center p-3 border-top">
+              <div>
+                Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of {pagination.totalItems} entries
+              </div>
+              <div className="btn-group" role="group">
+                <button 
+                  className="btn btn-outline-secondary" 
+                  disabled={pagination.currentPage === 1}
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                >
+                  Previous
+                </button>
+                <button className="btn btn-outline-secondary" disabled>
+                  Page {pagination.currentPage} of {pagination.totalPages}
+                </button>
+                <button 
+                  className="btn btn-outline-secondary" 
+                  disabled={pagination.currentPage === pagination.totalPages}
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -305,33 +393,44 @@ const SuperAdminRequisitions = () => {
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Requisition Details: {currentRequisition.id}</h5>
+                <h5 className="modal-title">Requisition Details: #{currentRequisition.id}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
               </div>
               <div className="modal-body">
                 <div className="row">
                   <div className="col-md-6">
-                    <p><strong>Facility:</strong> {currentRequisition.facility}</p>
-                    <p><strong>Raised On:</strong> {new Date(currentRequisition.raisedOn).toLocaleDateString()}</p>
+                    <p><strong>Facility:</strong> {currentRequisition.facility_name}</p>
+                    <p><strong>Location:</strong> {currentRequisition.facility_location}</p>
+                    <p><strong>Raised By:</strong> {currentRequisition.user_name}</p>
+                    <p><strong>Email:</strong> {currentRequisition.user_email}</p>
                   </div>
                   <div className="col-md-6">
+                    <p><strong>Raised On:</strong> {new Date(currentRequisition.created_at).toLocaleDateString()}</p>
                     <p><strong>Status:</strong> <StatusBadge status={currentRequisition.status} /></p>
+                    <p><strong>Priority:</strong> {currentRequisition.priority}</p>
+                    <p><strong>Total Items:</strong> {currentRequisition.item_count}</p>
                   </div>
                 </div>
+                {currentRequisition.remarks && (
+                  <div className="mb-3">
+                    <p><strong>Remarks:</strong> {currentRequisition.remarks}</p>
+                  </div>
+                )}
                 <h6 className="mt-3">All Items Requested</h6>
                 <table className="table table-sm">
-                  <thead><tr><th>Item</th><th>Qty</th><th>Unit</th></tr></thead>
+                  <thead><tr><th>Item</th><th>Code</th><th>Qty</th><th>Unit</th><th>Priority</th></tr></thead>
                   <tbody>
-                    {currentRequisition.details.map((item, i) => (
-                      <tr key={i}><td>{item.name}</td><td>{item.quantity}</td><td>{item.unit}</td></tr>
+                    {currentRequisition.items.map((item, i) => (
+                      <tr key={i}>
+                        <td>{item.item_name}</td>
+                        <td>{item.item_code}</td>
+                        <td>{item.quantity}</td>
+                        <td>{item.unit}</td>
+                        <td><span className={`badge ${item.priority === 'high' ? 'bg-danger' : 'bg-info'}`}>{item.priority}</span></td>
+                      </tr>
                     ))}
                   </tbody>
                 </table>
-                {currentRequisition.rejectionReason && (
-                  <div className="alert alert-danger mt-3">
-                    <strong>Rejection Reason:</strong> {currentRequisition.rejectionReason}
-                  </div>
-                )}
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setShowViewModal(false)}>Close</button>
@@ -351,7 +450,7 @@ const SuperAdminRequisitions = () => {
                 <button type="button" className="btn-close" onClick={() => setShowOverrideModal(false)}></button>
               </div>
               <div className="modal-body">
-                <p>Override status for requisition <strong>{currentRequisition.id}</strong></p>
+                <p>Override status for requisition <strong>#{currentRequisition.id}</strong></p>
                 <div className="mb-3">
                   <label className="form-label">New Status</label>
                   <select
@@ -359,11 +458,21 @@ const SuperAdminRequisitions = () => {
                     value={overrideStatus}
                     onChange={(e) => setOverrideStatus(e.target.value)}
                   >
-                    <option value="Pending Review">Pending Review</option>
-                    <option value="Partially Approved">Partially Approved</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Rejected">Rejected</option>
+                    <option value="pending">Pending</option>
+                    <option value="processing">Processing</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
                   </select>
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Remarks</label>
+                  <textarea
+                    className="form-control"
+                    rows="3"
+                    value={overrideRemarks}
+                    onChange={(e) => setOverrideRemarks(e.target.value)}
+                    placeholder="Enter remarks for this status change..."
+                  ></textarea>
                 </div>
                 <div className="alert alert-warning">
                   <strong>Note:</strong> This will bypass normal approval workflow. Use only when necessary.
@@ -371,7 +480,18 @@ const SuperAdminRequisitions = () => {
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setShowOverrideModal(false)}>Cancel</button>
-                <button className="btn btn-primary" onClick={handleOverrideStatus}>Confirm Override</button>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={handleOverrideStatus}
+                  disabled={updatingStatus}
+                >
+                  {updatingStatus ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Updating...
+                    </>
+                  ) : 'Confirm Override'}
+                </button>
               </div>
             </div>
           </div>

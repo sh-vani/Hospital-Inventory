@@ -19,6 +19,8 @@ const SuperAdminInventory = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRestockModal, setShowRestockModal] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
+  const [movements, setMovements] = useState([]);
+  const [movementsLoading, setMovementsLoading] = useState(false);
 
   // Base URL for API
   const BASE_URL = '{{base_url}}';
@@ -43,6 +45,23 @@ const SuperAdminInventory = () => {
 
     fetchInventory();
   }, []);
+
+  // === FETCH MOVEMENT DATA ===
+  const fetchMovements = async (itemId) => {
+    try {
+      setMovementsLoading(true);
+      const response = await axiosInstance.get(`${BaseUrl}/inventory/${itemId}/movements`);
+      if (response.data.success) {
+        setMovements(response.data.data.movements);
+      } else {
+        setError('Failed to fetch movement data');
+      }
+    } catch (err) {
+      setError('Error fetching movements: ' + err.message);
+    } finally {
+      setMovementsLoading(false);
+    }
+  };
 
   // === FILTER LOGIC ===
   const filteredInventory = inventory.filter(item => {
@@ -75,9 +94,11 @@ const SuperAdminInventory = () => {
     setShowEditModal(true);
   };
 
-  const openHistoryModal = (item) => {
+  const openHistoryModal = async (item) => {
     setCurrentItem(item);
     setShowHistoryModal(true);
+    // Fetch movements when opening the modal
+    await fetchMovements(item.id);
   };
 
   const closeModalOnBackdrop = (e) => {
@@ -131,6 +152,21 @@ const SuperAdminInventory = () => {
         return <span className="badge bg-warning text-dark">Low Stock</span>;
       default:
         return <span className="badge bg-success">In Stock</span>;
+    }
+  };
+
+  const getMovementTypeBadge = (type) => {
+    switch (type) {
+      case 'stock_in':
+        return <span className="badge bg-success">Stock In</span>;
+      case 'dispatch':
+        return <span className="badge bg-warning text-dark">Dispatch</span>;
+      case 'adjustment':
+        return <span className="badge bg-danger">Adjustment</span>;
+      case 'transfer':
+        return <span className="badge bg-info">Transfer</span>;
+      default:
+        return <span className="badge bg-secondary">{type}</span>;
     }
   };
 
@@ -334,45 +370,47 @@ const SuperAdminInventory = () => {
               </div>
               <div className="modal-body">
                 <p className="text-muted">Recent stock movements for <strong>{currentItem.item_code}</strong></p>
-                <div className="table-responsive">
-                  <table className="table table-sm">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Type</th>
-                        <th>Quantity</th>
-                        <th>From / To</th>
-                        <th>Reference</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>2023-10-24</td>
-                        <td><span className="badge bg-success">Stock In</span></td>
-                        <td>+200</td>
-                        <td>Central Warehouse</td>
-                        <td>PO-8891</td>
-                      </tr>
-                      <tr>
-                        <td>2023-10-22</td>
-                        <td><span className="badge bg-warning text-dark">Dispatch</span></td>
-                        <td>-50</td>
-                        <td>Kumasi Hospital</td>
-                        <td>DISP-042</td>
-                      </tr>
-                      <tr>
-                        <td>2023-10-20</td>
-                        <td><span className="badge bg-danger">Adjustment</span></td>
-                        <td>-10</td>
-                        <td>Expired Items</td>
-                        <td>ADJ-015</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div className="alert alert-info">
-                  This is simulated data. In production, this would come from the stock movement log.
-                </div>
+                
+                {movementsLoading ? (
+                  <div className="text-center py-4">
+                    <div className="spinner-border" role="status">
+                      <span className="visually-hidden">Loading movements...</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="table-responsive">
+                    <table className="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Type</th>
+                          <th>Quantity</th>
+                          <th>From / To</th>
+                          <th>Reference</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {movements.length === 0 ? (
+                          <tr>
+                            <td colSpan="5" className="text-center py-3">No movement history found for this item.</td>
+                          </tr>
+                        ) : (
+                          movements.map((movement, index) => (
+                            <tr key={index}>
+                              <td>{new Date(movement.date).toLocaleDateString()}</td>
+                              <td>{getMovementTypeBadge(movement.type)}</td>
+                              <td className={movement.quantity > 0 ? "text-success" : "text-danger"}>
+                                {movement.quantity > 0 ? '+' : ''}{movement.quantity}
+                              </td>
+                              <td>{movement.from_to || '-'}</td>
+                              <td>{movement.reference || '-'}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setShowHistoryModal(false)}>Close</button>
@@ -447,7 +485,7 @@ const SuperAdminInventory = () => {
         </div>
       )}
       
-      {(showAddModal || showEditModal || showRestockModal || showBatchModal || showViewModal) && (
+      {(showAddModal || showEditModal || showRestockModal || showBatchModal || showViewModal || showHistoryModal) && (
         <div className="modal-backdrop fade show"></div>
       )}
     </div>

@@ -92,16 +92,16 @@ useEffect(() => {
         icon: faUsers,
         path: "/superadmin/users",
       },
-      {
-        name: "Settings",
-        icon: faGear,
-        path: "/superadmin/settings",
-      },
-      {
-        name: "Roles & Permissions",
-        icon: faUserShield,
-        path: "/superadmin/role"
-      }
+      // {
+      //   name: "Settings",
+      //   icon: faGear,
+      //   path: "/superadmin/settings",
+      // },
+      // {
+      //   name: "Roles & Permissions",
+      //   icon: faUserShield,
+      //   path: "/superadmin/role"
+      // }
     ],
 
     "warehouse_admin": [
@@ -185,11 +185,11 @@ useEffect(() => {
         icon: faBuilding,
         path: "/facility/departmentsCategories"
       },
-      {
-         name: "Users & Roles",
-         icon: faUserShield,
-         path: "/facility/usersRoles"
-      },
+      // {
+      //    name: "Users & Roles",
+      //    icon: faUserShield,
+      //    path: "/facility/usersRoles"
+      // },
      
      
       {
@@ -230,11 +230,11 @@ useEffect(() => {
         icon: faFileInvoice,
         path: "/user/receipts",
       },
-      {
-        name: "Notification",
-        icon: faBell,
-        path: "/user/notification",
-      },
+      // {
+      //   name: "Notification",
+      //   icon: faBell,
+      //   path: "/user/notification",
+      // },
     ],
   };
 
