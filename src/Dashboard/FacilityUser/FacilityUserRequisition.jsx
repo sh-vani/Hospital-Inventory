@@ -71,45 +71,52 @@ const FacilityUserRequisition = () => {
   };
 
   // Fetch facility items with retry mechanism
-  const fetchFacilityItems = async (facilityId) => {
-    try {
-      setLoadingItems(true);
-      const response = await fetchWithRetry(() =>
-        axiosInstance.get(`${BaseUrl}/inventory`, {
-          params: { facilityId }
-        })
-
-        
-      )
-
-      if (response.data.success && Array.isArray(response.data.data.items)) {
-        setFacilityItems(response.data.data.items);
-      } else {
-        setFacilityItems([]);
+// Fetch facility items with retry mechanism
+const fetchFacilityItems = async (facilityId) => {
+  try {
+    setLoadingItems(true);
+    const response = await fetchWithRetry(() =>
+      axiosInstance.get(`${BaseUrl}/inventory/${facilityId}`)
+    );
+    console.log(response.data);
+    if (response.data.success) {
+      // ✅ Handle both cases:
+      // Case 1: data is an array → use as-is
+      // Case 2: data is a single object → wrap in array
+      let items = [];
+      if (Array.isArray(response.data.data)) {
+        items = response.data.data;
+      } else if (response.data.data && typeof response.data.data === 'object') {
+        // Assume it's a single item → convert to array
+        items = [response.data.data];
       }
-    } catch (error) {
-      console.error('Failed to fetch facility items:', error);
+      setFacilityItems(items);
+    } else {
       setFacilityItems([]);
-
-      if (error.response?.status === 429) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Too Many Requests',
-          text: 'Please wait a moment and try again.',
-          timer: 3000,
-          showConfirmButton: false
-        });
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Fetch Failed',
-          text: 'Failed to fetch facility items. Please try again later.'
-        });
-      }
-    } finally {
-      setLoadingItems(false);
     }
-  };
+  } catch (error) {
+    console.error('Failed to fetch facility items:', error);
+    setFacilityItems([]);
+
+    if (error.response?.status === 429) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Too Many Requests',
+        text: 'Please wait a moment and try again.',
+        timer: 3000,
+        showConfirmButton: false
+      });
+    } else {
+      Swal.fire({
+        icon: 'error',
+        title: 'Fetch Failed',
+        text: 'Failed to fetch facility items. Please try again later.'
+      });
+    }
+  } finally {
+    setLoadingItems(false);
+  }
+};
 
   // Fetch requisition history
   const fetchRequisitionHistory = async (userId) => {
