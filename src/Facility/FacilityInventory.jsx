@@ -11,6 +11,7 @@ import {
   Spinner,
 } from "react-bootstrap";
 import axios from "axios";
+import axiosInstance from "../Api/axiosInstance";
 
 const FacilityDashboard = () => {
   const [inventoryData, setInventoryData] = useState([]);
@@ -28,8 +29,8 @@ const FacilityDashboard = () => {
   useEffect(() => {
     const fetchInventory = async () => {
       try {
-        const response = await axios.get(
-          "https://ssknf82q-3000.inc1.devtunnels.ms/api/inventory"
+        const response = await axiosInstance.get(
+          `/inventory`
         );
         const items = response.data?.data?.items || [];
 
