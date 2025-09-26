@@ -23,6 +23,30 @@ const FacilityUserMyRequests = () => {
 
   const baseUrl = BaseUrl;
   
+  // NEW: Retry function with exponential backoff for 429 errors
+  const fetchWithRetry = async (axiosCall, maxRetries = 3, initialDelay = 1000) => {
+    let retryCount = 0;
+    let delay = initialDelay;
+    
+    while (retryCount <= maxRetries) {
+      try {
+        const response = await axiosCall();
+        return response;
+      } catch (error) {
+        if (error.response && error.response.status === 429 && retryCount < maxRetries) {
+          retryCount++;
+          console.log(`Rate limited. Retrying in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 2; // Exponential backoff
+        } else {
+          throw error;
+        }
+      }
+    }
+    
+    throw new Error('Max retries reached');
+  };
+  
   // Get user ID from localStorage
   useEffect(() => {
     // Try multiple possible keys for user ID
@@ -74,11 +98,22 @@ const FacilityUserMyRequests = () => {
       setError(null);
       
       try {
-        const response = await axios.get(`${baseUrl}/requisitions/${userId}`);
+        // First, try to get all requisitions for the user using the retry function
+        const response = await fetchWithRetry(() => 
+          axios.get(`${baseUrl}/requisitions/user/${userId}`)
+        );
         
         if (response.data.success) {
+          // Check if response.data.data is an array or a single object
+          let requisitionsData = response.data.data;
+          
+          // If it's a single object, convert it to an array
+          if (!Array.isArray(requisitionsData)) {
+            requisitionsData = [requisitionsData];
+          }
+          
           // Transform API data to match our component structure
-          const transformedData = response.data.data.map(requisition => ({
+          const transformedData = requisitionsData.map(requisition => ({
             id: requisition.id,
             item: requisition.items.map(item => item.item_name).join(', '),
             dateRaised: new Date(requisition.created_at).toLocaleDateString('en-GB', { 
@@ -101,8 +136,85 @@ const FacilityUserMyRequests = () => {
           throw new Error('API returned unsuccessful response');
         }
       } catch (err) {
-        setError(err.message || 'Failed to fetch requisitions data');
-        console.error('Error fetching requisitions data:', err);
+        // If the first approach fails, try the alternative endpoint
+        try {
+          const response = await fetchWithRetry(() => 
+            axios.get(`${baseUrl}/requisitions/user/${userId}`)
+          );
+          
+          if (response.data.success) {
+            // Check if response.data.data is an array or a single object
+            let requisitionsData = response.data.data;
+            
+            // If it's a single object, convert it to an array
+            if (!Array.isArray(requisitionsData)) {
+              requisitionsData = [requisitionsData];
+            }
+            
+            // Transform API data to match our component structure
+            const transformedData = requisitionsData.map(requisition => ({
+              id: requisition.id,
+              item: requisition.items.map(item => item.item_name).join(', '),
+              dateRaised: new Date(requisition.created_at).toLocaleDateString('en-GB', { 
+                day: 'numeric', 
+                month: 'short', 
+                year: 'numeric' 
+              }),
+              quantity: requisition.items.reduce((sum, item) => sum + item.quantity, 0),
+              status: requisition.status.charAt(0).toUpperCase() + requisition.status.slice(1),
+              lastUpdated: new Date(requisition.updated_at).toLocaleDateString('en-GB', { 
+                day: 'numeric', 
+                month: 'short' 
+              }),
+              // Store the original requisition data for the timeline modal
+              originalData: requisition
+            }));
+            
+            setRequests(transformedData);
+          } else {
+            throw new Error('API returned unsuccessful response');
+          }
+        } catch (secondErr) {
+          // If both approaches fail, try the third approach - get by ID
+          try {
+            const response = await fetchWithRetry(() => 
+              axios.get(`${baseUrl}/requisitions/${userId}`)
+            );
+            
+            if (response.data.success) {
+              // Transform the single requisition to an array
+              const transformedData = [{
+                id: response.data.data.id,
+                item: response.data.data.items.map(item => item.item_name).join(', '),
+                dateRaised: new Date(response.data.data.created_at).toLocaleDateString('en-GB', { 
+                  day: 'numeric', 
+                  month: 'short', 
+                  year: 'numeric' 
+                }),
+                quantity: response.data.data.items.reduce((sum, item) => sum + item.quantity, 0),
+                status: response.data.data.status.charAt(0).toUpperCase() + response.data.data.status.slice(1),
+                lastUpdated: new Date(response.data.data.updated_at).toLocaleDateString('en-GB', { 
+                  day: 'numeric', 
+                  month: 'short' 
+                }),
+                // Store the original requisition data for the timeline modal
+                originalData: response.data.data
+              }];
+              
+              setRequests(transformedData);
+            } else {
+              throw new Error('API returned unsuccessful response');
+            }
+          } catch (thirdErr) {
+            // Show user-friendly error message for 429 errors
+            if (thirdErr.response && thirdErr.response.status === 429) {
+              setError('Too many requests. Please wait a moment and try again.');
+            } else {
+              setError(thirdErr.message || 'Failed to fetch requisitions data');
+            }
+            console.error('Error fetching requisitions data:', thirdErr);
+          }
+        }
       } finally {
         setLoading(false);
       }
@@ -171,8 +283,8 @@ const FacilityUserMyRequests = () => {
   
   return (
     <div className="container-fluid py-4 px-3 px-md-4">
-      {/* Header Section */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+      {/* Header Section - Fixed background color */}
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 bg-white p-3 rounded">
         <div className="mb-3 mb-md-0">
           <h1 className="h3 mb-1">My Requests</h1>
           <p className="text-muted mb-0">Track and manage your requisition requests</p>
@@ -196,13 +308,13 @@ const FacilityUserMyRequests = () => {
         </div>
       )}
 
-      {/* Debug Info - Only show in development */}
+      {/* Debug Info - Only show in development
       {process.env.NODE_ENV === 'development' && (
         <div className="alert alert-info">
           <strong>Debug Info:</strong> User ID: {userId || 'Not found'} | 
           Available localStorage keys: {Object.keys(localStorage).join(', ')}
         </div>
-      )}
+      )} */}
       
       {/* Main Card */}
       <div className="card border-0 shadow-sm">

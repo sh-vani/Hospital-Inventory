@@ -15,6 +15,7 @@ const AcknowledgementOfReceipts = () => {
     const mockData = [
       {
         id: 'RCPT-001',
+        reqId: 'REQ-001', // Added Req ID
         itemName: 'Paracetamol 500mg',
         batch: 'B789',
         lot: 'L456',
@@ -30,6 +31,7 @@ const AcknowledgementOfReceipts = () => {
       },
       {
         id: 'RCPT-002',
+        reqId: 'REQ-002', // Added Req ID
         itemName: 'Amoxicillin 500mg',
         batch: 'B234',
         lot: 'L789',
@@ -45,6 +47,7 @@ const AcknowledgementOfReceipts = () => {
       },
       {
         id: 'RCPT-003',
+        reqId: 'REQ-003', // Added Req ID
         itemName: 'Surgical Gloves',
         batch: 'B567',
         lot: 'L123',
@@ -127,6 +130,7 @@ const AcknowledgementOfReceipts = () => {
                 <thead className="table-light">
                   <tr>
                     <th>Receipt ID</th>
+                    <th>Req ID</th> {/* Added Req ID column */}
                     <th>Item</th>
                     <th>Qty</th>
                     <th>Status</th>
@@ -138,6 +142,7 @@ const AcknowledgementOfReceipts = () => {
                   {receipts.map((receipt) => (
                     <tr key={receipt.id}>
                       <td>{receipt.id}</td>
+                      <td>{receipt.reqId}</td> {/* Added Req ID cell */}
                       <td>
                         <div className="d-flex align-items-center">
                           <div className="me-2">
@@ -187,7 +192,7 @@ const AcknowledgementOfReceipts = () => {
                   <div className="col-12 mb-3">
                     <h4 className="mb-0">{selectedReceipt.itemName}</h4>
                     <div className="text-muted small">
-                      Receipt ID: {selectedReceipt.id}
+                      Receipt ID: {selectedReceipt.id} | Req ID: {selectedReceipt.reqId} {/* Added Req ID to modal header */}
                     </div>
                   </div>
                   
