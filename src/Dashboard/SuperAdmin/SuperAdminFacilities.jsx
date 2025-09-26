@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FaHospital, FaClinicMedical, FaFirstAid, FaWarehouse, FaMapMarkerAlt, FaPhone, FaEnvelope,
-  FaEdit, FaTrash, FaSave, FaInfoCircle, FaBox, FaClipboardList, FaUserPlus
+  FaEdit, FaTrash, FaSave, FaInfoCircle, FaBox, FaClipboardList, FaUserPlus, FaPlus
 } from 'react-icons/fa';
 
 const SuperAdminFacilities = () => {
@@ -10,12 +10,27 @@ const SuperAdminFacilities = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAssignAdminModal, setShowAssignAdminModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   
   // State for current facility
   const [currentFacility, setCurrentFacility] = useState(null);
   
   // State for edit facility form
   const [editFacility, setEditFacility] = useState({
+    name: '',
+    type: 'Hospital',
+    address: '',
+    phone: '',
+    email: '',
+    description: '',
+    capacity: '',
+    services: '',
+    inventory_level: 'Good',
+    pending_requisitions: 0
+  });
+  
+  // State for create facility form
+  const [createFacility, setCreateFacility] = useState({
     name: '',
     type: 'Hospital',
     address: '',
@@ -160,11 +175,35 @@ const SuperAdminFacilities = () => {
     setShowAssignAdminModal(true);
   };
   
+  const openCreateModal = () => {
+    setCreateFacility({
+      name: '',
+      type: 'Hospital',
+      address: '',
+      phone: '',
+      email: '',
+      description: '',
+      capacity: '',
+      services: '',
+      inventory_level: 'Good',
+      pending_requisitions: 0
+    });
+    setShowCreateModal(true);
+  };
+  
   // Form handlers
   const handleEditFacilityChange = (e) => {
     const { name, value } = e.target;
     setEditFacility({
       ...editFacility,
+      [name]: value
+    });
+  };
+  
+  const handleCreateFacilityChange = (e) => {
+    const { name, value } = e.target;
+    setCreateFacility({
+      ...createFacility,
       [name]: value
     });
   };
@@ -190,6 +229,25 @@ const SuperAdminFacilities = () => {
     setFacilities(updatedFacilities);
     setShowEditModal(false);
     alert(`Facility ${currentFacility.name} has been updated successfully!`);
+  };
+  
+  const handleCreateFacility = () => {
+    // Generate a new ID for the facility
+    const newId = `FAC-${1000 + facilities.length}`;
+    
+    // Create the new facility object
+    const newFacility = {
+      ...createFacility,
+      id: newId,
+      inventoryLevel: createFacility.inventory_level,
+      pendingRequisitions: parseInt(createFacility.pending_requisitions),
+      admin: 'Not Assigned'
+    };
+    
+    // Add the new facility to the state
+    setFacilities([...facilities, newFacility]);
+    setShowCreateModal(false);
+    alert(`Facility ${createFacility.name} has been created successfully!`);
   };
   
   const handleDeleteFacility = () => {
@@ -232,7 +290,12 @@ const SuperAdminFacilities = () => {
   
   return (
     <div className="fade-in">
-      <h2 className="fw-bold mb-4">Facilities Management</h2>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="fw-bold mb-0">Facilities Management</h2>
+        <button className="btn btn-primary" onClick={openCreateModal}>
+          <FaPlus className="me-2" /> Create Facility
+        </button>
+      </div>
       
       {/* Loading and Error States */}
       {loading && (
@@ -427,6 +490,156 @@ const SuperAdminFacilities = () => {
                     <FaTrash className="me-2" /> Delete
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Create Facility Modal */}
+      {showCreateModal && (
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Create New Facility</h5>
+                <button type="button" className="btn-close" onClick={() => setShowCreateModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <form>
+                  <div className="row mb-3">
+                    <div className="col-md-6">
+                      <label className="form-label">Facility Name</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        name="name"
+                        value={createFacility.name}
+                        onChange={handleCreateFacilityChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Facility Type</label>
+                      <select 
+                        className="form-select" 
+                        name="type"
+                        value={createFacility.type}
+                        onChange={handleCreateFacilityChange}
+                        required
+                      >
+                        <option value="Hospital">Hospital</option>
+                        <option value="Regional Facility">Regional Facility</option>
+                        <option value="Metropolitan Facility">Metropolitan Facility</option>
+                        <option value="Community Health Center">Community Health Center</option>
+                        <option value="Central Storage Facility">Central Storage Facility</option>
+                        <option value="Coastal Regional Facility">Coastal Regional Facility</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-md-6">
+                      <label className="form-label">Phone Number</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        name="phone"
+                        value={createFacility.phone}
+                        onChange={handleCreateFacilityChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Email Address</label>
+                      <input 
+                        type="email" 
+                        className="form-control" 
+                        name="email"
+                        value={createFacility.email}
+                        onChange={handleCreateFacilityChange}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Address</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      name="address"
+                      value={createFacility.address}
+                      onChange={handleCreateFacilityChange}
+                      required
+                    />
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-md-6">
+                      <label className="form-label">Capacity</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        name="capacity"
+                        value={createFacility.capacity}
+                        onChange={handleCreateFacilityChange}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Services</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        name="services"
+                        value={createFacility.services}
+                        onChange={handleCreateFacilityChange}
+                      />
+                    </div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-md-6">
+                      <label className="form-label">Inventory Level</label>
+                      <select 
+                        className="form-select" 
+                        name="inventory_level"
+                        value={createFacility.inventory_level}
+                        onChange={handleCreateFacilityChange}
+                        required
+                      >
+                        <option value="Good">Good</option>
+                        <option value="Low">Low</option>
+                        <option value="Critical">Critical</option>
+                      </select>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Pending Requisitions</label>
+                      <input 
+                        type="number" 
+                        className="form-control" 
+                        name="pending_requisitions"
+                        value={createFacility.pending_requisitions}
+                        onChange={handleCreateFacilityChange}
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Description</label>
+                    <textarea 
+                      className="form-control" 
+                      name="description"
+                      value={createFacility.description}
+                      onChange={handleCreateFacilityChange}
+                      rows="3"
+                    ></textarea>
+                  </div>
+                </form>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>
+                  Cancel
+                </button>
+                <button type="button" className="btn btn-primary" onClick={handleCreateFacility}>
+                  <FaSave className="me-2" /> Create Facility
+                </button>
               </div>
             </div>
           </div>
@@ -653,7 +866,7 @@ const SuperAdminFacilities = () => {
       )}
       
       {/* Modal Backdrop */}
-      {(showViewModal || showEditModal || showDeleteModal || showAssignAdminModal) && (
+      {(showViewModal || showEditModal || showDeleteModal || showAssignAdminModal || showCreateModal) && (
         <div className="modal-backdrop show"></div>
       )}
     </div>
