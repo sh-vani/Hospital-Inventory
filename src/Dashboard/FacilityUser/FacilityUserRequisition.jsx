@@ -41,13 +41,41 @@ const FacilityUserRequisition = () => {
     }
   };
 
-  // Fetch facility items
+  // ✅ NEW: Retry function with exponential backoff for 429 errors
+  const fetchWithRetry = async (axiosCall, maxRetries = 3, initialDelay = 1000) => {
+    let retryCount = 0;
+    let delay = initialDelay;
+    
+    while (retryCount <= maxRetries) {
+      try {
+        const response = await axiosCall();
+        return response;
+      } catch (error) {
+        if (error.response && error.response.status === 429 && retryCount < maxRetries) {
+          retryCount++;
+          console.log(`Rate limited. Retrying in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 2; // Exponential backoff
+        } else {
+          throw error;
+        }
+      }
+    }
+    
+    throw new Error('Max retries reached');
+  };
+
+  // Fetch facility items with retry mechanism
   const fetchFacilityItems = async (facilityId) => {
     try {
       setLoadingItems(true);
-      const response = await axiosInstance.get(`${BaseUrl}/inventory`, {
-        params: { facilityId }
-      });
+      
+      // Use the retry function
+      const response = await fetchWithRetry(() => 
+        axiosInstance.get(`${BaseUrl}/inventory`, {
+          params: { facilityId }
+        })
+      );
 
       if (response.data.success && Array.isArray(response.data.data.items)) {
         setFacilityItems(response.data.data.items);
@@ -57,6 +85,13 @@ const FacilityUserRequisition = () => {
     } catch (error) {
       console.error('Failed to fetch facility items:', error);
       setFacilityItems([]);
+      
+      // Show user-friendly error message
+      if (error.response && error.response.status === 429) {
+        alert('Too many requests. Please wait a moment and try again.');
+      } else {
+        alert('Failed to fetch facility items. Please try again later.');
+      }
     } finally {
       setLoadingItems(false);
     }
@@ -93,7 +128,7 @@ const FacilityUserRequisition = () => {
     setRequisitionHistory(mockHistory);
   }, []);
 
-// ✅ UPDATED: Handle form submission with REAL POST API + user_id
+// ✅ UPDATED: Handle form submission with REAL POST API + user_id and retry mechanism
 const handleSubmit = async (e) => {
   e.preventDefault();
   
@@ -124,8 +159,10 @@ const handleSubmit = async (e) => {
       ]
     };
 
-    // Call real API
-    const response = await axiosInstance.post(`${BaseUrl}/requisitions`, payload);
+    // Call real API with retry mechanism
+    const response = await fetchWithRetry(() => 
+      axiosInstance.post(`${BaseUrl}/requisitions`, payload)
+    );
 
     if (response.data.success) {
       setSuccess(true);
@@ -157,8 +194,14 @@ const handleSubmit = async (e) => {
     }
   } catch (error) {
     console.error('Submission error:', error);
-    const msg = error.response?.data?.message || 'Network error. Please try again.';
-    alert('Error: ' + msg);
+    
+    // Show user-friendly error message
+    if (error.response && error.response.status === 429) {
+      alert('Too many requests. Please wait a moment and try again.');
+    } else {
+      const msg = error.response?.data?.message || 'Network error. Please try again.';
+      alert('Error: ' + msg);
+    }
   } finally {
     setLoading(false);
     setTimeout(() => setSuccess(false), 3000);

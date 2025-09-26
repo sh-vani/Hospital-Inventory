@@ -230,11 +230,11 @@ useEffect(() => {
         icon: faFileInvoice,
         path: "/user/receipts",
       },
-      {
-        name: "Notification",
-        icon: faBell,
-        path: "/user/notification",
-      },
+      // {
+      //   name: "Notification",
+      //   icon: faBell,
+      //   path: "/user/notification",
+      // },
     ],
   };
 
