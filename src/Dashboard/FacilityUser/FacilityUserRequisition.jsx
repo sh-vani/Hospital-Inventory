@@ -1,68 +1,89 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTrash, FaExclamationTriangle, FaBoxOpen, FaClock, FaEdit, FaEye, FaTimes } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import BaseUrl from '../../Api/BaseUrl';
+import axiosInstance from '../../Api/axiosInstance';
 
 const FacilityUserRequisition = () => {
-  // State for form data
+  // Form states
   const [department, setDepartment] = useState('');
-  const [username, setUsername] = useState(''); // Fixed: Changed from requester to username
+  const [username, setUsername] = useState('');
   const [requisitionType, setRequisitionType] = useState('individual');
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [showRequisitionModal, setShowRequisitionModal] = useState(false);
-  const [selectedBulkItems, setSelectedBulkItems] = useState([]);
-  const [bulkSuccess, setBulkSuccess] = useState(false);
-  
   const [items, setItems] = useState([]);
-  const [suggestedItems, setSuggestedItems] = useState([]);
-  const [departmentStockLevels, setDepartmentStockLevels] = useState([]);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   
-  // View detail modal state
+  // Modal states
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedRequisition, setSelectedRequisition] = useState(null);
-  const [requisitionHistory, setRequisitionHistory] = useState([]); // Added missing state
+  const [requisitionHistory, setRequisitionHistory] = useState([]);
 
-  // Form fields for modal
+  // Requisition form fields
   const [selectedItem, setSelectedItem] = useState('');
   const [quantity, setQuantity] = useState('');
   const [priority, setPriority] = useState('Normal');
   const [remarks, setRemarks] = useState('');
 
-  // Mock item list for dropdown
-  const availableItems = [
-    { id: 1, name: 'Paracetamol 500mg' },
-    { id: 2, name: 'Amoxicillin 500mg' },
-    { id: 3, name: 'Surgical Gloves' },
-    { id: 4, name: 'Insulin Pens' },
-    { id: 5, name: 'Antiseptic Solution' },
-    { id: 6, name: 'Vitamin C Tablets' },
-    { id: 7, name: 'Blood Pressure Cuffs' },
-    { id: 8, name: 'Alcohol Swabs' }
-  ];
+  // ✅ Real facility items from API
+  const [facilityItems, setFacilityItems] = useState([]);
+  const [loadingItems, setLoadingItems] = useState(true);
 
-  // Function to get trigger icon
-  const getTriggerIcon = (trigger) => {
-    switch(trigger) {
-      case 'Low Stock':
-      case 'Department Low Stock':
-        return <FaExclamationTriangle className="text-warning me-1" />;
-      case 'Out of Stock':
-      case 'Department Out of Stock':
-        return <FaBoxOpen className="text-danger me-1" />;
-      case 'Near Expiry':
-        return <FaClock className="text-info me-1" />;
-      default:
-        return null;
+  // Get user from localStorage
+  const getUserFromStorage = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      return userStr ? JSON.parse(userStr) : null;
+    } catch (e) {
+      console.error('Failed to parse user from localStorage');
+      return null;
     }
   };
 
-  // Simulate fetching user session data
-  useEffect(() => {
-    setDepartment('Pharmacy');
-    setUsername('Dr. Sharma');
+  // Fetch facility items
+  const fetchFacilityItems = async (facilityId) => {
+    try {
+      setLoadingItems(true);
+      const response = await axiosInstance.get(`${BaseUrl}/inventory`, {
+        params: { facilityId }
+      });
 
-    // Mock requisition history
+      if (response.data.success && Array.isArray(response.data.data.items)) {
+        setFacilityItems(response.data.data.items);
+      } else {
+        setFacilityItems([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch facility items:', error);
+      setFacilityItems([]);
+    } finally {
+      setLoadingItems(false);
+    }
+  };
+
+  // Initialize user session & fetch data
+  useEffect(() => {
+    const user = getUserFromStorage();
+
+    if (user) {
+      setDepartment(user.department || 'N/A');
+      setUsername(user.name || 'User');
+      
+      // ✅ Use real facility_id from user
+      const facilityId = user.facility_id;
+      if (facilityId) {
+        fetchFacilityItems(facilityId);
+      } else {
+        console.error('Facility ID not found in user data');
+        setLoadingItems(false);
+      }
+    } else {
+      console.error('User not found in localStorage');
+      setLoadingItems(false);
+    }
+
+    // Mock requisition history (keep for demo)
     const mockHistory = [
       { id: 'REQ-001', item: 'Paracetamol 500mg', qty: 50, status: 'Pending', priority: 'Normal', remarks: 'For OPD use' },
       { id: 'REQ-002', item: 'Surgical Gloves', qty: 100, status: 'Processing', priority: 'High', remarks: 'Urgent surgery needs' },
@@ -72,28 +93,55 @@ const FacilityUserRequisition = () => {
     setRequisitionHistory(mockHistory);
   }, []);
 
-  // Handle form submission
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    if (!selectedItem || !quantity || quantity <= 0) {
-      alert('Please select an item and enter a valid quantity.');
-      return;
-    }
+// ✅ UPDATED: Handle form submission with REAL POST API + user_id
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (!selectedItem || !quantity || quantity <= 0) {
+    alert('Please select an item and enter a valid quantity.');
+    return;
+  }
 
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+  const user = getUserFromStorage();
+  if (!user || !user.facility_id || !user.id) {
+    alert('User data incomplete. Please log in again.');
+    return;
+  }
+
+  setLoading(true);
+  try {
+    // ✅ Prepare payload as per your API spec — NOW WITH user_id
+    const payload = {
+      user_id: user.id, // ✅ ADDED THIS LINE
+      facility_id: user.facility_id,
+      remarks: remarks.trim() || '',
+      items: [
+        {
+          item_id: parseInt(selectedItem),
+          quantity: parseInt(quantity),
+          priority: priority.toLowerCase() // "Normal" → "normal"
+        }
+      ]
+    };
+
+    // Call real API
+    const response = await axiosInstance.post(`${BaseUrl}/requisitions`, payload);
+
+    if (response.data.success) {
       setSuccess(true);
       
-      // Add new requisition to history
+      // Get item name for UI
+      const selectedItemObj = facilityItems.find(i => i.id == selectedItem);
+      const itemName = selectedItemObj ? selectedItemObj.item_name : 'Unknown Item';
+      
+      // Add to local history (UI only)
       const newReq = {
-        id: `REQ-${String(requisitionHistory.length + 1).padStart(3, '0')}`,
-        item: availableItems.find(i => i.id === parseInt(selectedItem))?.name || selectedItem,
+        id: response.data.data?.reqId || `REQ-${Date.now()}`,
+        item: itemName,
         qty: parseInt(quantity),
         status: 'Pending',
-        priority,
-        remarks
+        priority: priority,
+        remarks: remarks
       };
       
       setRequisitionHistory([newReq, ...requisitionHistory]);
@@ -104,12 +152,19 @@ const FacilityUserRequisition = () => {
       setPriority('Normal');
       setRemarks('');
       setShowRequisitionModal(false);
-      
-      setTimeout(() => setSuccess(false), 3000);
-    }, 1500);
-  };
-
-  // Handle cancel requisition
+    } else {
+      alert('Failed to submit requisition: ' + (response.data.message || 'Unknown error'));
+    }
+  } catch (error) {
+    console.error('Submission error:', error);
+    const msg = error.response?.data?.message || 'Network error. Please try again.';
+    alert('Error: ' + msg);
+  } finally {
+    setLoading(false);
+    setTimeout(() => setSuccess(false), 3000);
+  }
+};
+  // Cancel requisition
   const handleCancelRequisition = (id) => {
     if (window.confirm('Are you sure you want to cancel this requisition?')) {
       setRequisitionHistory(requisitionHistory.map(req => 
@@ -118,44 +173,18 @@ const FacilityUserRequisition = () => {
     }
   };
 
-  // Handle view detail
+  // View detail
   const handleViewDetail = (req) => {
     setSelectedRequisition(req);
     setShowDetailModal(true);
   };
 
-  // Handle add item
+  // Add item button
   const handleAddItem = () => {
     setShowRequisitionModal(true);
   };
 
-  // Handle remove item
-  const handleRemoveItem = (id) => {
-    setItems(items.filter(item => item.id !== id));
-  };
-
-  // Handle quantity change
-  const handleQuantityChange = (id, value) => {
-    const updatedItems = items.map(item => 
-      item.id === id ? { ...item, requestedQuantity: parseInt(value) || 0 } : item
-    );
-    setItems(updatedItems);
-  };
-
-  // Handle remarks change
-  const handleRemarksChange = (id, value) => {
-    const updatedItems = items.map(item => 
-      item.id === id ? { ...item, remarks: value } : item
-    );
-    setItems(updatedItems);
-  };
-
-  // Handle open bulk modal
-  const handleOpenBulkModal = () => {
-    setShowBulkModal(true);
-  };
-
-  // Get status badge class
+  // Status badge
   const getStatusBadgeClass = (status) => {
     switch(status) {
       case 'Pending': return 'bg-warning text-dark';
@@ -166,7 +195,7 @@ const FacilityUserRequisition = () => {
     }
   };
 
-  // Get priority badge class
+  // Priority badge
   const getPriorityBadgeClass = (priority) => {
     switch(priority) {
       case 'Normal': return 'bg-success';
@@ -242,32 +271,16 @@ const FacilityUserRequisition = () => {
                   <label className="form-check-label" htmlFor="bulk">Bulk (Based on Department Stock)</label>
                 </div>
               </div>
-              <div className="form-text">
-                {requisitionType === 'individual'
-                  ? 'Individual requisition is triggered by current facility available stock levels.'
-                  : 'Bulk requisition is triggered by department-level low/out-of-stock situations.'}
-              </div>
             </div>
           </div>
 
-          {/* Items */}
+          {/* Items Table (for multi-item) - currently unused in modal flow */}
           <div className="mb-4">
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h5>Items</h5>
-              <div>
-                {requisitionType === 'bulk' && (
-                  <button
-                    type="button"
-                    className="btn btn-outline-success btn-sm me-2"
-                    onClick={handleOpenBulkModal}
-                  >
-                    Create Bulk Requisition
-                  </button>
-                )}
-                <button type="button" className="btn btn-outline-primary btn-sm" onClick={handleAddItem}>
-                  <FaPlus className="me-1" /> Add Item
-                </button>
-              </div>
+              <button type="button" className="btn btn-outline-primary btn-sm" onClick={handleAddItem}>
+                <FaPlus className="me-1" /> Add Item
+              </button>
             </div>
 
             <div className="table-responsive">
@@ -282,76 +295,14 @@ const FacilityUserRequisition = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.length > 0 ? (
-                    items.map((item) => (
-                      <tr key={item.id}>
-                        <td>
-                          {item.trigger === 'Manual Add' ? (
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              placeholder="Enter item code"
-                              value={item.code || ''}
-                              onChange={(e) => {
-                                const updated = items.map(i => i.id === item.id ? { ...i, code: e.target.value } : i);
-                                setItems(updated);
-                              }}
-                            />
-                          ) : (
-                            item.code
-                          )}
-                        </td>
-                        <td>
-                          {item.trigger === 'Manual Add' ? (
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              placeholder="Enter item name"
-                              value={item.name || ''}
-                              onChange={(e) => {
-                                const updated = items.map(i => i.id === item.id ? { ...i, name: e.target.value } : i);
-                                setItems(updated);
-                              }}
-                            />
-                          ) : (
-                            item.name
-                          )}
-                        </td>
-                        <td>
-                          <input
-                            type="number"
-                            className="form-control form-control-sm"
-                            min="1"
-                            value={item.requestedQuantity || ''}
-                            onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            placeholder="Optional remarks"
-                            value={item.remarks || ''}
-                            onChange={(e) => handleRemarksChange(item.id, e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => handleRemoveItem(item.id)}>
-                            <FaTrash />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="5" className="text-center py-4">
-                        <div className="text-muted">
-                          <FaEdit size={24} className="mb-2" />
-                          <p>No items added. Add items to your requisition.</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
+                  <tr>
+                    <td colSpan="5" className="text-center py-4">
+                      <div className="text-muted">
+                        <FaEdit size={24} className="mb-2" />
+                        <p>No items added. Use "Add Item" to create a requisition.</p>
+                      </div>
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -414,7 +365,7 @@ const FacilityUserRequisition = () => {
                       <td colSpan="6" className="text-center py-4">
                         <div className="text-muted">
                           <FaEdit size={24} className="mb-2" />
-                          <p>No requisitions found. Create your first requisition.</p>
+                          <p>No requisitions found.</p>
                         </div>
                       </td>
                     </tr>
@@ -428,19 +379,14 @@ const FacilityUserRequisition = () => {
 
       {/* Create Requisition Modal */}
       <div className={`modal fade ${showRequisitionModal ? 'show' : ''}`} 
-           id="createRequisitionModal" 
-           tabIndex="-1" 
-           aria-labelledby="createRequisitionModalLabel" 
-           aria-hidden={!showRequisitionModal} 
            style={{ display: showRequisitionModal ? 'block' : 'none' }}>
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
             <div className="modal-header text-black">
-              <h5 className="modal-title" id="createRequisitionModalLabel">Create Requisition</h5>
+              <h5 className="modal-title">Create Requisition</h5>
               <button 
                 type="button" 
                 className="btn-close" 
-                aria-label="Close" 
                 onClick={() => setShowRequisitionModal(false)}
               ></button>
             </div>
@@ -455,9 +401,17 @@ const FacilityUserRequisition = () => {
                     required
                   >
                     <option value="">Select an item</option>
-                    {availableItems?.map(item => (
-                      <option key={item.id} value={item.id}>{item.name}</option>
-                    ))}
+                    {loadingItems ? (
+                      <option>Loading items...</option>
+                    ) : facilityItems.length > 0 ? (
+                      facilityItems.map(item => (
+                        <option key={item.id} value={item.id}>
+                          {item.item_name} ({item.quantity} {item.unit || 'units'})
+                        </option>
+                      ))
+                    ) : (
+                      <option>No items available in facility</option>
+                    )}
                   </select>
                 </div>
                 
@@ -480,9 +434,9 @@ const FacilityUserRequisition = () => {
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
                   >
-                    <option value="Normal">Normal</option>
-                    <option value="High">High</option>
-                    <option value="Urgent">Urgent</option>
+                    <option value="normal">Normal</option>
+                    <option value="high">High</option>
+                    <option value="rgent">Urgent</option>
                   </select>
                 </div>
                 
@@ -526,19 +480,14 @@ const FacilityUserRequisition = () => {
 
       {/* Requisition Detail Modal */}
       <div className={`modal fade ${showDetailModal ? 'show' : ''}`} 
-           id="requisitionDetailModal" 
-           tabIndex="-1" 
-           aria-labelledby="requisitionDetailModalLabel" 
-           aria-hidden={!showDetailModal} 
            style={{ display: showDetailModal ? 'block' : 'none' }}>
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
             <div className="modal-header text-black">
-              <h5 className="modal-title" id="requisitionDetailModalLabel">Requisition Details</h5>
+              <h5 className="modal-title">Requisition Details</h5>
               <button 
                 type="button" 
                 className="btn-close" 
-                aria-label="Close" 
                 onClick={() => setShowDetailModal(false)}
               ></button>
             </div>
@@ -597,37 +546,6 @@ const FacilityUserRequisition = () => {
       {/* Modal Backdrops */}
       {showRequisitionModal && <div className="modal-backdrop fade show"></div>}
       {showDetailModal && <div className="modal-backdrop fade show"></div>}
-
-      {/* Info section */}
-      <div className="card mt-4">
-        <div className="card-header bg-light">
-          <h5 className="mb-0">Requisition Information</h5>
-        </div>
-        <div className="card-body">
-          <div className="row">
-            <div className="col-md-6">
-              <h6><FaEye className="text-primary me-2" />View Detail</h6>
-              <p>View detailed information about your requisition including status updates.</p>
-            </div>
-            <div className="col-md-6">
-              <h6><FaTimes className="text-danger me-2" />Cancel</h6>
-              <p>Cancel your requisition if it hasn't been processed yet.</p>
-            </div>
-            <div className="col-md-6">
-              <h6><span className="badge bg-success me-2">Normal</span> Priority</h6>
-              <p>Standard processing time for non-urgent items.</p>
-            </div>
-            <div className="col-md-6">
-              <h6><span className="badge bg-warning text-dark me-2">High</span> Priority</h6>
-              <p>Expedited processing for important items.</p>
-            </div>
-            <div className="col-md-6">
-              <h6><span className="badge bg-danger me-2">Urgent</span> Priority</h6>
-              <p>Immediate process for critical items.</p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
