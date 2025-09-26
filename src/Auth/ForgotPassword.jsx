@@ -31,7 +31,6 @@ const ForgotPassword = () => {
               className="navbar-logo m-2"
               style={{ height: "51px" }}
             />
-
           </div>
 
           <h2 className="h5 text-secondary mt-3">Forgot Password?</h2>

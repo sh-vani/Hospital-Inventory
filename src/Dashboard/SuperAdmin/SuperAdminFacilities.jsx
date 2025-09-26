@@ -3,8 +3,13 @@ import {
   FaHospital, FaClinicMedical, FaFirstAid, FaWarehouse, FaMapMarkerAlt, FaPhone, FaEnvelope,
   FaEdit, FaTrash, FaSave, FaInfoCircle, FaBox, FaClipboardList, FaUserPlus, FaPlus
 } from 'react-icons/fa';
+import axios from 'axios';
+import BaseUrl from '../../Api/BaseUrl';
 
 const SuperAdminFacilities = () => {
+  // Base URL for API
+  
+  
   // State for modals
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -15,32 +20,15 @@ const SuperAdminFacilities = () => {
   // State for current facility
   const [currentFacility, setCurrentFacility] = useState(null);
   
-  // State for edit facility form
-  const [editFacility, setEditFacility] = useState({
-    name: '',
-    type: 'Hospital',
-    address: '',
-    phone: '',
-    email: '',
-    description: '',
-    capacity: '',
-    services: '',
-    inventory_level: 'Good',
-    pending_requisitions: 0
-  });
-  
   // State for create facility form
   const [createFacility, setCreateFacility] = useState({
     name: '',
+    location: '',
     type: 'Hospital',
-    address: '',
+    contact_person: '',
     phone: '',
     email: '',
-    description: '',
-    capacity: '',
-    services: '',
-    inventory_level: 'Good',
-    pending_requisitions: 0
+    address: ''
   });
   
   // State for assign admin form
@@ -49,93 +37,44 @@ const SuperAdminFacilities = () => {
   // State for facilities data
   const [facilities, setFacilities] = useState([]);
   
+  // State for pagination
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10
+  });
+  
   // State for loading
   const [loading, setLoading] = useState(true);
   
   // State for error
   const [error, setError] = useState(null);
   
-  // Generate random facilities data on component mount
+  // State for delete loading
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  
+  // Fetch facilities data on component mount
   useEffect(() => {
-    generateRandomFacilities();
+    fetchFacilities();
   }, []);
   
-  // Function to generate random facilities
-  const generateRandomFacilities = () => {
+  // Function to fetch facilities from API
+  const fetchFacilities = async (page = 1, limit = 10, status = 'active') => {
     try {
       setLoading(true);
+      const response = await axios.get(`${BaseUrl}/facilities?page=${page}&limit=${limit}&status=${status}`);
       
-      // Facility types
-      const facilityTypes = [
-        'Hospital', 
-        'Regional Facility', 
-        'Metropolitan Facility', 
-        'Community Health Center', 
-        'Central Storage Facility', 
-        'Coastal Regional Facility'
-      ];
-      
-      // Facility names
-      const hospitalNames = [
-        'City General Hospital',
-        'Regional Medical Center',
-        'Metropolitan Hospital',
-        'Community Health Center',
-        'Central Medical Warehouse',
-        'Coastal Regional Hospital'
-      ];
-      
-      // Locations
-      const locations = [
-        '123 Main Street, Accra',
-        '456 Health Avenue, Kumasi',
-        '789 Medical Boulevard, Takoradi',
-        '101 Wellness Road, Tamale',
-        '202 Care Lane, Cape Coast',
-        '303 Recovery Drive, Ho'
-      ];
-      
-      // Services
-      const servicesList = [
-        'Emergency Care, General Surgery, Maternity',
-        'Outpatient Services, Laboratory, Pharmacy',
-        'Diagnostic Imaging, Physical Therapy, Cardiology',
-        'Pediatrics, Neonatal Care, Immunization',
-        'Storage, Distribution, Inventory Management',
-        'Emergency Response, Trauma Care, Ambulance Services'
-      ];
-      
-      // Admin emails
-      const adminEmails = [
-        'admin@facility1.com',
-        'manager@facility2.com',
-        'director@facility3.com',
-        'supervisor@facility4.com',
-        'Not Assigned',
-        'administrator@facility6.com'
-      ];
-      
-      // Generate random facilities
-      const randomFacilities = Array.from({ length: 6 }, (_, i) => ({
-        id: `FAC-${1000 + i}`,
-        name: hospitalNames[i],
-        type: facilityTypes[i],
-        address: locations[i],
-        phone: `+233 ${Math.floor(Math.random() * 90000000) + 10000000}`,
-        email: `contact@facility${i+1}.com`,
-        description: `This is a ${facilityTypes[i].toLowerCase()} providing comprehensive healthcare services to the community. Established in ${2010 + i}, it has been serving the region with dedication and excellence.`,
-        capacity: `${Math.floor(Math.random() * 400) + 100} beds`,
-        services: servicesList[i],
-        inventoryLevel: ['Good', 'Low', 'Critical'][Math.floor(Math.random() * 3)],
-        pendingRequisitions: Math.floor(Math.random() * 10),
-        admin: adminEmails[i]
-      }));
-      
-      setFacilities(randomFacilities);
-      setError(null);
+      if (response.data.success) {
+        setFacilities(response.data.data.facilities);
+        setPagination(response.data.data.pagination);
+        setError(null);
+      } else {
+        setError('Failed to fetch facilities data.');
+      }
     } catch (err) {
-      setError('Failed to generate facilities data. Please try again later.');
-      console.error('Error generating facilities:', err);
+      setError('Failed to fetch facilities data. Please try again later.');
+      console.error('Error fetching facilities:', err);
     } finally {
       setLoading(false);
     }
@@ -148,18 +87,6 @@ const SuperAdminFacilities = () => {
   };
   
   const openEditModal = (facility) => {
-    setEditFacility({
-      name: facility.name,
-      type: facility.type,
-      address: facility.address,
-      phone: facility.phone,
-      email: facility.email,
-      description: facility.description,
-      capacity: facility.capacity,
-      services: facility.services,
-      inventory_level: facility.inventoryLevel,
-      pending_requisitions: facility.pendingRequisitions
-    });
     setCurrentFacility(facility);
     setShowEditModal(true);
   };
@@ -171,35 +98,24 @@ const SuperAdminFacilities = () => {
   
   const openAssignAdminModal = (facility) => {
     setCurrentFacility(facility);
-    setAdminEmail(facility.admin === 'Not Assigned' ? '' : facility.admin);
+    setAdminEmail(facility.admin_email || '');
     setShowAssignAdminModal(true);
   };
   
   const openCreateModal = () => {
     setCreateFacility({
       name: '',
+      location: '',
       type: 'Hospital',
-      address: '',
+      contact_person: '',
       phone: '',
       email: '',
-      description: '',
-      capacity: '',
-      services: '',
-      inventory_level: 'Good',
-      pending_requisitions: 0
+      address: ''
     });
     setShowCreateModal(true);
   };
   
   // Form handlers
-  const handleEditFacilityChange = (e) => {
-    const { name, value } = e.target;
-    setEditFacility({
-      ...editFacility,
-      [name]: value
-    });
-  };
-  
   const handleCreateFacilityChange = (e) => {
     const { name, value } = e.target;
     setCreateFacility({
@@ -213,76 +129,79 @@ const SuperAdminFacilities = () => {
   };
   
   // Action handlers
-  const handleEditFacility = () => {
-    // Update the facility in the state
-    const updatedFacilities = facilities.map(facility => 
-      facility.id === currentFacility.id 
-        ? { 
-            ...editFacility, 
-            id: currentFacility.id,
-            inventoryLevel: editFacility.inventory_level,
-            pendingRequisitions: parseInt(editFacility.pending_requisitions)
-          } 
-        : facility
-    );
-    
-    setFacilities(updatedFacilities);
-    setShowEditModal(false);
-    alert(`Facility ${currentFacility.name} has been updated successfully!`);
+  const handleCreateFacility = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.post(`${BaseUrl}/facilities`, createFacility);
+      
+      if (response.data.success) {
+        setShowCreateModal(false);
+        // Refresh the facilities list
+        fetchFacilities();
+        alert(`Facility ${createFacility.name} has been created successfully!`);
+      } else {
+        setError('Failed to create facility.');
+        alert('Failed to create facility. Please try again.');
+      }
+    } catch (err) {
+      setError('Failed to create facility. Please try again later.');
+      console.error('Error creating facility:', err);
+      alert('Failed to create facility. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
   };
   
-  const handleCreateFacility = () => {
-    // Generate a new ID for the facility
-    const newId = `FAC-${1000 + facilities.length}`;
+  const handleDeleteFacility = async () => {
+    if (!currentFacility) return;
     
-    // Create the new facility object
-    const newFacility = {
-      ...createFacility,
-      id: newId,
-      inventoryLevel: createFacility.inventory_level,
-      pendingRequisitions: parseInt(createFacility.pending_requisitions),
-      admin: 'Not Assigned'
-    };
-    
-    // Add the new facility to the state
-    setFacilities([...facilities, newFacility]);
-    setShowCreateModal(false);
-    alert(`Facility ${createFacility.name} has been created successfully!`);
-  };
-  
-  const handleDeleteFacility = () => {
-    // Update the facilities list in state
-    const updatedFacilities = facilities.filter(facility => 
-      facility.id !== currentFacility.id
-    );
-    
-    setFacilities(updatedFacilities);
-    setShowDeleteModal(false);
-    alert(`Facility ${currentFacility.name} has been deleted successfully!`);
+    try {
+      setDeleteLoading(true);
+      const response = await axios.delete(`${BaseUrl}/facilities/${currentFacility.id}`);
+      
+      if (response.data.success) {
+        setShowDeleteModal(false);
+        // Refresh the facilities list
+        fetchFacilities();
+        alert(`Facility ${currentFacility.name} has been deleted successfully!`);
+      } else {
+        setError('Failed to delete facility.');
+        alert('Failed to delete facility. Please try again.');
+      }
+    } catch (err) {
+      setError('Failed to delete facility. Please try again later.');
+      console.error('Error deleting facility:', err);
+      alert('Failed to delete facility. Please try again later.');
+    } finally {
+      setDeleteLoading(false);
+    }
   };
   
   const handleAssignAdmin = () => {
-    // Update the facility in the state
-    const updatedFacilities = facilities.map(facility => 
-      facility.id === currentFacility.id 
-        ? { ...facility, admin: adminEmail } 
-        : facility
-    );
-    
-    setFacilities(updatedFacilities);
+    // This would need an API endpoint to assign admin
+    // For now, we'll just show a message
+    alert('Assign admin functionality would be implemented with a specific API endpoint');
     setShowAssignAdminModal(false);
-    alert(`Admin has been assigned to ${currentFacility.name} successfully!`);
   };
   
   // Get inventory level badge
-  const getInventoryBadge = (level) => {
-    switch(level) {
-      case 'Good':
-        return <span className="badge bg-success">Good</span>;
-      case 'Low':
-        return <span className="badge bg-warning">Low</span>;
-      case 'Critical':
-        return <span className="badge bg-danger">Critical</span>;
+  const getInventoryBadge = (count) => {
+    if (count === 0) {
+      return <span className="badge bg-danger">Empty</span>;
+    } else if (count < 5) {
+      return <span className="badge bg-warning">Low</span>;
+    } else {
+      return <span className="badge bg-success">Good</span>;
+    }
+  };
+  
+  // Get status badge
+  const getStatusBadge = (status) => {
+    switch(status) {
+      case 'active':
+        return <span className="badge bg-success">Active</span>;
+      case 'inactive':
+        return <span className="badge bg-secondary">Inactive</span>;
       default:
         return <span className="badge bg-secondary">Unknown</span>;
     }
@@ -321,11 +240,14 @@ const SuperAdminFacilities = () => {
               <table className="table table-hover mb-0">
                 <thead className="table-light">
                   <tr>
-                    <th>Facility ID</th>
+                    <th>ID</th>
                     <th>Name</th>
                     <th>Location</th>
-                    <th>Admin</th>
-                    <th>Inventory Count</th>
+                    <th>Type</th>
+                    <th>Contact Person</th>
+                    <th>Status</th>
+                    <th>Users</th>
+                    <th>Inventory</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -339,13 +261,15 @@ const SuperAdminFacilities = () => {
                           <span className="ms-2">{facility.name}</span>
                         </div>
                       </td>
-                      <td>{facility.address}</td>
-                      <td>{facility.admin}</td>
+                      <td>{facility.location}</td>
+                      <td>{facility.type}</td>
+                      <td>{facility.contact_person}</td>
+                      <td>{getStatusBadge(facility.status)}</td>
                       <td>
-                        {getInventoryBadge(facility.inventoryLevel)}
-                        <div className="small text-muted mt-1">
-                          Pending: <span className="badge bg-info">{facility.pendingRequisitions}</span>
-                        </div>
+                        <span className="badge bg-info">{facility.user_count}</span>
+                      </td>
+                      <td>
+                        {getInventoryBadge(facility.inventory_count)}
                       </td>
                       <td>
                         <div className="d-flex gap-2">
@@ -355,13 +279,6 @@ const SuperAdminFacilities = () => {
                             title="View Details"
                           >
                             <FaInfoCircle />
-                          </button>
-                          <button 
-                            className="btn btn-sm btn-outline-warning" 
-                            onClick={() => openEditModal(facility)}
-                            title="Edit Facility"
-                          >
-                            <FaEdit />
                           </button>
                           <button 
                             className="btn btn-sm btn-outline-info" 
@@ -388,6 +305,31 @@ const SuperAdminFacilities = () => {
             {facilities.length === 0 && (
               <div className="text-center py-4">
                 <p className="text-muted">No facilities found</p>
+              </div>
+            )}
+            
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div className="d-flex justify-content-between align-items-center p-3 border-top">
+                <div>
+                  Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of {pagination.totalItems} facilities
+                </div>
+                <div className="btn-group" role="group">
+                  <button 
+                    className="btn btn-outline-primary" 
+                    disabled={pagination.currentPage === 1}
+                    onClick={() => fetchFacilities(pagination.currentPage - 1)}
+                  >
+                    Previous
+                  </button>
+                  <button 
+                    className="btn btn-outline-primary" 
+                    disabled={pagination.currentPage === pagination.totalPages}
+                    onClick={() => fetchFacilities(pagination.currentPage + 1)}
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -417,8 +359,8 @@ const SuperAdminFacilities = () => {
                     <div className="d-flex align-items-center mb-3">
                       <FaMapMarkerAlt className="text-primary me-2" />
                       <div>
-                        <h6 className="mb-0">Address</h6>
-                        <p className="text-muted mb-0">{currentFacility.address}</p>
+                        <h6 className="mb-0">Location</h6>
+                        <p className="text-muted mb-0">{currentFacility.location}</p>
                       </div>
                     </div>
                     <div className="d-flex align-items-center mb-3">
@@ -431,8 +373,8 @@ const SuperAdminFacilities = () => {
                     <div className="d-flex align-items-center mb-3">
                       <FaBox className="text-primary me-2" />
                       <div>
-                        <h6 className="mb-0">Inventory Level</h6>
-                        <p className="mb-0">{getInventoryBadge(currentFacility.inventoryLevel)}</p>
+                        <h6 className="mb-0">Inventory Count</h6>
+                        <p className="mb-0">{getInventoryBadge(currentFacility.inventory_count)}</p>
                       </div>
                     </div>
                   </div>
@@ -447,42 +389,53 @@ const SuperAdminFacilities = () => {
                     <div className="d-flex align-items-center mb-3">
                       <FaInfoCircle className="text-primary me-2" />
                       <div>
-                        <h6 className="mb-0">Capacity</h6>
-                        <p className="text-muted mb-0">{currentFacility.capacity}</p>
+                        <h6 className="mb-0">Contact Person</h6>
+                        <p className="text-muted mb-0">{currentFacility.contact_person}</p>
                       </div>
                     </div>
                     <div className="d-flex align-items-center mb-3">
                       <FaClipboardList className="text-primary me-2" />
                       <div>
-                        <h6 className="mb-0">Pending Requisitions</h6>
-                        <p className="mb-0"><span className="badge bg-info">{currentFacility.pendingRequisitions}</span></p>
+                        <h6 className="mb-0">User Count</h6>
+                        <p className="mb-0"><span className="badge bg-info">{currentFacility.user_count}</span></p>
                       </div>
                     </div>
                   </div>
                 </div>
                 
+                {currentFacility.address && (
+                  <div className="mb-4">
+                    <h6 className="mb-2">Address</h6>
+                    <div className="card bg-light">
+                      <div className="card-body">
+                        {currentFacility.address}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="mb-4">
-                  <h6 className="mb-2">Services</h6>
+                  <h6 className="mb-2">Status</h6>
                   <div className="card bg-light">
                     <div className="card-body">
-                      {currentFacility.services}
+                      {getStatusBadge(currentFacility.status)}
                     </div>
                   </div>
                 </div>
                 
-                <div className="mb-4">
-                  <h6 className="mb-2">Description</h6>
-                  <div className="card bg-light">
-                    <div className="card-body">
-                      {currentFacility.description}
+                {currentFacility.admin_email && (
+                  <div className="mb-4">
+                    <h6 className="mb-2">Admin Information</h6>
+                    <div className="card bg-light">
+                      <div className="card-body">
+                        <p className="mb-1"><strong>Name:</strong> {currentFacility.admin_name || 'N/A'}</p>
+                        <p className="mb-0"><strong>Email:</strong> {currentFacility.admin_email}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
                 
                 <div className="d-flex justify-content-end">
-                  <button className="btn btn-outline-warning me-2" onClick={() => openEditModal(currentFacility)}>
-                    <FaEdit className="me-2" /> Edit
-                  </button>
                   <button className="btn btn-outline-info me-2" onClick={() => openAssignAdminModal(currentFacility)}>
                     <FaUserPlus className="me-2" /> Assign Admin
                   </button>
@@ -520,6 +473,19 @@ const SuperAdminFacilities = () => {
                       />
                     </div>
                     <div className="col-md-6">
+                      <label className="form-label">Location</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        name="location"
+                        value={createFacility.location}
+                        onChange={handleCreateFacilityChange}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="row mb-3">
+                    <div className="col-md-6">
                       <label className="form-label">Facility Type</label>
                       <select 
                         className="form-select" 
@@ -529,12 +495,25 @@ const SuperAdminFacilities = () => {
                         required
                       >
                         <option value="Hospital">Hospital</option>
+                        <option value="Clinic">Clinic</option>
+                        <option value="Emergency">Emergency</option>
                         <option value="Regional Facility">Regional Facility</option>
                         <option value="Metropolitan Facility">Metropolitan Facility</option>
                         <option value="Community Health Center">Community Health Center</option>
                         <option value="Central Storage Facility">Central Storage Facility</option>
                         <option value="Coastal Regional Facility">Coastal Regional Facility</option>
                       </select>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Contact Person</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        name="contact_person"
+                        value={createFacility.contact_person}
+                        onChange={handleCreateFacilityChange}
+                        required
+                      />
                     </div>
                   </div>
                   <div className="row mb-3">
@@ -569,67 +548,7 @@ const SuperAdminFacilities = () => {
                       name="address"
                       value={createFacility.address}
                       onChange={handleCreateFacilityChange}
-                      required
                     />
-                  </div>
-                  <div className="row mb-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Capacity</label>
-                      <input 
-                        type="text" 
-                        className="form-control" 
-                        name="capacity"
-                        value={createFacility.capacity}
-                        onChange={handleCreateFacilityChange}
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Services</label>
-                      <input 
-                        type="text" 
-                        className="form-control" 
-                        name="services"
-                        value={createFacility.services}
-                        onChange={handleCreateFacilityChange}
-                      />
-                    </div>
-                  </div>
-                  <div className="row mb-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Inventory Level</label>
-                      <select 
-                        className="form-select" 
-                        name="inventory_level"
-                        value={createFacility.inventory_level}
-                        onChange={handleCreateFacilityChange}
-                        required
-                      >
-                        <option value="Good">Good</option>
-                        <option value="Low">Low</option>
-                        <option value="Critical">Critical</option>
-                      </select>
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Pending Requisitions</label>
-                      <input 
-                        type="number" 
-                        className="form-control" 
-                        name="pending_requisitions"
-                        value={createFacility.pending_requisitions}
-                        onChange={handleCreateFacilityChange}
-                        min="0"
-                      />
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Description</label>
-                    <textarea 
-                      className="form-control" 
-                      name="description"
-                      value={createFacility.description}
-                      onChange={handleCreateFacilityChange}
-                      rows="3"
-                    ></textarea>
                   </div>
                 </form>
               </div>
@@ -639,156 +558,6 @@ const SuperAdminFacilities = () => {
                 </button>
                 <button type="button" className="btn btn-primary" onClick={handleCreateFacility}>
                   <FaSave className="me-2" /> Create Facility
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Edit Facility Modal */}
-      {showEditModal && currentFacility && (
-        <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Edit Facility: {currentFacility.name}</h5>
-                <button type="button" className="btn-close" onClick={() => setShowEditModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <form>
-                  <div className="row mb-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Facility Name</label>
-                      <input 
-                        type="text" 
-                        className="form-control" 
-                        name="name"
-                        value={editFacility.name}
-                        onChange={handleEditFacilityChange}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Facility Type</label>
-                      <select 
-                        className="form-select" 
-                        name="type"
-                        value={editFacility.type}
-                        onChange={handleEditFacilityChange}
-                        required
-                      >
-                        <option value="Hospital">Hospital</option>
-                        <option value="Regional Facility">Regional Facility</option>
-                        <option value="Metropolitan Facility">Metropolitan Facility</option>
-                        <option value="Community Health Center">Community Health Center</option>
-                        <option value="Central Storage Facility">Central Storage Facility</option>
-                        <option value="Coastal Regional Facility">Coastal Regional Facility</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="row mb-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Phone Number</label>
-                      <input 
-                        type="text" 
-                        className="form-control" 
-                        name="phone"
-                        value={editFacility.phone}
-                        onChange={handleEditFacilityChange}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Email Address</label>
-                      <input 
-                        type="email" 
-                        className="form-control" 
-                        name="email"
-                        value={editFacility.email}
-                        onChange={handleEditFacilityChange}
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Address</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      name="address"
-                      value={editFacility.address}
-                      onChange={handleEditFacilityChange}
-                      required
-                    />
-                  </div>
-                  <div className="row mb-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Capacity</label>
-                      <input 
-                        type="text" 
-                        className="form-control" 
-                        name="capacity"
-                        value={editFacility.capacity}
-                        onChange={handleEditFacilityChange}
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Services</label>
-                      <input 
-                        type="text" 
-                        className="form-control" 
-                        name="services"
-                        value={editFacility.services}
-                        onChange={handleEditFacilityChange}
-                      />
-                    </div>
-                  </div>
-                  <div className="row mb-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Inventory Level</label>
-                      <select 
-                        className="form-select" 
-                        name="inventory_level"
-                        value={editFacility.inventory_level}
-                        onChange={handleEditFacilityChange}
-                        required
-                      >
-                        <option value="Good">Good</option>
-                        <option value="Low">Low</option>
-                        <option value="Critical">Critical</option>
-                      </select>
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Pending Requisitions</label>
-                      <input 
-                        type="number" 
-                        className="form-control" 
-                        name="pending_requisitions"
-                        value={editFacility.pending_requisitions}
-                        onChange={handleEditFacilityChange}
-                        min="0"
-                      />
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Description</label>
-                    <textarea 
-                      className="form-control" 
-                      name="description"
-                      value={editFacility.description}
-                      onChange={handleEditFacilityChange}
-                      rows="3"
-                    ></textarea>
-                  </div>
-                </form>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>
-                  Cancel
-                </button>
-                <button type="button" className="btn btn-primary" onClick={handleEditFacility}>
-                  <FaSave className="me-2" /> Save Changes
                 </button>
               </div>
             </div>
@@ -856,8 +625,22 @@ const SuperAdminFacilities = () => {
                 <button type="button" className="btn btn-secondary" onClick={() => setShowDeleteModal(false)}>
                   Cancel
                 </button>
-                <button type="button" className="btn btn-danger" onClick={handleDeleteFacility}>
-                  <FaTrash className="me-2" /> Delete Facility
+                <button 
+                  type="button" 
+                  className="btn btn-danger" 
+                  onClick={handleDeleteFacility}
+                  disabled={deleteLoading}
+                >
+                  {deleteLoading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <FaTrash className="me-2" /> Delete Facility
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -884,7 +667,10 @@ const getFacilityIcon = (type) => {
     case 'Hospital':
       return <FaHospital className="text-success" />;
     case 'Community Health Center':
+    case 'Clinic':
       return <FaClinicMedical className="text-info" />;
+    case 'Emergency':
+      return <FaFirstAid className="text-warning" />;
     default:
       return <FaFirstAid className="text-warning" />;
   }

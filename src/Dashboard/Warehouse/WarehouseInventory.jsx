@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaEdit, FaPlusCircle, FaArrowDown, FaArrowUp, FaHistory } from 'react-icons/fa';
+import axios from 'axios';
+import BaseUrl from '../../Api/BaseUrl';
 
 const WarehouseInventory = () => {
   // Sample inventory data (updated to include lastIn and lastOut)
@@ -107,7 +109,9 @@ const WarehouseInventory = () => {
     },
   ];
 
-  const [inventoryItems, setInventoryItems] = useState(initialInventoryItems);
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showStockInModal, setShowStockInModal] = useState(false);
@@ -141,6 +145,93 @@ const WarehouseInventory = () => {
     batchNo: '',
     expiryDate: ''
   });
+
+  
+  useEffect(() => {
+    fetchInventoryItems();
+  }, []);
+
+  const fetchInventoryItems = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${BaseUrl}/inventory`);
+      console.log('API response:', response.data); // Debug: see what the API returns
+
+      // Correctly extract items array from response
+      let itemsArray = [];
+      if (Array.isArray(response?.data?.data?.items)) {
+        itemsArray = response.data.data.items;
+      } else {
+        itemsArray = [];
+      }
+
+      const mappedData = itemsArray.map(item => ({
+        id: item.item_code || item.id, // Use item_code for display
+        name: item.item_name,
+        category: item.category,
+        stock: item.quantity,
+        unit: item.unit,
+        minLevel: item.reorder_level,
+        description: item.description,
+        standardCost: item.standard_cost || 0,
+        movingAvgCost: item.moving_avg_cost || 0,
+        lastPOCost: item.last_po_cost || 0,
+        batchNo: item.batch_no || '',
+        expiryDate: item.expiry_date || '',
+        abcClass: item.abc_class || 'C',
+        facilityTransferPrice: item.facility_transfer_price || 0,
+        batches: item.batches || [],
+        lastIn: item.last_in || '',
+        lastOut: item.last_out || '',
+        movementHistory: item.movement_history || []
+      }));
+
+      setInventoryItems(mappedData);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching inventory items:', err);
+      setError('Failed to fetch inventory items. Please try again later.');
+      setLoading(false);
+      setInventoryItems(initialInventoryItems);
+    }
+  };
+
+  const updateInventoryItem = async (id, updatedData) => {
+    try {
+      // API के लिए data format करें
+      const apiData = {
+        item_name: updatedData.name,
+        category: updatedData.category,
+        description: updatedData.description || '',
+        unit: updatedData.unit,
+        quantity: updatedData.stock,
+        reorder_level: updatedData.minLevel,
+        standard_cost: updatedData.standardCost,
+        moving_avg_cost: updatedData.movingAvgCost,
+        last_po_cost: updatedData.lastPOCost,
+        batch_no: updatedData.batchNo,
+        expiry_date: updatedData.expiryDate,
+        abc_class: updatedData.abcClass,
+        facility_transfer_price: updatedData.facilityTransferPrice
+      };
+      
+      const response = await axios.put(`${BaseUrl}/inventory/${id}`, apiData);
+      
+      if (response.status === 200) {
+        // Local state भी update करें
+        setInventoryItems(
+          inventoryItems.map((item) =>
+            item.id === id ? { ...updatedData } : item
+          )
+        );
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Error updating inventory item:', err);
+      return false;
+    }
+  };
 
   // Calculate status
   const calculateStatus = (item) => {
@@ -266,25 +357,65 @@ const WarehouseInventory = () => {
     });
   };
 
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!formData.id || !formData.name || !formData.unit) {
       alert('Please fill required fields: ID, Name, Unit.');
       return;
     }
-    setInventoryItems([...inventoryItems, { ...formData }]);
-    setShowAddModal(false);
+    
+    try {
+      // API call to add new item
+      const apiData = {
+        item_name: formData.name,
+        category: formData.category,
+        description: '',
+        unit: formData.unit,
+        quantity: formData.stock,
+        reorder_level: formData.minLevel,
+        standard_cost: formData.standardCost,
+        moving_avg_cost: formData.movingAvgCost,
+        last_po_cost: formData.lastPOCost,
+        batch_no: formData.batchNo,
+        expiry_date: formData.expiryDate,
+        abc_class: formData.abcClass,
+        facility_transfer_price: formData.facilityTransferPrice
+      };
+      
+      const response = await axios.post(`${API_URL}/inventory`, apiData);
+      
+      if (response.status === 201) {
+        // API से आई response को हमारे structure में map करें
+        const newItem = {
+          ...formData,
+          id: response.data.id || formData.id,
+          batches: [],
+          lastIn: '',
+          lastOut: '',
+          movementHistory: []
+        };
+        
+        setInventoryItems([...inventoryItems, newItem]);
+        setShowAddModal(false);
+      } else {
+        alert('Failed to add item. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error adding inventory item:', err);
+      alert('Failed to add item. Please try again.');
+    }
   };
 
-  const handleEditItem = () => {
-    setInventoryItems(
-      inventoryItems.map((item) =>
-        item.id === currentItem.id ? { ...formData } : item
-      )
-    );
-    setShowEditModal(false);
+  const handleEditItem = async () => {
+    const success = await updateInventoryItem(currentItem.id, formData);
+    
+    if (success) {
+      setShowEditModal(false);
+    } else {
+      alert('Failed to update item. Please try again.');
+    }
   };
 
-  const handleStockIn = () => {
+  const handleStockIn = async () => {
     const quantity = stockFormData.quantity || 0;
     if (quantity <= 0) {
       alert('Enter valid quantity.');
@@ -300,35 +431,56 @@ const WarehouseInventory = () => {
       notes: stockFormData.notes
     };
     
-    setInventoryItems(
-      inventoryItems.map((item) => {
-        if (item.id === currentItem.id) {
-          // Add new batch if provided
-          let updatedBatches = [...item.batches];
-          if (stockFormData.batchNo && stockFormData.expiryDate) {
-            updatedBatches.push({
-              batchNo: stockFormData.batchNo,
-              expiry: stockFormData.expiryDate,
-              quantity: quantity,
-              cost: item.standardCost
-            });
-          }
-          
-          return {
-            ...item, 
-            stock: item.stock + quantity,
-            lastIn: today,
-            movementHistory: [newMovement, ...(item.movementHistory || [])],
-            batches: updatedBatches
-          };
-        }
-        return item;
-      })
-    );
-    setShowStockInModal(false);
+    try {
+      // Stock In API call
+      const stockInData = {
+        item_id: currentItem.id,
+        quantity: quantity,
+        source: stockFormData.source,
+        notes: stockFormData.notes,
+        batch_no: stockFormData.batchNo,
+        expiry_date: stockFormData.expiryDate
+      };
+      
+      const response = await axios.post(`${API_URL}/inventory/stock-in`, stockInData);
+      
+      if (response.status === 200) {
+        setInventoryItems(
+          inventoryItems.map((item) => {
+            if (item.id === currentItem.id) {
+              // Add new batch if provided
+              let updatedBatches = [...item.batches];
+              if (stockFormData.batchNo && stockFormData.expiryDate) {
+                updatedBatches.push({
+                  batchNo: stockFormData.batchNo,
+                  expiry: stockFormData.expiryDate,
+                  quantity: quantity,
+                  cost: item.standardCost
+                });
+              }
+              
+              return {
+                ...item, 
+                stock: item.stock + quantity,
+                lastIn: today,
+                movementHistory: [newMovement, ...(item.movementHistory || [])],
+                batches: updatedBatches
+              };
+            }
+            return item;
+          })
+        );
+        setShowStockInModal(false);
+      } else {
+        alert('Failed to record stock in. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error recording stock in:', err);
+      alert('Failed to record stock in. Please try again.');
+    }
   };
 
-  const handleStockOut = () => {
+  const handleStockOut = async () => {
     const quantity = stockFormData.quantity || 0;
     if (quantity <= 0) {
       alert('Enter valid quantity.');
@@ -349,33 +501,52 @@ const WarehouseInventory = () => {
       notes: stockFormData.notes
     };
     
-    setInventoryItems(
-      inventoryItems.map((item) => {
-        if (item.id === currentItem.id) {
-          // Update batches (FIFO - First In First Out)
-          let updatedBatches = [...item.batches];
-          let remainingQuantity = quantity;
-          
-          for (let i = 0; i < updatedBatches.length && remainingQuantity > 0; i++) {
-            if (updatedBatches[i].quantity > 0) {
-              const deductAmount = Math.min(updatedBatches[i].quantity, remainingQuantity);
-              updatedBatches[i].quantity -= deductAmount;
-              remainingQuantity -= deductAmount;
+    try {
+      // Stock Out API call
+      const stockOutData = {
+        item_id: currentItem.id,
+        quantity: quantity,
+        destination: stockFormData.destination,
+        notes: stockFormData.notes
+      };
+      
+      const response = await axios.post(`${API_URL}/inventory/stock-out`, stockOutData);
+      
+      if (response.status === 200) {
+        setInventoryItems(
+          inventoryItems.map((item) => {
+            if (item.id === currentItem.id) {
+              // Update batches (FIFO - First In First Out)
+              let updatedBatches = [...item.batches];
+              let remainingQuantity = quantity;
+              
+              for (let i = 0; i < updatedBatches.length && remainingQuantity > 0; i++) {
+                if (updatedBatches[i].quantity > 0) {
+                  const deductAmount = Math.min(updatedBatches[i].quantity, remainingQuantity);
+                  updatedBatches[i].quantity -= deductAmount;
+                  remainingQuantity -= deductAmount;
+                }
+              }
+              
+              return {
+                ...item, 
+                stock: item.stock - quantity,
+                lastOut: today,
+                movementHistory: [newMovement, ...(item.movementHistory || [])],
+                batches: updatedBatches
+              };
             }
-          }
-          
-          return {
-            ...item, 
-            stock: item.stock - quantity,
-            lastOut: today,
-            movementHistory: [newMovement, ...(item.movementHistory || [])],
-            batches: updatedBatches
-          };
-        }
-        return item;
-      })
-    );
-    setShowStockOutModal(false);
+            return item;
+          })
+        );
+        setShowStockOutModal(false);
+      } else {
+        alert('Failed to record stock out. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error recording stock out:', err);
+      alert('Failed to record stock out. Please try again.');
+    }
   };
 
   const closeModalOnBackdrop = (e) => {
@@ -392,6 +563,27 @@ const WarehouseInventory = () => {
     if (!dateString) return '—';
     return dateString.split('-').reverse().join('/');
   };
+
+  if (loading) {
+    return (
+      <div className="container-fluid py-4 text-center">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+        <p className="mt-2">Loading inventory data...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container-fluid py-4">
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container-fluid py-4">

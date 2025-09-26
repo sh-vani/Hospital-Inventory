@@ -353,6 +353,24 @@ const SuperAdminUsers = () => {
     );
   });
 
+const deleteUser = async (userId) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this user?");
+
+  if (confirmDelete) {
+    try {
+      const response = await axios.delete(`${BaseUrl}/users/${userId}`);
+
+      if (response.status === 200) {
+        alert("User deleted successfully!");
+       await fetchUsers(); // Refresh the user list
+      }
+    } catch (error) {
+      console.error("Delete failed:", error);
+      alert(error.response?.data?.message || "Something went wrong while deleting user!");
+    }
+  }
+};
+
   return (
     <div className="container-fluid py-3">
       {/* Toolbar */}
@@ -451,7 +469,7 @@ const SuperAdminUsers = () => {
             <table className="table table-hover mb-0 align-middle">
               <thead className="bg-light">
                 <tr>
-                  <th>User ID</th>
+                  <th>#</th>
                   <th>Name</th>
                   <th>Role</th>
                   <th>Facility</th>
@@ -465,7 +483,7 @@ const SuperAdminUsers = () => {
                   const facility = facilities.find(f => f.id === user.facility_id);
                   return (
                     <tr key={index}>
-                      <td className="fw-bold">{user.id}</td>
+                      <td className="fw-bold">{index+1}</td>
                       <td>
                         <div className="d-flex align-items-center">
                           <div className="bg-secondary bg-opacity-10 p-2 rounded-circle me-2">

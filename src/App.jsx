@@ -99,48 +99,46 @@ function App() {
             >
               
               <Routes>
-
-                 <Route path="/facility-admin/dashboard" element= {<FacilityDashboard/>}/>'
-                <Route path="/facility/dashboard" element= {<FacilityDashboard/>}/>'
-                <Route path="/facility/requisitions" element={<FacilityRequisitions/>}/>'
-                <Route path="/facility/reports" element={<FacilityReports/>}/>'
-                <Route path="/facility/assets" element={<FacilityAssets/>}/>'
-                <Route path="/Facility/users" element={<FacilityUser/>}/>'
-                <Route path="/facility/settings" element={<FacilitySettings />}/>'
-                <Route path="/facility/facilityinventory" element={<FacilityInventory/>}/>'
-                <Route path="/facility/departmentsCategories" element={<FacilityDepartmentsCategories/>}/>'
-                <Route path="/facility/usersRoles" element={<FacilityUsersRoles/>}/>'
+                  <Route path="/facility-admin/dashboard" element= {<FacilityDashboard/>}/>'
+                  <Route path="/facility/dashboard" element= {<FacilityDashboard/>}/>'
+                   <Route path="/facility/requisitions" element={<FacilityRequisitions/>}/>'
+                  <Route path="/facility/reports" element={<FacilityReports/>}/>'
+                  <Route path="/facility/assets" element={<FacilityAssets/>}/>'
+                  <Route path="/Facility/users" element={<FacilityUser/>}/>'
+                  <Route path="/facility/settings" element={<FacilitySettings />}/>'
+                  <Route path="/facility/facilityinventory" element={<FacilityInventory/>}/>'
+                  <Route path="/facility/departmentsCategories" element={<FacilityDepartmentsCategories/>}/>'
+                  <Route path="/facility/usersRoles" element={<FacilityUsersRoles/>}/>'
                   <Route path="/facility/goodreceipt" element={<GoodReceipt/>}/>'
-
-              <Route path="/profile" element={<Profile/>}/>
-
-              {/* SuperAdmin */}
-              <Route path="/superadmin/dashboard"element={<SuperAdminDashboard/>}/>
-              <Route path="/superadmin/inventory"element={<SuperAdminInventory/>}/>
-               <Route path="/superadmin/dispatches"element={<SuperAdminDispatches/>}/>
-               <Route path="/superadmin/facilities"element={<SuperAdminFacilities/>}/>
-               <Route path="/superadmin/reports"element={<SuperAdminReports/>}/>
-                <Route path="/superadmin/requisitions"element={<SuperAdminRequisitions/>}/>
-                 <Route path="/superadmin/settings"element={<SuperAdminSettings/>}/>
-                  <Route path="/superadmin/users"element={<SuperAdminUsers/>}/>
+                   <Route path="/profile" element={<Profile/>}/>
+                {/* SuperAdmin */}
+                   <Route path="/superadmin/dashboard"element={<SuperAdminDashboard/>}/>
+                   <Route path="/superadmin/inventory"element={<SuperAdminInventory/>}/>
+                   <Route path="/superadmin/dispatches"element={<SuperAdminDispatches/>}/>
+                   <Route path="/superadmin/facilities"element={<SuperAdminFacilities/>}/>
+                   <Route path="/superadmin/reports"element={<SuperAdminReports/>}/>
+                   <Route path="/superadmin/requisitions"element={<SuperAdminRequisitions/>}/>
+                   <Route path="/superadmin/settings"element={<SuperAdminSettings/>}/>
+                   <Route path="/superadmin/users"element={<SuperAdminUsers/>}/>
                    <Route path="/superadmin/assets"element={<SuperAdminAssets/>}/>
                    <Route path="/superadmin/role"element={<SuperAdminRoles/>}/>
-                
+                 {/* Facility User */}
                   <Route path="/user/dashboard" element={<FacilityUserDashboard/>}/>'
-              <Route path="/user/requisitions" element={<FacilityUserRequisition/>}/>'
+                  <Route path="/user/requisitions" element={<FacilityUserRequisition/>}/>'
                   <Route path="/user/facilityInventory"element={<FacilityUserInventory/>}/>
                   <Route path="/user/myRequests"element={<FacilityUserMyRequests/>}/>
                   <Route path="/user/notification"element={<FacilityUserNotifications/>}/>
                   <Route path="/user/receipts"element={<AcknowledgementOfReceipts/>}/>
 
-                   <Route path="/warehouse/dashboard"element={<WarehouseDashbaord/>}/>
+                  {/* Warehouse Routes */}
+                 <Route path="/warehouse/dashboard"element={<WarehouseDashbaord/>}/>
                  <Route path="/warehouse/inventory"element={<WarehouseInventory/>}/>
                  <Route path="/warehouse/assets"element={<WareHouseAssets/>}/>
-                < Route path="/warehouse/reports"element={<WarehouseReports/>}/>
-               < Route path="/warehouse/dispatches"element={<WarehouseDispatches/>}/>   
-    <Route path="/warehouse/settings"element={<WarehouseSettings/>}/>   
-        <Route path="/warehouse/requisitions"element={<WarehouseRequisitions/>}/> 
-         <Route path="/warehouse/returnsRecalls"element={<ReturnsRecalls/>}/>     
+                 <Route path="/warehouse/reports"element={<WarehouseReports/>}/>
+                 <Route path="/warehouse/dispatches"element={<WarehouseDispatches/>}/>   
+                 <Route path="/warehouse/settings"element={<WarehouseSettings/>}/>   
+                 <Route path="/warehouse/requisitions"element={<WarehouseRequisitions/>}/> 
+                 <Route path="/warehouse/returnsRecalls"element={<ReturnsRecalls/>}/>     
               </Routes>
             </div>
           </div>

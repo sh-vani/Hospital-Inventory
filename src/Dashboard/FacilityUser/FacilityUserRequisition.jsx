@@ -376,17 +376,17 @@ const FacilityUserRequisition = () => {
                   {requisitionHistory.length > 0 ? (
                     requisitionHistory.map((req) => (
                       <tr key={req.id}>
-                        <td>{req.id}</td>
-                        <td>{req.item}</td>
-                        <td>{req.qty}</td>
+                        <td>{req?.id}</td>
+                        <td>{req?.item}</td>
+                        <td>{req?.qty}</td>
                         <td>
                           <span className={`badge ${getStatusBadgeClass(req.status)}`}>
-                            {req.status}
+                            {req?.status}
                           </span>
                         </td>
                         <td>
                           <span className={`badge ${getPriorityBadgeClass(req.priority)}`}>
-                            {req.priority}
+                            {req?.priority}
                           </span>
                         </td>
                         <td>
@@ -455,7 +455,7 @@ const FacilityUserRequisition = () => {
                     required
                   >
                     <option value="">Select an item</option>
-                    {availableItems.map(item => (
+                    {availableItems?.map(item => (
                       <option key={item.id} value={item.id}>{item.name}</option>
                     ))}
                   </select>
