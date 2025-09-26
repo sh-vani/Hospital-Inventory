@@ -185,11 +185,11 @@ useEffect(() => {
         icon: faBuilding,
         path: "/facility/departmentsCategories"
       },
-      {
-         name: "Users & Roles",
-         icon: faUserShield,
-         path: "/facility/usersRoles"
-      },
+      // {
+      //    name: "Users & Roles",
+      //    icon: faUserShield,
+      //    path: "/facility/usersRoles"
+      // },
      
      
       {
