@@ -27,13 +27,16 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeMenu, setActiveMenu] = useState(null);
-  const [userRole, setUserRole] = useState("Super Admin");
+  const [userRole, setUserRole] = useState("super_admin");
   
   // Load user role from localStorage
-  useEffect(() => {
-    const role = localStorage.getItem("userRole") || "Super Admin";
-    setUserRole(role);
-  }, []);
+useEffect(() => {
+  const storedRole = localStorage.getItem("role"); // key hamesha string me
+  if (storedRole) {
+    setUserRole(storedRole);
+  }
+}, []);
+
   
   const toggleMenu = (menuKey) => {
     setActiveMenu(activeMenu === menuKey ? null : menuKey);
@@ -48,7 +51,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
   
   // Define menus for each role based on the provided images
   const allMenus = {
-    "Super Admin": [
+    "super_admin": [
       {
         name: "Dashboard",
         icon: faChartBar,
@@ -101,7 +104,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       }
     ],
 
-    "Warehouse Admin": [
+    "warehouse_admin": [
       {
         name: "Dashboard",
         icon: faChartBar,
@@ -144,7 +147,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       },
     ],
 
-    "Facility Admin": [
+    "facility_admin": [
       {
         name: "Dashboard",
         icon: faChartBar,
@@ -201,7 +204,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
       },
     ],
 
-    "Facility User": [
+    "facility_user": [
       {
         name: "Dashboard",
         icon: faChartBar,
@@ -235,7 +238,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
     ],
   };
 
-  const userMenus = allMenus[userRole] || allMenus["Super Admin"];
+  const userMenus = allMenus[userRole] || allMenus["super_adminZ"];
   
   return (
     <div className={`sidebar-container ${collapsed ? "collapsed" : ""}`}>
@@ -243,7 +246,7 @@ const Sidebar = ({ collapsed, setCollapsed }) => {
        
         
         <ul className="menu">
-          {userMenus.map((menu, index) => {
+          {userMenus?.map((menu, index) => {
             // If no subItems → direct link
             if (!menu.subItems) {
               return (
