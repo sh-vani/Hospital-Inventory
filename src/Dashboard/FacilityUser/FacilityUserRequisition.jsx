@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaTrash, FaExclamationTriangle, FaBoxOpen, FaClock, FaEdit, FaEye, FaTimes } from 'react-icons/fa';
+import { FaPlus, FaEye, FaTimes } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import BaseUrl from '../../Api/BaseUrl';
 import axiosInstance from '../../Api/axiosInstance';
@@ -9,12 +9,12 @@ const FacilityUserRequisition = () => {
   const [department, setDepartment] = useState('');
   const [username, setUsername] = useState('');
   const [requisitionType, setRequisitionType] = useState('individual');
-  const [showBulkModal, setShowBulkModal] = useState(false);
   const [showRequisitionModal, setShowRequisitionModal] = useState(false);
-  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  
+  // Modal for item details
+const [showItemDetailModal, setShowItemDetailModal] = useState(false);
+const [selectedItemDetail, setSelectedItemDetail] = useState(null);
   // Modal states
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedRequisition, setSelectedRequisition] = useState(null);
@@ -26,7 +26,7 @@ const FacilityUserRequisition = () => {
   const [priority, setPriority] = useState('Normal');
   const [remarks, setRemarks] = useState('');
 
-  // ✅ Real facility items from API
+  // Real facility items from API
   const [facilityItems, setFacilityItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(true);
 
@@ -62,6 +62,31 @@ const FacilityUserRequisition = () => {
     }
   };
 
+  // Fetch requisition history
+  const fetchRequisitionHistory = async (userId) => {
+    try {
+      const response = await axiosInstance.get(`${BaseUrl}/requisitions/user/${userId}`);
+      console.log("Requisition history response:", response.data);
+
+      if (response.data.success && Array.isArray(response.data.data)) {
+        const formatted = response.data.data.map(req => ({
+          id: req.id,
+          item_name: req.items && req.items.length > 0 ? req.items[0].item_name : 'N/A',
+          status: (req.status || '').charAt(0).toUpperCase() + (req.status || '').slice(1),
+          priority: (req.priority || 'normal')
+            .charAt(0).toUpperCase() + (req.priority || 'normal').slice(1),
+          remarks: req.remarks || ''
+        }));
+        setRequisitionHistory(formatted);
+      } else {
+        setRequisitionHistory([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch requisition history:', error);
+      setRequisitionHistory([]);
+    }
+  };
+
   // Initialize user session & fetch data
   useEffect(() => {
     const user = getUserFromStorage();
@@ -70,7 +95,6 @@ const FacilityUserRequisition = () => {
       setDepartment(user.department || 'N/A');
       setUsername(user.name || 'User');
       
-      // ✅ Use real facility_id from user
       const facilityId = user.facility_id;
       if (facilityId) {
         fetchFacilityItems(facilityId);
@@ -78,93 +102,72 @@ const FacilityUserRequisition = () => {
         console.error('Facility ID not found in user data');
         setLoadingItems(false);
       }
+
+      if (user.id) {
+        fetchRequisitionHistory(user.id);
+      }
     } else {
       console.error('User not found in localStorage');
       setLoadingItems(false);
     }
-
-    // Mock requisition history (keep for demo)
-    const mockHistory = [
-      { id: 'REQ-001', item: 'Paracetamol 500mg', qty: 50, status: 'Pending', priority: 'Normal', remarks: 'For OPD use' },
-      { id: 'REQ-002', item: 'Surgical Gloves', qty: 100, status: 'Processing', priority: 'High', remarks: 'Urgent surgery needs' },
-      { id: 'REQ-003', item: 'Insulin Pens', qty: 20, status: 'Completed', priority: 'Urgent', remarks: 'Diabetes clinic' },
-      { id: 'REQ-004', item: 'Antiseptic Solution', qty: 30, status: 'Pending', priority: 'Normal', remarks: 'Ward cleaning' }
-    ];
-    setRequisitionHistory(mockHistory);
   }, []);
 
-// ✅ UPDATED: Handle form submission with REAL POST API + user_id
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (!selectedItem || !quantity || quantity <= 0) {
-    alert('Please select an item and enter a valid quantity.');
-    return;
-  }
-
-  const user = getUserFromStorage();
-  if (!user || !user.facility_id || !user.id) {
-    alert('User data incomplete. Please log in again.');
-    return;
-  }
-
-  setLoading(true);
-  try {
-    // ✅ Prepare payload as per your API spec — NOW WITH user_id
-    const payload = {
-      user_id: user.id, // ✅ ADDED THIS LINE
-      facility_id: user.facility_id,
-      remarks: remarks.trim() || '',
-      items: [
-        {
-          item_id: parseInt(selectedItem),
-          quantity: parseInt(quantity),
-          priority: priority.toLowerCase() // "Normal" → "normal"
-        }
-      ]
-    };
-
-    // Call real API
-    const response = await axiosInstance.post(`${BaseUrl}/requisitions`, payload);
-
-    if (response.data.success) {
-      setSuccess(true);
-      
-      // Get item name for UI
-      const selectedItemObj = facilityItems.find(i => i.id == selectedItem);
-      const itemName = selectedItemObj ? selectedItemObj.item_name : 'Unknown Item';
-      
-      // Add to local history (UI only)
-      const newReq = {
-        id: response.data.data?.reqId || `REQ-${Date.now()}`,
-        item: itemName,
-        qty: parseInt(quantity),
-        status: 'Pending',
-        priority: priority,
-        remarks: remarks
-      };
-      
-      setRequisitionHistory([newReq, ...requisitionHistory]);
-      
-      // Reset form
-      setSelectedItem('');
-      setQuantity('');
-      setPriority('Normal');
-      setRemarks('');
-      setShowRequisitionModal(false);
-    } else {
-      alert('Failed to submit requisition: ' + (response.data.message || 'Unknown error'));
+  // Handle form submission (original logic)
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!selectedItem || !quantity || quantity <= 0) {
+      alert('Please select an item and enter a valid quantity.');
+      return;
     }
-  } catch (error) {
-    console.error('Submission error:', error);
-    const msg = error.response?.data?.message || 'Network error. Please try again.';
-    alert('Error: ' + msg);
-  } finally {
-    setLoading(false);
-    setTimeout(() => setSuccess(false), 3000);
-  }
-};
-  // Cancel requisition
+
+    const user = getUserFromStorage();
+    if (!user || !user.facility_id || !user.id) {
+      alert('User data incomplete. Please log in again.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = {
+        user_id: user.id,
+        facility_id: user.facility_id,
+        remarks: remarks.trim() || '',
+        items: [
+          {
+            item_id: parseInt(selectedItem),
+            quantity: parseInt(quantity),
+            priority: priority.toLowerCase()
+          }
+        ]
+      };
+
+      const response = await axiosInstance.post(`${BaseUrl}/requisitions`, payload);
+
+      if (response.data.success) {
+        setSuccess(true);
+        fetchRequisitionHistory(user.id);
+
+        // Reset form
+        setSelectedItem('');
+        setQuantity('');
+        setPriority('Normal');
+        setRemarks('');
+        setShowRequisitionModal(false);
+      } else {
+        alert('Failed to submit requisition: ' + (response.data.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Submission error:', error);
+      const msg = error.response?.data?.message || 'Network error. Please try again.';
+      alert('Error: ' + msg);
+    } finally {
+      setLoading(false);
+      setTimeout(() => setSuccess(false), 3000);
+    }
+  };
+
+  // Cancel requisition (UI-only)
   const handleCancelRequisition = (id) => {
     if (window.confirm('Are you sure you want to cancel this requisition?')) {
       setRequisitionHistory(requisitionHistory.map(req => 
@@ -191,10 +194,15 @@ const handleSubmit = async (e) => {
       case 'Processing': return 'bg-info';
       case 'Completed': return 'bg-success';
       case 'Cancelled': return 'bg-secondary';
+      case 'Dispatched': return 'bg-primary';
       default: return 'bg-secondary';
     }
   };
-
+// View item detail
+const handleViewItemDetail = (item) => {
+  setSelectedItemDetail(item);
+  setShowItemDetailModal(true);
+};
   // Priority badge
   const getPriorityBadgeClass = (priority) => {
     switch(priority) {
@@ -235,8 +243,7 @@ const handleSubmit = async (e) => {
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
               >
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
+                <option value="Normal">Normal</option>
                 <option value="High">High</option>
                 <option value="Urgent">Urgent</option>
               </select>
@@ -256,7 +263,7 @@ const handleSubmit = async (e) => {
                     checked={requisitionType === 'individual'}
                     onChange={() => setRequisitionType('individual')}
                   />
-                  <label className="form-check-label" htmlFor="individual">Individual (Based on Facility Stock)</label>
+                  <label className="form-check-label" htmlFor="individual">Individual</label>
                 </div>
                 <div className="form-check form-check-inline">
                   <input
@@ -268,18 +275,22 @@ const handleSubmit = async (e) => {
                     checked={requisitionType === 'bulk'}
                     onChange={() => setRequisitionType('bulk')}
                   />
-                  <label className="form-check-label" htmlFor="bulk">Bulk (Based on Department Stock)</label>
+                  <label className="form-check-label" htmlFor="bulk">Bulk</label>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Items Table (for multi-item) - currently unused in modal flow */}
+          {/* ✅ Facility Items Table WITH "Create Requisition" Button */}
           <div className="mb-4">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5>Items</h5>
-              <button type="button" className="btn btn-outline-primary btn-sm" onClick={handleAddItem}>
-                <FaPlus className="me-1" /> Add Item
+              <h5>Available Items in Facility</h5>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={handleAddItem}
+              >
+                <FaPlus className="me-1" /> Create Requisition
               </button>
             </div>
 
@@ -287,22 +298,52 @@ const handleSubmit = async (e) => {
               <table className="table table-hover">
                 <thead className="table-light">
                   <tr>
-                    <th>Item Code</th>
+                    <th>ID</th>
                     <th>Item Name</th>
-                    <th>Quantity</th>
-                    <th>Remarks (Optional)</th>
+                    {/* <th>Code</th> */}
+                    <th>Category</th>
+                    <th>Available Qty</th>
+                    <th>Unit</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td colSpan="5" className="text-center py-4">
-                      <div className="text-muted">
-                        <FaEdit size={24} className="mb-2" />
-                        <p>No items added. Use "Add Item" to create a requisition.</p>
-                      </div>
-                    </td>
-                  </tr>
+                  {loadingItems ? (
+                    <tr>
+                      <td colSpan="5" className="text-center py-3">
+                        <span className="spinner-border spinner-border-sm"></span> Loading items...
+                      </td>
+                    </tr>
+                  ) : facilityItems.length > 0 ? (
+                    facilityItems.map(item => (
+                      <tr key={item.id}>
+                        <td>{item.id}</td>
+                        <td>{item.item_name}</td>
+                        {/* <td>{item.item_code}</td> */}
+                        <td>{item.category}</td>
+                        <td>{item.quantity}</td>
+                        <td>{item.unit || 'units'}</td>
+                        <td>
+        <button 
+          className="btn btn-sm btn-outline-primary"
+          title="View Details"
+          onClick={() => handleViewItemDetail(item)}
+        >
+          <FaEye />
+        </button>
+      </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="5" className="text-center py-4">
+                        <div className="text-muted">
+                          <FaPlus size={24} className="mb-2" />
+                          <p>No items available in this facility.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -316,10 +357,10 @@ const handleSubmit = async (e) => {
                 <thead className="table-light">
                   <tr>
                     <th>Req ID</th>
-                    <th>Item</th>
-                    <th>Quantity</th>
+                    <th>Item Name</th>
                     <th>Status</th>
                     <th>Priority</th>
+                    <th>Remarks</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -327,19 +368,19 @@ const handleSubmit = async (e) => {
                   {requisitionHistory.length > 0 ? (
                     requisitionHistory.map((req) => (
                       <tr key={req.id}>
-                        <td>{req?.id}</td>
-                        <td>{req?.item}</td>
-                        <td>{req?.qty}</td>
+                        <td>{req.id}</td>
+                        <td>{req.item_name || 'N/A'}</td>
                         <td>
                           <span className={`badge ${getStatusBadgeClass(req.status)}`}>
-                            {req?.status}
+                            {req.status}
                           </span>
                         </td>
                         <td>
                           <span className={`badge ${getPriorityBadgeClass(req.priority)}`}>
-                            {req?.priority}
+                            {req.priority}
                           </span>
                         </td>
+                        <td>{req.remarks || '-'}</td>
                         <td>
                           <button 
                             className="btn btn-sm btn-outline-primary me-2"
@@ -362,9 +403,9 @@ const handleSubmit = async (e) => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="6" className="text-center py-4">
+                      <td colSpan="5" className="text-center py-4">
                         <div className="text-muted">
-                          <FaEdit size={24} className="mb-2" />
+                          <FaEye size={24} className="mb-2" />
                           <p>No requisitions found.</p>
                         </div>
                       </td>
@@ -377,7 +418,7 @@ const handleSubmit = async (e) => {
         </div>
       </div>
 
-      {/* Create Requisition Modal */}
+      {/* Create Requisition Modal - WITH "Submit Requisition" BUTTON */}
       <div className={`modal fade ${showRequisitionModal ? 'show' : ''}`} 
            style={{ display: showRequisitionModal ? 'block' : 'none' }}>
         <div className="modal-dialog modal-dialog-centered">
@@ -434,9 +475,9 @@ const handleSubmit = async (e) => {
                     value={priority}
                     onChange={(e) => setPriority(e.target.value)}
                   >
-                    <option value="normal">Normal</option>
-                    <option value="high">High</option>
-                    <option value="rgent">Urgent</option>
+                    <option value="Normal">Normal</option>
+                    <option value="High">High</option>
+                    <option value="Urgent">Urgent</option>
                   </select>
                 </div>
                 
@@ -461,7 +502,7 @@ const handleSubmit = async (e) => {
                   </button>
                   <button 
                     type="submit" 
-                    className="btn btn-primary" 
+                    className="btn btn-primary"
                     disabled={loading}
                   >
                     {loading ? (
@@ -494,28 +535,23 @@ const handleSubmit = async (e) => {
             <div className="modal-body">
               {selectedRequisition && (
                 <div className="row">
-                  <div className="col-12 mb-3">
-                    <div className="d-flex justify-content-between align-items-center">
-                      <h5 className="mb-0">{selectedRequisition.item}</h5>
-                      <span className={`badge ${getPriorityBadgeClass(selectedRequisition.priority)}`}>
-                        {selectedRequisition.priority}
-                      </span>
-                    </div>
-                  </div>
-                  
                   <div className="col-6 mb-3">
                     <strong>Req ID:</strong>
                     <div>{selectedRequisition.id}</div>
-                  </div>
-                  <div className="col-6 mb-3">
-                    <strong>Quantity:</strong>
-                    <div>{selectedRequisition.qty}</div>
                   </div>
                   <div className="col-6 mb-3">
                     <strong>Status:</strong>
                     <div>
                       <span className={`badge ${getStatusBadgeClass(selectedRequisition.status)}`}>
                         {selectedRequisition.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="col-6 mb-3">
+                    <strong>Priority:</strong>
+                    <div>
+                      <span className={`badge ${getPriorityBadgeClass(selectedRequisition.priority)}`}>
+                        {selectedRequisition.priority}
                       </span>
                     </div>
                   </div>
@@ -546,6 +582,71 @@ const handleSubmit = async (e) => {
       {/* Modal Backdrops */}
       {showRequisitionModal && <div className="modal-backdrop fade show"></div>}
       {showDetailModal && <div className="modal-backdrop fade show"></div>}
+
+
+      {/* Item Detail Modal */}
+<div className={`modal fade ${showItemDetailModal ? 'show' : ''}`} 
+     style={{ display: showItemDetailModal ? 'block' : 'none' }}>
+  <div className="modal-dialog modal-dialog-centered">
+    <div className="modal-content">
+      <div className="modal-header text-black">
+        <h5 className="modal-title">Item Details</h5>
+        <button 
+          type="button" 
+          className="btn-close" 
+          onClick={() => setShowItemDetailModal(false)}
+        ></button>
+      </div>
+      <div className="modal-body">
+        {selectedItemDetail && (
+          <div className="row">
+            <div className="col-6 mb-3">
+              <strong>ID:</strong>
+              <div>{selectedItemDetail.id}</div>
+            </div>
+            <div className="col-6 mb-3">
+              <strong>Code:</strong>
+              <div>{selectedItemDetail.item_code || 'N/A'}</div>
+            </div>
+            <div className="col-12 mb-3">
+              <strong>Name:</strong>
+              <div>{selectedItemDetail.item_name}</div>
+            </div>
+            <div className="col-6 mb-3">
+              <strong>Category:</strong>
+              <div>{selectedItemDetail.category}</div>
+            </div>
+            <div className="col-6 mb-3">
+              <strong>Unit:</strong>
+              <div>{selectedItemDetail.unit || 'N/A'}</div>
+            </div>
+            <div className="col-6 mb-3">
+              <strong>Available Qty:</strong>
+              <div>{selectedItemDetail.quantity}</div>
+            </div>
+            <div className="col-6 mb-3">
+              <strong>Reorder Level:</strong>
+              <div>{selectedItemDetail.reorder_level || 'N/A'}</div>
+            </div>
+            <div className="col-12 mb-3">
+              <strong>Description:</strong>
+              <div>{selectedItemDetail.description || '-'}</div>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="modal-footer">
+        <button 
+          type="button" 
+          className="btn btn-secondary" 
+          onClick={() => setShowItemDetailModal(false)}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
     </div>
   );
 };
