@@ -78,7 +78,9 @@ const FacilityUserRequisition = () => {
         axiosInstance.get(`${BaseUrl}/inventory`, {
           params: { facilityId }
         })
-      );
+
+        
+      )
 
       if (response.data.success && Array.isArray(response.data.data.items)) {
         setFacilityItems(response.data.data.items);
