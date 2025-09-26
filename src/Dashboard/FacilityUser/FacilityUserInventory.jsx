@@ -13,73 +13,89 @@ const FacilityUserInventory = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [userId, setUserId] = useState(null);
+  const [facilityId, setFacilityId] = useState(null);
 
   const baseUrl = BaseUrl;
   
   useEffect(() => {
-    const possibleKeys = ['userId', 'user_id', 'id', 'user', 'userData', 'authUser'];
-    let foundUserId = null;
+    const userString = localStorage.getItem('user');
     
-    for (const key of possibleKeys) {
-      const value = localStorage.getItem(key);
-      if (value) {
-        try {
-          const parsedValue = JSON.parse(value);
-          if (parsedValue && parsedValue.id) {
-            foundUserId = parsedValue.id;
-            break;
-          } else if (value && !isNaN(value)) {
-            foundUserId = value;
-            break;
-          }
-        } catch {
-          if (value && !isNaN(value)) {
-            foundUserId = value;
-            break;
-          }
+    if (userString) {
+      try {
+        const user = JSON.parse(userString);
+        console.log('User data from localStorage:', user);
+        if (user && user.facility_id) {
+          setFacilityId(user.facility_id);
+          console.log('Facility ID set to:', user.facility_id);
+        } else {
+          setError('Facility ID not found in user data. Please check your login status.');
+          setLoading(false);
         }
+      } catch (e) {
+        setError('Error parsing user data from localStorage');
+        setLoading(false);
       }
-    }
-    
-    if (foundUserId) {
-      setUserId(foundUserId);
     } else {
-      setError('User ID not found in localStorage. Please check your login status.');
+      setError('User data not found in localStorage. Please check your login status.');
       setLoading(false);
     }
   }, []);
   
   useEffect(() => {
     const fetchInventoryData = async () => {
-      if (!userId) return;
+      if (!facilityId) return;
       
       setLoading(true);
       setError(null);
       
       try {
-        const response = await axios.get(`${baseUrl}/inventory/${userId}`);
+        console.log(`Fetching data for facility ID: ${facilityId}`);
+        const response = await axios.get(`${baseUrl}/inventory/${facilityId}`);
         
-        if (response.data.success) {
-          // ✅ Transform API data for table
-          const transformedData = [{
-            id: response.data.data.id,
-            itemName: response.data.data.item_name,
-            category: response.data.data.category || "Medicines",
-            batch: response.data.data.item_code || "B001",
-            lot: `L-${response.data.data.id}`,
-            expiryDate: response.data.data.updated_at.split('T')[0],
-            availableQty: response.data.data.quantity,
-            remarks: "-"
-          }];
+        console.log('Full API Response:', response);
+        console.log('Response data:', response.data);
+        
+        if (response.data && response.data.success) {
+          // Handle different response structures
+          let items = [];
           
+          if (Array.isArray(response.data.data)) {
+            items = response.data.data;
+            console.log('API returned an array with', items.length, 'items');
+          } else if (response.data.data) {
+            items = [response.data.data];
+            console.log('API returned a single object, converted to array');
+          }
+          
+          // Transform only the required fields for the table
+          const transformedData = items.map(item => {
+            // Extract only the fields we need for the table
+            const tableItem = {
+              id: item.id,
+              itemName: item.item_name || 'Unknown Item',
+              category: item.category || "Supplies",
+              batch: item.item_code || "B001",
+              lot: `L-${item.id}`,
+              expiryDate: item.updated_at ? item.updated_at.split('T')[0] : new Date().toISOString().split('T')[0],
+              availableQty: item.quantity || 0,
+              isLowStock: item.is_low_stock || 0,
+              remarks: item.description || "-"
+            };
+            
+            // Log the transformed item to verify it has only the required fields
+            console.log('Transformed item:', tableItem);
+            
+            return tableItem;
+          });
+          
+          console.log('Final transformed data:', transformedData);
           setInventoryData(transformedData);
           setFilteredData(transformedData);
         } else {
           throw new Error('API returned unsuccessful response');
         }
       } catch (err) {
-        setError(err.message || 'Failed to fetch inventory data');
+        setError(`Failed to fetch inventory data: ${err.message}`);
         console.error('Error fetching inventory data:', err);
       } finally {
         setLoading(false);
@@ -87,11 +103,15 @@ const FacilityUserInventory = () => {
     };
     
     fetchInventoryData();
-  }, [userId, baseUrl]);
+  }, [facilityId, baseUrl]);
 
   useEffect(() => {
+    console.log('Search term changed:', searchTerm);
+    console.log('Current inventory data:', inventoryData);
+    
     if (searchTerm === '') {
       setFilteredData(inventoryData);
+      console.log('No search term, showing all items');
     } else {
       const filtered = inventoryData.filter(item => 
         item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -99,19 +119,27 @@ const FacilityUserInventory = () => {
         item.batch.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.lot.toLowerCase().includes(searchTerm.toLowerCase())
       );
+      console.log('Filtered results:', filtered);
       setFilteredData(filtered);
     }
   }, [searchTerm, inventoryData]);
 
-  const handleExportCSV = () => alert('Exporting data to CSV');
-  const handleExportPDF = () => alert('Exporting data to PDF');
+  const handleExportCSV = () => {
+    alert('Exporting data to CSV');
+  };
 
-  const getExpiryStatus = (expiryDate, qty) => {
+  const handleExportPDF = () => {
+    alert('Exporting data to PDF');
+  };
+
+  const getExpiryStatus = (expiryDate, qty, isLowStock) => {
+    if (isLowStock) return { text: "Low Stock", class: "bg-warning text-dark" };
+    if (qty === 0) return { text: "Out of Stock", class: "bg-danger" };
+    
     const today = new Date();
     const expiry = new Date(expiryDate);
     const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
 
-    if (qty === 0) return { text: "Out of Stock", class: "bg-danger" };
     if (diffDays < 0) return { text: "Expired", class: "bg-danger" };
     if (diffDays <= 30) return { text: "Expiring Soon", class: "bg-warning text-dark" };
     if (diffDays <= 90) return { text: "Near Expiry", class: "bg-info text-dark" };
@@ -178,7 +206,7 @@ const FacilityUserInventory = () => {
                 <tbody>
                   {filteredData.length > 0 ? (
                     filteredData.map((item) => {
-                      const status = getExpiryStatus(item.expiryDate, item.availableQty);
+                      const status = getExpiryStatus(item.expiryDate, item.availableQty, item.isLowStock);
                       return (
                         <tr key={item.id}>
                           <td>{item.itemName}</td>
@@ -188,7 +216,7 @@ const FacilityUserInventory = () => {
                           <td>{item.availableQty}</td>
                           <td>
                             <span className={`badge ${status.class}`}>
-                              {status.icon} {status.text}
+                              {status.text}
                             </span>
                           </td>
                           <td>{item.remarks}</td>
