@@ -6,6 +6,7 @@ import {
 import 'bootstrap/dist/css/bootstrap.min.css';
 import axios from 'axios';
 import BaseUrl from '../../Api/BaseUrl';
+import axiosInstance from '../../Api/axiosInstance';
 
 const FacilityUserMyRequests = () => {
   // State for modals
@@ -100,7 +101,7 @@ const FacilityUserMyRequests = () => {
       try {
         // First, try to get all requisitions for the user using the retry function
         const response = await fetchWithRetry(() => 
-          axios.get(`${baseUrl}/requisitions/user/${userId}`)
+          axiosInstance.get(`${baseUrl}/requisitions/user/${userId}`)
         );
         
         if (response.data.success) {
@@ -139,7 +140,7 @@ const FacilityUserMyRequests = () => {
         // If the first approach fails, try the alternative endpoint
         try {
           const response = await fetchWithRetry(() => 
-            axios.get(`${baseUrl}/requisitions/user/${userId}`)
+            axiosInstance.get(`${baseUrl}/requisitions/user/${userId}`)
           );
           
           if (response.data.success) {

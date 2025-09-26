@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
   LineChart,
   Line,
@@ -15,28 +16,79 @@ import {
   FaFileImport,
 } from "react-icons/fa";
 
-// Mock KPI Values
-const kpiData = {
-  totalStock: "1,248",
-  lowStock: "23",
-  pendingReqs: "42",
-};
-
-// Mock Monthly Dispatch Data
-const dispatchData = [
-  { month: "Jan", dispatched: 120 },
-  { month: "Feb", dispatched: 95 },
-  { month: "Mar", dispatched: 140 },
-  { month: "Apr", dispatched: 180 },
-  { month: "May", dispatched: 160 },
-  { month: "Jun", dispatched: 200 },
-  { month: "Jul", dispatched: 175 },
-  { month: "Aug", dispatched: 190 },
-  { month: "Sep", dispatched: 210 },
-  { month: "Oct", dispatched: 230 },
-];
-
 const WarehouseDashboard = () => {
+  const [kpiData, setKpiData] = useState({
+    totalStock: "0",
+    lowStock: "0",
+    pendingReqs: "0",
+  });
+  
+  const [dispatchData, setDispatchData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get('https://ssknf82q-3000.inc1.devtunnels.ms/api/dashboard/getWarehouseAdminDashboard');
+        
+        if (response.data.success) {
+          const data = response.data.data;
+          
+          // Update KPI data
+          setKpiData({
+            totalStock: data.stats.total_stock,
+            lowStock: data.stats.low_stock_items.toString(),
+            pendingReqs: data.stats.pending_approvals.toString(),
+          });
+          
+          // For now, we'll keep the mock dispatch data since the API doesn't provide monthly dispatch data
+          // If you have this data from another endpoint, you can update this section
+          setDispatchData([
+            { month: "Jan", dispatched: 120 },
+            { month: "Feb", dispatched: 95 },
+            { month: "Mar", dispatched: 140 },
+            { month: "Apr", dispatched: 180 },
+            { month: "May", dispatched: 160 },
+            { month: "Jun", dispatched: 200 },
+            { month: "Jul", dispatched: 175 },
+            { month: "Aug", dispatched: 190 },
+            { month: "Sep", dispatched: 210 },
+            { month: "Oct", dispatched: 230 },
+          ]);
+        }
+        setLoading(false);
+      } catch (err) {
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="container-fluid py-4" style={{ minHeight: "100vh" }}>
+        <div className="d-flex justify-content-center align-items-center" style={{ height: "80vh" }}>
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container-fluid py-4" style={{ minHeight: "100vh" }}>
+        <div className="alert alert-danger" role="alert">
+          Error loading dashboard data: {error}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container-fluid py-4" style={{ minHeight: "100vh" }}>
       {/* Header */}

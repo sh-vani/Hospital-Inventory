@@ -38,9 +38,11 @@ const SuperAdminAssets = () => {
     facility_id: 1,
     department: ''
   });
-  const [assignForm, setAssignForm] = useState({ assigned_to: '' });
+  const [assignForm, setAssignForm] = useState({ facility_id: '' });
   const [assets, setAssets] = useState([]);
+  const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [facilitiesLoading, setFacilitiesLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -48,10 +50,6 @@ const SuperAdminAssets = () => {
     totalItems: 0,
     itemsPerPage: 10
   });
-
-
-
-
 
   // Fetch assets from API
   const fetchAssets = async (page = 1, type = '', status = 'active') => {
@@ -78,6 +76,28 @@ const SuperAdminAssets = () => {
       setError('Error fetching assets: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch facilities from API
+  const fetchFacilities = async () => {
+    setFacilitiesLoading(true);
+    try {
+      const response = await axiosInstance.get('/facilities');
+      
+      if (response.data.success) {
+        setFacilities(response.data.data.facilities);
+        // Set default facility_id to the first facility if available
+        if (response.data.data.facilities.length > 0 && !assignForm.facility_id) {
+          setAssignForm(prev => ({ ...prev, facility_id: response.data.data.facilities[0].id }));
+        }
+      } else {
+        console.error('Failed to fetch facilities data');
+      }
+    } catch (err) {
+      console.error('Failed to fetch facilities data:', err);
+    } finally {
+      setFacilitiesLoading(false);
     }
   };
 
@@ -129,32 +149,32 @@ const SuperAdminAssets = () => {
     }
   };
 
-  // Assign/Unassign an asset
+  // Assign asset to facility
   const handleAssignAsset = async () => {
     try {
       const payload = {
-        ...currentAsset,
-        assigned_to: assignForm.assigned_to ? parseInt(assignForm.assigned_to) : null
+        facility_id: parseInt(assignForm.facility_id)
       };
       
-      const response = await axiosInstance.put(`/assets/${currentAsset.id}`, payload);
+      const response = await axiosInstance.put(`/assets/facility/${currentAsset.id}`, payload);
       
       if (response.data.success) {
         setShowAssignModal(false);
         // Refresh assets list
         fetchAssets(pagination.currentPage);
-        alert(currentAsset.assigned_to ? 'Asset unassigned successfully!' : 'Asset assigned successfully!');
+        alert('Asset assigned to facility successfully!');
       } else {
-        alert('Failed to assign/unassign asset: ' + (response.data.message || 'Unknown error'));
+        alert('Failed to assign asset to facility: ' + (response.data.message || 'Unknown error'));
       }
     } catch (err) {
-      alert('Error assigning/unassigning asset: ' + (err.response?.data?.message || err.message));
+      alert('Error assigning asset to facility: ' + (err.response?.data?.message || err.message));
     }
   };
 
   // Initial fetch
   useEffect(() => {
     fetchAssets();
+    fetchFacilities();
   }, []);
 
   // Badges
@@ -189,7 +209,9 @@ const SuperAdminAssets = () => {
   };
   const openAssignModal = (asset) => {
     setCurrentAsset(asset);
-    setAssignForm({ assigned_to: asset.assigned_to || '' });
+    setAssignForm({ 
+      facility_id: asset.facility_id || (facilities.length > 0 ? facilities[0].id : '')
+    });
     setShowAssignModal(true);
   };
 
@@ -204,7 +226,7 @@ const SuperAdminAssets = () => {
   };
 
   const handleAssignChange = (e) => {
-    setAssignForm({ assigned_to: e.target.value });
+    setAssignForm({ facility_id: e.target.value });
   };
 
   // Search
@@ -248,8 +270,8 @@ const SuperAdminAssets = () => {
               <FaSearch />
             </button>
           </div>
-          <button className="btn btn-primary btn-sm" style={{ height: "40px", width: "150px" }} onClick={() => setShowCreateModal(true)}>
-            <FaPlus className="me-1" /> Add Asset
+          <button  className="btn btn-primary btn-sm" style={{ height: "40px",whiteSpace:"nowrap " }} onClick={() => setShowCreateModal(true)}>
+            <FaPlus  className="me-1" /> Add Asset
           </button>
         </div>
       </div>
@@ -333,7 +355,7 @@ const SuperAdminAssets = () => {
                       <th>Type</th>
                       <th>Serial Number</th>
                       <th>Department</th>
-                      <th>Assigned To</th>
+                      <th>Facility</th>
                       <th>Status</th>
                       <th className="text-nowrap">Actions</th>
                     </tr>
@@ -346,7 +368,7 @@ const SuperAdminAssets = () => {
                         <td>{asset.type}</td>
                         <td>{asset.serial_number}</td>
                         <td>{asset.department}</td>
-                        <td>{asset.assigned_to_name || '—'}</td>
+                        <td>{asset.facility_name || '—'}</td>
                         <td><StatusBadge status={asset.status} /></td>
                         <td>
                           <div className="btn-group" role="group">
@@ -357,10 +379,10 @@ const SuperAdminAssets = () => {
                               <FaEdit />
                             </button>
                             <button
-                              className={`btn btn-sm ${asset.assigned_to ? 'btn-outline-danger' : 'btn-outline-success'}`}
+                              className={`btn btn-sm ${asset.facility_id ? 'btn-outline-danger' : 'btn-outline-success'}`}
                               onClick={() => openAssignModal(asset)}
                             >
-                              {asset.assigned_to ? <FaUserMinus /> : <FaUserPlus />}
+                              {asset.facility_id ? <FaUserMinus /> : <FaUserPlus />}
                             </button>
                           </div>
                         </td>
@@ -400,8 +422,8 @@ const SuperAdminAssets = () => {
                             <div>{a.department}</div>
                           </div>
                           <div className="col-6">
-                            <div className="text-muted">Assigned To</div>
-                            <div>{a.assigned_to_name || '—'}</div>
+                            <div className="text-muted">Facility</div>
+                            <div>{a.facility_name || '—'}</div>
                           </div>
                           <div className="col-6">
                             <div className="text-muted">Status</div>
@@ -416,10 +438,10 @@ const SuperAdminAssets = () => {
                             <FaEdit className="me-1" /> Edit
                           </button>
                           <button
-                            className={`btn w-100 btn-sm ${a.assigned_to ? 'btn-outline-danger' : 'btn-outline-success'}`}
+                            className={`btn w-100 btn-sm ${a.facility_id ? 'btn-outline-danger' : 'btn-outline-success'}`}
                             onClick={() => openAssignModal(a)}
                           >
-                            {a.assigned_to ? <><FaUserMinus className="me-1" /> Unassign</> : <><FaUserPlus className="me-1" /> Assign</>}
+                            {a.facility_id ? <><FaUserMinus className="me-1" /> Unassign</> : <><FaUserPlus className="me-1" /> Assign</>}
                           </button>
                         </div>
                       </div>
@@ -455,9 +477,8 @@ const SuperAdminAssets = () => {
                 <p><strong>Purchase Date:</strong> {currentAsset.purchase_date ? currentAsset.purchase_date.split('T')[0] : '—'}</p>
                 <p><strong>Warranty Expiry:</strong> {currentAsset.warranty_expiry ? currentAsset.warranty_expiry.split('T')[0] : '—'}</p>
                 <p><strong>Department:</strong> {currentAsset.department}</p>
-                <p><strong>Assigned To:</strong> {currentAsset.assigned_to_name || '—'}</p>
+                <p><strong>Facility:</strong> {currentAsset.facility_name || '—'}</p>
                 <p><strong>Status:</strong> <StatusBadge status={currentAsset.status} /></p>
-                <p><strong>Facility:</strong> {currentAsset.facility_name} ({currentAsset.facility_location})</p>
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setShowViewModal(false)}>Close</button>
@@ -602,36 +623,44 @@ const SuperAdminAssets = () => {
           <div className="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">
-                  {currentAsset.assigned_to ? 'Unassign Asset' : 'Assign Asset'}
-                </h5>
+                <h5 className="modal-title">Assign Asset to Facility</h5>
                 <button type="button" className="btn-close" onClick={() => setShowAssignModal(false)}></button>
               </div>
               <div className="modal-body">
                 <p><strong>Asset:</strong> {currentAsset.name} ({currentAsset.id})</p>
-                {currentAsset.assigned_to && (
-                  <p className="text-danger"><strong>Currently Assigned To:</strong> {currentAsset.assigned_to_name || `User ID: ${currentAsset.assigned_to}`}</p>
+                {currentAsset.facility_id && (
+                  <p className="text-info"><strong>Currently Assigned To:</strong> {currentAsset.facility_name || `Facility ID: ${currentAsset.facility_id}`}</p>
                 )}
                 <div className="mb-3">
-                  <label className="form-label">
-                    {currentAsset.assigned_to ? 'Leave empty to unassign' : 'Assign to (User ID)'}
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={assignForm.assigned_to}
-                    onChange={handleAssignChange}
-                    placeholder="e.g., 1, 2, 3"
-                  />
+                  <label className="form-label">Assign to Facility</label>
+                  {facilitiesLoading ? (
+                    <div className="form-select">
+                      <option>Loading facilities...</option>
+                    </div>
+                  ) : (
+                    <select 
+                      className="form-select" 
+                      value={assignForm.facility_id} 
+                      onChange={handleAssignChange}
+                    >
+                      <option value="">Select a facility</option>
+                      {facilities.map((facility) => (
+                        <option key={facility.id} value={facility.id}>
+                          {facility.name} ({facility.location})
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setShowAssignModal(false)}>Cancel</button>
                 <button
-                  className={`btn ${currentAsset.assigned_to ? 'btn-danger' : 'btn-success'}`}
+                  className="btn btn-success"
                   onClick={handleAssignAsset}
+                  disabled={!assignForm.facility_id}
                 >
-                  {currentAsset.assigned_to ? 'Unassign' : 'Assign'}
+                  Assign to Facility
                 </button>
               </div>
             </div>

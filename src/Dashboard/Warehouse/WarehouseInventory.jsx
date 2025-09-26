@@ -381,7 +381,7 @@ const WarehouseInventory = () => {
         facility_transfer_price: formData.facilityTransferPrice
       };
       
-      const response = await axios.post(`${API_URL}/inventory`, apiData);
+      const response = await axios.post(`${BaseUrl}/inventory`, apiData);
       
       if (response.status === 201) {
         // API से आई response को हमारे structure में map करें
@@ -442,7 +442,7 @@ const WarehouseInventory = () => {
         expiry_date: stockFormData.expiryDate
       };
       
-      const response = await axios.post(`${API_URL}/inventory/stock-in`, stockInData);
+      const response = await axios.post(`${BaseUrl}/inventory/stock-in`, stockInData);
       
       if (response.status === 200) {
         setInventoryItems(
@@ -510,7 +510,7 @@ const WarehouseInventory = () => {
         notes: stockFormData.notes
       };
       
-      const response = await axios.post(`${API_URL}/inventory/stock-out`, stockOutData);
+      const response = await axios.post(`${BaseUrl}/inventory/stock-out`, stockOutData);
       
       if (response.status === 200) {
         setInventoryItems(
@@ -629,27 +629,27 @@ const WarehouseInventory = () => {
                       <td className="px-4 py-3 align-middle">{formatDate(item.lastOut)}</td>
                       <td className="px-4 py-3 align-middle">
                         <div className="d-flex gap-1 flex-wrap">
-                          <button
+                          {/* <button
                             className="btn btn-sm btn-success d-flex align-items-center"
                             onClick={() => openStockInModal(item)}
                             title="Stock In"
                           >
                             <FaArrowDown className="me-1" /> In
-                          </button>
-                          <button
+                          </button> */}
+                          {/* <button
                             className="btn btn-sm btn-warning d-flex align-items-center"
                             onClick={() => openStockOutModal(item)}
                             title="Stock Out"
                           >
                             <FaArrowUp className="me-1" /> Out
-                          </button>
-                          <button
+                          </button> */}
+                          {/* <button
                             className="btn btn-sm btn-info d-flex align-items-center text-white"
                             onClick={() => openHistoryModal(item)}
                             title="View Movement History"
                           >
                             <FaHistory className="me-1" /> History
-                          </button>
+                          </button> */}
                           <button
                             className="btn btn-sm btn-outline-primary"
                             onClick={() => openEditModal(item)}

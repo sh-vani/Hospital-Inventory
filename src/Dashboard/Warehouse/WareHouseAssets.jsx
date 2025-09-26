@@ -1,34 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  FaPlus, FaSearch, FaEye, FaEdit, FaUserCheck, FaUserTimes 
+  FaPlus, FaSearch, FaEye, FaUserCheck, FaUserTimes ,FaEdit 
 } from 'react-icons/fa';
+import BaseUrl from '../../Api/BaseUrl';
 
 const WarehouseAssets = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [assets, setAssets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const itemsPerPage = 10;
+  
+  // API base URL - replace with your actual base URL
+  // const base_url = 'https://your-api-domain.com/api';
 
-  // Mock warehouse assets
-  const [assets, setAssets] = useState([
-    { id: 'AST-2001', name: 'Ventilator', type: 'Medical Equipment', assignedTo: 'ICU Department', status: 'Assigned' },
-    { id: 'AST-2002', name: 'X-Ray Machine', type: 'Diagnostic', assignedTo: 'Radiology Department', status: 'Assigned' },
-    { id: 'AST-2003', name: 'ECG Monitor', type: 'Medical Equipment', assignedTo: 'Unassigned', status: 'Available' },
-    { id: 'AST-2004', name: 'Patient Bed', type: 'Furniture', assignedTo: 'Ward A', status: 'Assigned' },
-    { id: 'AST-2005', name: 'Infusion Pump', type: 'Medical Equipment', assignedTo: 'Unassigned', status: 'Available' }
-  ]);
+  // Fetch assets from API
+  const fetchAssets = async (page = 1, type = '', status = 'active') => {
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: itemsPerPage.toString(),
+      });
+      
+      if (type) queryParams.append('type', type);
+      if (status) queryParams.append('status', status);
+      
+      const response = await fetch(`${BaseUrl}/assets?${queryParams}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setAssets(data.data.assets);
+        setCurrentPage(data.data.pagination.currentPage);
+        setTotalPages(data.data.pagination.totalPages);
+        setTotalItems(data.data.pagination.totalItems);
+      } else {
+        setError('Failed to fetch assets');
+      }
+    } catch (err) {
+      setError('Error fetching assets: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial fetch
+  useEffect(() => {
+    fetchAssets();
+  }, []);
 
   // Status badge
   const StatusBadge = ({ status }) => {
     const statusColors = {
-      'Assigned': 'bg-success',
-      'Available': 'bg-primary',
-      'Maintenance': 'bg-warning',
-      'Retired': 'bg-secondary'
+      'active': 'bg-success',
+      'inactive': 'bg-secondary',
+      'maintenance': 'bg-warning',
+      'retired': 'bg-secondary'
     };
     return <span className={`badge ${statusColors[status] || 'bg-secondary'}`}>{status}</span>;
   };
 
   // State for modals
   const [showViewModal, setShowViewModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [currentAsset, setCurrentAsset] = useState(null);
   const [assignTo, setAssignTo] = useState('');
@@ -39,27 +77,22 @@ const WarehouseAssets = () => {
     setShowViewModal(true);
   };
 
-  // Handle edit action
-  const handleEdit = (asset) => {
-    setCurrentAsset(asset);
-    setShowEditModal(true);
-  };
-
   // Handle assign/unassign action
   const handleAssignAction = (asset) => {
     setCurrentAsset(asset);
-    setAssignTo(asset.assignedTo === 'Unassigned' ? '' : asset.assignedTo);
+    setAssignTo(asset.assigned_to_name || '');
     setShowAssignModal(true);
   };
 
   // Submit assignment changes
   const handleAssignSubmit = () => {
+    // In a real app, you would make an API call here
     const updatedAssets = assets.map(asset => {
       if (asset.id === currentAsset.id) {
         return {
           ...asset,
-          assignedTo: assignTo || 'Unassigned',
-          status: assignTo ? 'Assigned' : 'Available'
+          assigned_to_name: assignTo,
+          status: assignTo ? 'active' : 'inactive'
         };
       }
       return asset;
@@ -69,16 +102,24 @@ const WarehouseAssets = () => {
     setShowAssignModal(false);
     
     const action = assignTo ? 'assigned' : 'unassigned';
-    alert(`Asset ${currentAsset.id} has been ${action} successfully!`);
+    alert(`Asset ${currentAsset.name} has been ${action} successfully!`);
   };
 
   // Filter assets based on search term
   const filteredAssets = assets.filter(asset =>
-    asset.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    asset.id.toString().includes(searchTerm.toLowerCase()) ||
     asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     asset.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    asset.assignedTo.toLowerCase().includes(searchTerm.toLowerCase())
+    (asset.assigned_to_name && asset.assigned_to_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    asset.department.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Handle page change
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      fetchAssets(page);
+    }
+  };
 
   return (
     <div className="fade-in py-3">
@@ -98,9 +139,9 @@ const WarehouseAssets = () => {
               <FaSearch />
             </button>
           </div>
-          <button className="btn btn-primary d-flex align-items-center">
+          {/* <button className="btn btn-primary d-flex align-items-center">
             <FaPlus className="me-2" /> Add New Asset
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -113,7 +154,7 @@ const WarehouseAssets = () => {
                 <FaUserCheck className="text-primary fa-2x" />
               </div>
               <div className="number text-primary fw-bold">
-                {assets.filter(a => a.status === 'Assigned').length}
+                {assets.filter(a => a.assigned_to_name).length}
               </div>
               <div className="label text-muted">Assigned Assets</div>
             </div>
@@ -126,7 +167,7 @@ const WarehouseAssets = () => {
                 <FaSearch className="text-success fa-2x" />
               </div>
               <div className="number text-success fw-bold">
-                {assets.filter(a => a.status === 'Available').length}
+                {assets.filter(a => a.status === 'active' && !a.assigned_to_name).length}
               </div>
               <div className="label text-muted">Available Assets</div>
             </div>
@@ -139,7 +180,7 @@ const WarehouseAssets = () => {
                 <FaEdit className="text-warning fa-2x" />
               </div>
               <div className="number text-warning fw-bold">
-                {assets.filter(a => a.status === 'Maintenance').length}
+                {assets.filter(a => a.status === 'maintenance').length}
               </div>
               <div className="label text-muted">In Maintenance</div>
             </div>
@@ -152,7 +193,7 @@ const WarehouseAssets = () => {
                 <FaUserTimes className="text-secondary fa-2x" />
               </div>
               <div className="number text-secondary fw-bold">
-                {assets.filter(a => a.status === 'Retired').length}
+                {assets.filter(a => a.status === 'retired').length}
               </div>
               <div className="label text-muted">Retired Assets</div>
             </div>
@@ -166,60 +207,103 @@ const WarehouseAssets = () => {
           <h5 className="mb-0 fw-bold">Warehouse Asset Registry</h5>
         </div>
         <div className="card-body p-0">
-          <div className="table-responsive">
-            <table className="table table-hover mb-0">
-              <thead className="bg-light">
-                <tr>
-                  <th>Asset ID</th>
-                  <th>Name</th>
-                  <th>Type</th>
-                  <th>Assigned To</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAssets.map((asset, index) => (
-                  <tr key={index}>
-                    <td><span className="fw-bold">{asset.id}</span></td>
-                    <td>{asset.name}</td>
-                    <td>{asset.type}</td>
-                    <td>{asset.assignedTo}</td>
-                    <td><StatusBadge status={asset.status} /></td>
-                    <td>
-                      <div className="btn-group" role="group">
-                        <button 
-                          className="btn btn-sm btn-outline-primary" 
-                          title="View"
-                          onClick={() => handleView(asset)}
-                        >
-                          <FaEye />
-                        </button>
-                        <button 
-                          className="btn btn-sm btn-outline-secondary" 
-                          title="Edit"
-                          onClick={() => handleEdit(asset)}
-                        >
-                          <FaEdit />
-                        </button>
-                        <button 
-                          className={`btn btn-sm ${asset.assignedTo === 'Unassigned' ? 'btn-outline-success' : 'btn-outline-warning'}`}
-                          title={asset.assignedTo === 'Unassigned' ? 'Assign' : 'Unassign'}
-                          onClick={() => handleAssignAction(asset)}
-                        >
-                          {asset.assignedTo === 'Unassigned' ? <FaUserCheck /> : <FaUserTimes />}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {filteredAssets.length === 0 && (
-            <div className="p-4 text-center text-muted">
-              No assets found matching your search.
+          {loading ? (
+            <div className="p-4 text-center">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
             </div>
+          ) : error ? (
+            <div className="p-4 text-center text-danger">
+              {error}
+            </div>
+          ) : (
+            <>
+              <div className="table-responsive">
+                <table className="table table-hover mb-0">
+                  <thead className="bg-light">
+                    <tr>
+                      <th>ID</th>
+                      <th>Name</th>
+                      <th>Type</th>
+                      <th>Department</th>
+                      <th>Assigned To</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAssets.map((asset) => (
+                      <tr key={asset.id}>
+                        <td><span className="fw-bold">{asset.id}</span></td>
+                        <td>{asset.name}</td>
+                        <td>{asset.type}</td>
+                        <td>{asset.department}</td>
+                        <td>{asset.assigned_to_name || 'Unassigned'}</td>
+                        <td><StatusBadge status={asset.status} /></td>
+                        <td>
+                          <div className="btn-group" role="group">
+                            <button 
+                              className="btn btn-sm btn-outline-primary" 
+                              title="View"
+                              onClick={() => handleView(asset)}
+                            >
+                              <FaEye />
+                            </button>
+                            {/* <button 
+                              className={`btn btn-sm ${!asset.assigned_to_name ? 'btn-outline-success' : 'btn-outline-warning'}`}
+                              title={!asset.assigned_to_name ? 'Assign' : 'Unassign'}
+                              onClick={() => handleAssignAction(asset)}
+                            >
+                              {!asset.assigned_to_name ? <FaUserCheck /> : <FaUserTimes />}
+                            </button> */}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {filteredAssets.length === 0 && (
+                <div className="p-4 text-center text-muted">
+                  No assets found matching your search.
+                </div>
+              )}
+              
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="d-flex justify-content-between align-items-center p-3 border-top">
+                  <div>
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} assets
+                  </div>
+                  <div className="btn-group" role="group">
+                    <button 
+                      className="btn btn-outline-secondary" 
+                      disabled={currentPage === 1}
+                      onClick={() => handlePageChange(currentPage - 1)}
+                    >
+                      Previous
+                    </button>
+                    {[...Array(totalPages)].map((_, i) => (
+                      <button
+                        key={i}
+                        className={`btn ${currentPage === i + 1 ? 'btn-primary' : 'btn-outline-secondary'}`}
+                        onClick={() => handlePageChange(i + 1)}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                    <button 
+                      className="btn btn-outline-secondary" 
+                      disabled={currentPage === totalPages}
+                      onClick={() => handlePageChange(currentPage + 1)}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -232,7 +316,7 @@ const WarehouseAssets = () => {
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Asset Details: {currentAsset.id}</h5>
+                <h5 className="modal-title">Asset Details: {currentAsset.name}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
               </div>
               <div className="modal-body">
@@ -241,58 +325,27 @@ const WarehouseAssets = () => {
                     <p><strong>Asset ID:</strong> {currentAsset.id}</p>
                     <p><strong>Name:</strong> {currentAsset.name}</p>
                     <p><strong>Type:</strong> {currentAsset.type}</p>
+                    <p><strong>Serial Number:</strong> {currentAsset.serial_number}</p>
+                    <p><strong>Model:</strong> {currentAsset.model}</p>
+                    <p><strong>Manufacturer:</strong> {currentAsset.manufacturer}</p>
                   </div>
                   <div className="col-md-6">
-                    <p><strong>Assigned To:</strong> {currentAsset.assignedTo}</p>
+                    <p><strong>Department:</strong> {currentAsset.department}</p>
+                    <p><strong>Assigned To:</strong> {currentAsset.assigned_to_name || 'Unassigned'}</p>
                     <p><strong>Status:</strong> <StatusBadge status={currentAsset.status} /></p>
+                    <p><strong>Facility:</strong> {currentAsset.facility_name}</p>
+                    <p><strong>Location:</strong> {currentAsset.facility_location}</p>
+                    {currentAsset.purchase_date && (
+                      <p><strong>Purchase Date:</strong> {new Date(currentAsset.purchase_date).toLocaleDateString()}</p>
+                    )}
+                    {currentAsset.warranty_expiry && (
+                      <p><strong>Warranty Expiry:</strong> {new Date(currentAsset.warranty_expiry).toLocaleDateString()}</p>
+                    )}
                   </div>
                 </div>
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowViewModal(false)}>Close</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Asset Modal */}
-      {showEditModal && currentAsset && (
-        <div className="modal fade show d-block" tabIndex="-1" onClick={(e) => {
-          if (e.target.classList.contains('modal')) setShowEditModal(false);
-        }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Edit Asset: {currentAsset.id}</h5>
-                <button type="button" className="btn-close" onClick={() => setShowEditModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label className="form-label">Asset Name</label>
-                  <input type="text" className="form-control" defaultValue={currentAsset.name} />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Asset Type</label>
-                  <input type="text" className="form-control" defaultValue={currentAsset.type} />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Assigned To</label>
-                  <input type="text" className="form-control" defaultValue={currentAsset.assignedTo} />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Status</label>
-                  <select className="form-select" defaultValue={currentAsset.status}>
-                    <option value="Assigned">Assigned</option>
-                    <option value="Available">Available</option>
-                    <option value="Maintenance">Maintenance</option>
-                    <option value="Retired">Retired</option>
-                  </select>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
-                <button type="button" className="btn btn-primary">Save Changes</button>
               </div>
             </div>
           </div>
@@ -308,16 +361,16 @@ const WarehouseAssets = () => {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  {currentAsset.assignedTo === 'Unassigned' ? 'Assign Asset' : 'Unassign Asset'}
+                  {!currentAsset.assigned_to_name ? 'Assign Asset' : 'Unassign Asset'}
                 </h5>
                 <button type="button" className="btn-close" onClick={() => setShowAssignModal(false)}></button>
               </div>
               <div className="modal-body">
                 <p><strong>Asset ID:</strong> {currentAsset.id}</p>
                 <p><strong>Asset Name:</strong> {currentAsset.name}</p>
-                <p><strong>Currently Assigned To:</strong> {currentAsset.assignedTo}</p>
+                <p><strong>Currently Assigned To:</strong> {currentAsset.assigned_to_name || 'Unassigned'}</p>
                 
-                {currentAsset.assignedTo === 'Unassigned' ? (
+                {!currentAsset.assigned_to_name ? (
                   <div className="mb-3">
                     <label className="form-label">Assign To</label>
                     <input 
@@ -330,14 +383,14 @@ const WarehouseAssets = () => {
                   </div>
                 ) : (
                   <div className="alert alert-warning">
-                    Are you sure you want to unassign this asset from {currentAsset.assignedTo}?
+                    Are you sure you want to unassign this asset from {currentAsset.assigned_to_name}?
                   </div>
                 )}
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowAssignModal(false)}>Cancel</button>
                 <button type="button" className="btn btn-primary" onClick={handleAssignSubmit}>
-                  {currentAsset.assignedTo === 'Unassigned' ? 'Assign' : 'Unassign'}
+                  {!currentAsset.assigned_to_name ? 'Assign' : 'Unassign'}
                 </button>
               </div>
             </div>
@@ -346,7 +399,7 @@ const WarehouseAssets = () => {
       )}
 
       {/* Modal Backdrop */}
-      {(showViewModal || showEditModal || showAssignModal) && (
+      {(showViewModal || showAssignModal) && (
         <div className="modal-backdrop fade show"></div>
       )}
     </div>
