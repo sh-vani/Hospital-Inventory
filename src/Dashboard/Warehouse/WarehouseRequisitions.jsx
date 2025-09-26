@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaPlus, FaSearch, FaEye, FaFilePdf } from 'react-icons/fa';
+import axios from 'axios';
+import BaseUrl from '../../Api/BaseUrl';
 
 const WarehouseRequisitions = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -148,7 +150,7 @@ const WarehouseRequisitions = () => {
     setShowPartialApproveModal(false);
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!rejectionReason.trim()) {
       alert('Please provide a reason for rejection.');
       return;
