@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  FaClipboardList, FaEye, FaSearch, FaFilter, FaPaperPlane, 
-  FaCheck, FaTimes, FaExclamationTriangle, FaClock, FaCalendarAlt,
-  FaPlus, FaTrash
+  FaClipboardList, FaEye, FaSearch, FaFilter, 
+  FaCheck, FaTimes, FaExclamationTriangle, FaClock, FaPaperPlane
 } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import axios from 'axios';
+import BaseUrl from '../../Api/BaseUrl';
 
 const FacilityUserMyRequests = () => {
   // State for modals
@@ -14,59 +15,107 @@ const FacilityUserMyRequests = () => {
   // State for search term
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Sample data for requests with simplified status
-  const [requests, setRequests] = useState([
-    { 
-      id: 1, 
-      title: 'Medical Supplies Request', 
-      description: 'Request for additional medical gloves and face masks', 
-      submittedDate: '2023-07-10', 
-      status: 'Completed',
-      items: [
-        { name: 'Medical Gloves', quantity: 50, unit: 'boxes' },
-        { name: 'Face Masks', quantity: 200, unit: 'pieces' }
-      ]
-    },
-    { 
-      id: 2, 
-      title: 'Surgical Equipment', 
-      description: 'Request for new surgical instruments for operating theater', 
-      submittedDate: '2023-07-12', 
-      status: 'Delivered',
-      items: [
-        { name: 'Scalpel Set', quantity: 5, unit: 'sets' },
-        { name: 'Forceps', quantity: 10, unit: 'pieces' }
-      ]
-    },
-    { 
-      id: 3, 
-      title: 'Pharmaceutical Items', 
-      description: 'Request for various medicines for the ward', 
-      submittedDate: '2023-07-14', 
-      status: 'Processing',
-      items: [
-        { name: 'Antibiotics', quantity: 30, unit: 'bottles' },
-        { name: 'Painkillers', quantity: 50, unit: 'strips' }
-      ]
-    },
-    { 
-      id: 4, 
-      title: 'PPE Equipment', 
-      description: 'Request for personal protective equipment', 
-      submittedDate: '2023-07-15', 
-      status: 'Pending',
-      items: [
-        { name: 'Gowns', quantity: 100, unit: 'pieces' },
-        { name: 'Face Shields', quantity: 50, unit: 'pieces' }
-      ]
+  // State for API data
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [userId, setUserId] = useState(null);
+
+  const baseUrl = BaseUrl;
+  
+  // Get user ID from localStorage
+  useEffect(() => {
+    // Try multiple possible keys for user ID
+    const possibleKeys = ['userId', 'user_id', 'id', 'user', 'userData', 'authUser'];
+    let foundUserId = null;
+    
+    for (const key of possibleKeys) {
+      const value = localStorage.getItem(key);
+      if (value) {
+        try {
+          // Try to parse if it's a JSON string
+          const parsedValue = JSON.parse(value);
+          // Check if the parsed value has an id property
+          if (parsedValue && parsedValue.id) {
+            foundUserId = parsedValue.id;
+            break;
+          }
+          // If not JSON, check if the value itself is the ID
+          else if (value && !isNaN(value)) {
+            foundUserId = value;
+            break;
+          }
+        } catch (e) {
+          // If parsing fails, check if the value itself is the ID
+          if (value && !isNaN(value)) {
+            foundUserId = value;
+            break;
+          }
+        }
+      }
     }
-  ]);
+    
+    if (foundUserId) {
+      setUserId(foundUserId);
+    } else {
+      // If no user ID found, log available localStorage keys for debugging
+      console.log('Available localStorage keys:', Object.keys(localStorage));
+      setError('User ID not found in localStorage. Please check your login status.');
+      setLoading(false);
+    }
+  }, []);
+  
+  // Fetch requisitions data from API
+  useEffect(() => {
+    const fetchRequisitionsData = async () => {
+      if (!userId) return; // Don't fetch if userId is not available
+      
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const response = await axios.get(`${baseUrl}/requisitions/${userId}`);
+        
+        if (response.data.success) {
+          // Transform API data to match our component structure
+          const transformedData = response.data.data.map(requisition => ({
+            id: requisition.id,
+            item: requisition.items.map(item => item.item_name).join(', '),
+            dateRaised: new Date(requisition.created_at).toLocaleDateString('en-GB', { 
+              day: 'numeric', 
+              month: 'short', 
+              year: 'numeric' 
+            }),
+            quantity: requisition.items.reduce((sum, item) => sum + item.quantity, 0),
+            status: requisition.status.charAt(0).toUpperCase() + requisition.status.slice(1),
+            lastUpdated: new Date(requisition.updated_at).toLocaleDateString('en-GB', { 
+              day: 'numeric', 
+              month: 'short' 
+            }),
+            // Store the original requisition data for the timeline modal
+            originalData: requisition
+          }));
+          
+          setRequests(transformedData);
+        } else {
+          throw new Error('API returned unsuccessful response');
+        }
+      } catch (err) {
+        setError(err.message || 'Failed to fetch requisitions data');
+        console.error('Error fetching requisitions data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchRequisitionsData();
+  }, [userId, baseUrl]);
   
   // Filter requests based on search term
   const filteredRequests = requests.filter(request => {
     return (
-      request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.id.toString().includes(searchTerm.toLowerCase()) ||
+      request.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.status.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
@@ -81,13 +130,13 @@ const FacilityUserMyRequests = () => {
   const getStatusBadgeClass = (status) => {
     switch(status) {
       case 'Pending':
-        return 'bg-secondary';
-      case 'Processing':
         return 'bg-warning text-dark';
-      case 'Delivered':
+      case 'Dispatched':
         return 'bg-info';
       case 'Completed':
         return 'bg-success';
+      case 'Rejected':
+        return 'bg-danger';
       default:
         return 'bg-secondary';
     }
@@ -97,21 +146,21 @@ const FacilityUserMyRequests = () => {
   const getStatusIcon = (status) => {
     switch(status) {
       case 'Pending':
-        return <FaClock className="text-secondary" />;
-      case 'Processing':
-        return <FaExclamationTriangle className="text-warning" />;
-      case 'Delivered':
-        return <FaPaperPlane className="text-info" />;
+        return <FaClock className="me-1" />;
+      case 'Dispatched':
+        return <FaPaperPlane className="me-1" />;
       case 'Completed':
-        return <FaCheck className="text-success" />;
+        return <FaCheck className="me-1" />;
+      case 'Rejected':
+        return <FaTimes className="me-1" />;
       default:
-        return <FaClock className="text-secondary" />;
+        return <FaExclamationTriangle className="me-1" />;
     }
   };
-  
-  // Function to get step status
+
+  // Function to get step status (for timeline)
   const getStepStatus = (currentStatus, stepStatus) => {
-    const statusOrder = ['Pending', 'Processing', 'Delivered', 'Completed'];
+    const statusOrder = ['Pending', 'Dispatched', 'Completed'];
     const currentIdx = statusOrder.indexOf(currentStatus);
     const stepIdx = statusOrder.indexOf(stepStatus);
     
@@ -122,7 +171,7 @@ const FacilityUserMyRequests = () => {
   
   return (
     <div className="container-fluid py-4 px-3 px-md-4">
-      {/* Header Section - Responsive */}
+      {/* Header Section */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
         <div className="mb-3 mb-md-0">
           <h1 className="h3 mb-1">My Requests</h1>
@@ -139,11 +188,27 @@ const FacilityUserMyRequests = () => {
         </div>
       </div>
       
-      {/* Main Card - Responsive */}
+      {/* Error Message */}
+      {error && (
+        <div className="alert alert-danger d-flex align-items-center" role="alert">
+          <FaExclamationTriangle className="me-2" />
+          <div>{error}</div>
+        </div>
+      )}
+
+      {/* Debug Info - Only show in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="alert alert-info">
+          <strong>Debug Info:</strong> User ID: {userId || 'Not found'} | 
+          Available localStorage keys: {Object.keys(localStorage).join(', ')}
+        </div>
+      )}
+      
+      {/* Main Card */}
       <div className="card border-0 shadow-sm">
         <div className="card-header bg-white border-0 p-3 p-md-4">
           <div className="flex-column flex-md-row d-flex justify-content-between align-items-md-center gap-3">
-            <h5 className="mb-0">Request Status Timeline</h5>
+            
             <div className="d-flex flex-column flex-md-row gap-2 w-100 w-md-auto">
               <div className="input-group input-group-sm">
                 <span className="input-group-text"><FaSearch /></span>
@@ -162,40 +227,62 @@ const FacilityUserMyRequests = () => {
           </div>
         </div>
         <div className="card-body p-0">
-          <div className="table-responsive">
-            <table className="table table-hover mb-0">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Title</th>
-                  <th className="d-none d-md-table-cell">Description</th>
-                  <th>Submitted Date</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRequests.map(request => (
-                  <tr key={request.id}>
-                    <td>{request.id}</td>
-                    <td>{request.title}</td>
-                    <td className="d-none d-md-table-cell">{request.description}</td>
-                    <td>{request.submittedDate}</td>
-                    <td>
-                      <span className={`badge ${getStatusBadgeClass(request.status)}`}>
-                        {getStatusIcon(request.status)} {request.status}
-                      </span>
-                    </td>
-                    <td>
-                      <button className="btn btn-sm btn-outline-primary" onClick={() => openStatusTimeline(request)}>
-                        <FaEye /> <span className="d-none d-md-inline-block ms-1">View Status Timeline</span>
-                      </button>
-                    </td>
+          {loading ? (
+            <div className="text-center py-5">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+              <p className="mt-2 text-muted">Loading requisitions data...</p>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>Request ID</th>
+                    <th>Item(s)</th>
+                    <th>Date Raised</th>
+                    <th>Quantity</th>
+                    <th>Current Status</th>
+                    <th>Last Updated</th>
+                    <th>Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {filteredRequests.length > 0 ? (
+                    filteredRequests.map(request => (
+                      <tr key={request.id}>
+                        <td>{request.id}</td>
+                        <td>{request.item}</td>
+                        <td>{request.dateRaised}</td>
+                        <td>{request.quantity}</td>
+                        <td>
+                          <span className={`badge ${getStatusBadgeClass(request.status)}`}>
+                            {getStatusIcon(request.status)} {request.status}
+                          </span>
+                        </td>
+                        <td>{request.lastUpdated}</td>
+                        <td>
+                          <button className="btn btn-sm btn-outline-primary" onClick={() => openStatusTimeline(request)}>
+                            <FaEye /> <span className="d-none d-md-inline-block ms-1">View</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="text-center py-4">
+                        <div className="text-muted">
+                          <FaClipboardList size={24} className="mb-2" />
+                          <p>No requisitions found matching your search criteria.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
       
@@ -211,11 +298,9 @@ const FacilityUserMyRequests = () => {
               {selectedRequest && (
                 <div className="timeline-container">
                   <div className="d-flex flex-column flex-md-row justify-content-between position-relative">
-                    {/* Timeline line */}
                     <div className="timeline-line position-absolute top-0 bottom-0 start-50 translate-middle-x"></div>
                     
-                    {/* Timeline steps */}
-                    {['Pending', 'Processing', 'Delivered', 'Completed'].map((status, index) => {
+                    {['Pending', 'Dispatched', 'Completed'].map((status, index) => {
                       const stepStatus = getStepStatus(selectedRequest.status, status);
                       return (
                         <div key={status} className="text-center mb-4 flex-grow-1">
@@ -244,14 +329,31 @@ const FacilityUserMyRequests = () => {
                   
                   {/* Request details */}
                   <div className="mt-4 p-3 bg-light rounded">
-                    <h6 className="mb-2">{selectedRequest.title}</h6>
-                    <p className="text-muted small mb-2">{selectedRequest.description}</p>
+                    <h6 className="mb-2">{selectedRequest.item}</h6>
                     <div className="d-flex justify-content-between">
-                      <span className="text-muted">Submitted: {selectedRequest.submittedDate}</span>
+                      <span className="text-muted">Raised: {selectedRequest.dateRaised}</span>
                       <span className={`badge ${getStatusBadgeClass(selectedRequest.status)}`}>
                         {getStatusIcon(selectedRequest.status)} {selectedRequest.status}
                       </span>
                     </div>
+                    <p className="text-muted small mt-2">Quantity: {selectedRequest.quantity}</p>
+                    
+                    {/* Show items details if available */}
+                    {selectedRequest.originalData && selectedRequest.originalData.items && (
+                      <div className="mt-3">
+                        <h6 className="text-muted small">Items Details:</h6>
+                        <ul className="list-unstyled">
+                          {selectedRequest.originalData.items.map((item, idx) => (
+                            <li key={idx} className="mb-2">
+                              <div className="d-flex justify-content-between">
+                                <span>{item.item_name}</span>
+                                <span className="text-muted">{item.quantity} {item.unit}</span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -263,7 +365,6 @@ const FacilityUserMyRequests = () => {
         </div>
       </div>
       
-      {/* Modal Backdrop */}
       {showStatusTimelineModal && <div className="modal-backdrop fade show"></div>}
     </div>
   );

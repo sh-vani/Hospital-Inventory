@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FaSearch, FaFileCsv, FaFilePdf, FaFilter, FaBox, FaBarcode, FaHourglassHalf, FaInfoCircle, FaExclamationTriangle } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import axios from 'axios';
+import BaseUrl from '../../Api/BaseUrl';
 
 const FacilityUserInventory = () => {
   // State for inventory data
@@ -8,84 +10,90 @@ const FacilityUserInventory = () => {
   const [filteredData, setFilteredData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [userId, setUserId] = useState(null);
+
+  const baseUrl = BaseUrl;
   
-  // Simulate fetching data
+  // Get user ID from localStorage
   useEffect(() => {
-    // In a real app, this would come from an API
-    const mockData = [
-      {
-        id: 1,
-        itemName: 'Paracetamol 500mg',
-        batch: 'B789',
-        lot: 'L456',
-        expiryDate: '2024-06-15',
-        balance: 85,
-      },
-      {
-        id: 2,
-        itemName: 'Amoxicillin 500mg',
-        batch: 'B234',
-        lot: 'L789',
-        expiryDate: '2024-05-20',
-        balance: 120,
-      },
-      {
-        id: 3,
-        itemName: 'Surgical Gloves',
-        batch: 'B567',
-        lot: 'L123',
-        expiryDate: '2025-01-10',
-        balance: 0,
-      },
-      {
-        id: 4,
-        itemName: 'Insulin Pens',
-        batch: 'B901',
-        lot: 'L345',
-        expiryDate: '2024-03-05',
-        balance: 15,
-      },
-      {
-        id: 5,
-        itemName: 'Antiseptic Solution',
-        batch: 'B678',
-        lot: 'L567',
-        expiryDate: '2024-12-01',
-        balance: 0,
-      },
-      {
-        id: 6,
-        itemName: 'Vitamin C Tablets',
-        batch: 'B345',
-        lot: 'L890',
-        expiryDate: '2024-09-15',
-        balance: 60,
-      },
-      {
-        id: 7,
-        itemName: 'Blood Pressure Cuffs',
-        batch: 'B012',
-        lot: 'L234',
-        expiryDate: '2025-06-30',
-        balance: 3,
-      },
-      {
-        id: 8,
-        itemName: 'Alcohol Swabs',
-        batch: 'B456',
-        lot: 'L678',
-        expiryDate: '2024-11-20',
-        balance: 0,
-      }
-    ];
+    // Try multiple possible keys for user ID
+    const possibleKeys = ['userId', 'user_id', 'id', 'user', 'userData', 'authUser'];
+    let foundUserId = null;
     
-    // Simulate API delay
-    setTimeout(() => {
-      setInventoryData(mockData);
-      setFilteredData(mockData);
+    for (const key of possibleKeys) {
+      const value = localStorage.getItem(key);
+      if (value) {
+        try {
+          // Try to parse if it's a JSON string
+          const parsedValue = JSON.parse(value);
+          // Check if the parsed value has an id property
+          if (parsedValue && parsedValue.id) {
+            foundUserId = parsedValue.id;
+            break;
+          }
+          // If not JSON, check if the value itself is the ID
+          else if (value && !isNaN(value)) {
+            foundUserId = value;
+            break;
+          }
+        } catch (e) {
+          // If parsing fails, check if the value itself is the ID
+          if (value && !isNaN(value)) {
+            foundUserId = value;
+            break;
+          }
+        }
+      }
+    }
+    
+    if (foundUserId) {
+      setUserId(foundUserId);
+    } else {
+      // If no user ID found, log available localStorage keys for debugging
+      console.log('Available localStorage keys:', Object.keys(localStorage));
+      setError('User ID not found in localStorage. Please check your login status.');
       setLoading(false);
-    }, 800);
+    }
   }, []);
+  
+  // Fetch inventory data from API
+  useEffect(() => {
+    const fetchInventoryData = async () => {
+      if (!userId) return; // Don't fetch if userId is not available
+      
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const response = await axios.get(`${baseUrl}/inventory/${userId}`);
+        
+        if (response.data.success) {
+          // Transform API data to match our component structure
+          const transformedData = [{
+            id: response.data.data.id,
+            itemName: response.data.data.item_name,
+            batch: response.data.data.item_code, // Using item_code as batch since batch not in API
+            lot: `Lot-${response.data.data.id}`, // Generate lot since not in API
+            expiryDate: response.data.data.updated_at.split('T')[0], // Using updated_at as expiry date
+            balance: response.data.data.quantity,
+          }];
+          
+          setInventoryData(transformedData);
+          setFilteredData(transformedData);
+        } else {
+          throw new Error('API returned unsuccessful response');
+        }
+      } catch (err) {
+        setError(err.message || 'Failed to fetch inventory data');
+        console.error('Error fetching inventory data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchInventoryData();
+  }, [userId, baseUrl]);
 
   // Handle search
   useEffect(() => {
@@ -152,6 +160,22 @@ const FacilityUserInventory = () => {
           </div>
         </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="alert alert-danger d-flex align-items-center" role="alert">
+          <FaExclamationTriangle className="me-2" />
+          <div>{error}</div>
+        </div>
+      )}
+
+      {/* Debug Info - Only show in development */}
+      {/* {process.env.NODE_ENV === 'development' && (
+        <div className="alert alert-info">
+          <strong>Debug Info:</strong> User ID: {userId || 'Not found'} | 
+          Available localStorage keys: {Object.keys(localStorage).join(', ')}
+        </div>
+      )} */}
 
       {/* Summary Cards - Responsive */}
       <div className="row g-3 mb-4">
@@ -447,4 +471,4 @@ const FacilityUserInventory = () => {
   );
 };
 
-export default FacilityUserInventory;
+export default FacilityUserInventory; 
