@@ -3,6 +3,8 @@ import {
   FaSearch, FaEye, FaEdit, FaUserPlus, FaUserMinus, FaPlus
 } from 'react-icons/fa';
 import BaseUrl from '../../Api/BaseUrl';
+import axios from 'axios';
+import axiosInstance from '../../Api/axiosInstance';
 
 const SuperAdminAssets = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,22 +50,32 @@ const SuperAdminAssets = () => {
   });
 
 
+
+
+
   // Fetch assets from API
   const fetchAssets = async (page = 1, type = '', status = 'active') => {
     setLoading(true);
+    setError(null);
     try {
-      const url = `${BaseUrl}/assets?page=${page}&limit=10${type ? `&type=${type}` : ''}${status ? `&status=${status}` : ''}`;
-      const response = await fetch(url);
-      const result = await response.json();
+      const params = {
+        page,
+        limit: 10
+      };
       
-      if (result.success) {
-        setAssets(result.data.assets);
-        setPagination(result.data.pagination);
+      if (type) params.type = type;
+      if (status) params.status = status;
+      
+      const response = await axiosInstance.get('/assets', { params });
+      
+      if (response.data.success) {
+        setAssets(response.data.data.assets);
+        setPagination(response.data.data.pagination);
       } else {
         setError('Failed to fetch assets');
       }
     } catch (err) {
-      setError('Error fetching assets: ' + err.message);
+      setError('Error fetching assets: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -72,17 +84,9 @@ const SuperAdminAssets = () => {
   // Create a new asset
   const handleCreateAsset = async () => {
     try {
-      const response = await fetch(`${BaseUrl}/assets`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(createAsset),
-      });
+      const response = await axiosInstance.post('/assets', createAsset);
       
-      const result = await response.json();
-      
-      if (result.success) {
+      if (response.data.success) {
         setShowCreateModal(false);
         // Reset form
         setCreateAsset({
@@ -100,36 +104,28 @@ const SuperAdminAssets = () => {
         fetchAssets(pagination.currentPage);
         alert('Asset created successfully!');
       } else {
-        alert('Failed to create asset: ' + (result.message || 'Unknown error'));
+        alert('Failed to create asset: ' + (response.data.message || 'Unknown error'));
       }
     } catch (err) {
-      alert('Error creating asset: ' + err.message);
+      alert('Error creating asset: ' + (err.response?.data?.message || err.message));
     }
   };
 
   // Update an existing asset
   const handleEditAsset = async () => {
     try {
-      const response = await fetch(`${BaseUrl}/assets/${newAsset.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newAsset),
-      });
+      const response = await axiosInstance.put(`/assets/${newAsset.id}`, newAsset);
       
-      const result = await response.json();
-      
-      if (result.success) {
+      if (response.data.success) {
         setShowEditModal(false);
         // Refresh assets list
         fetchAssets(pagination.currentPage);
         alert('Asset updated successfully!');
       } else {
-        alert('Failed to update asset: ' + (result.message || 'Unknown error'));
+        alert('Failed to update asset: ' + (response.data.message || 'Unknown error'));
       }
     } catch (err) {
-      alert('Error updating asset: ' + err.message);
+      alert('Error updating asset: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -141,26 +137,18 @@ const SuperAdminAssets = () => {
         assigned_to: assignForm.assigned_to ? parseInt(assignForm.assigned_to) : null
       };
       
-      const response = await fetch(`${BaseUrl}/assets/${currentAsset.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await axiosInstance.put(`/assets/${currentAsset.id}`, payload);
       
-      const result = await response.json();
-      
-      if (result.success) {
+      if (response.data.success) {
         setShowAssignModal(false);
         // Refresh assets list
         fetchAssets(pagination.currentPage);
         alert(currentAsset.assigned_to ? 'Asset unassigned successfully!' : 'Asset assigned successfully!');
       } else {
-        alert('Failed to assign/unassign asset: ' + (result.message || 'Unknown error'));
+        alert('Failed to assign/unassign asset: ' + (response.data.message || 'Unknown error'));
       }
     } catch (err) {
-      alert('Error assigning/unassigning asset: ' + err.message);
+      alert('Error assigning/unassigning asset: ' + (err.response?.data?.message || err.message));
     }
   };
 

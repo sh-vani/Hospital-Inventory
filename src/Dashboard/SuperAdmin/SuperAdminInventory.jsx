@@ -1,137 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaSearch, FaEdit, FaHistory } from 'react-icons/fa';
+import axios from 'axios';
+import BaseUrl from '../../Api/BaseUrl';
+import axiosInstance from '../../Api/axiosInstance';
 
 const SuperAdminInventory = () => {
-  // === STATIC MOCK INVENTORY DATA ===
-  const mockInventory = [
-    {
-      id: 'ITM-1001',
-      name: 'Paracetamol 500mg',
-      category: 'Pharmaceuticals',
-      totalQty: 1200,
-      inUse: 300,
-      available: 900,
-      lastUpdated: '2023-10-24',
-      unit: 'tablets',
-      minLevel: 200,
-      standardCost: 0.50,
-      movingAvgCost: 0.52,
-      lastPOCost: 0.48,
-      batchNo: 'B1001',
-      expiryDate: '2025-12-31',
-      abcClass: 'A',
-      facilityTransferPrice: 0.55
-    },
-    {
-      id: 'ITM-1002',
-      name: 'IV Fluids (Normal Saline)',
-      category: 'Medical Supplies',
-      totalQty: 450,
-      inUse: 150,
-      available: 300,
-      lastUpdated: '2023-10-23',
-      unit: 'bags',
-      minLevel: 100,
-      standardCost: 5.00,
-      movingAvgCost: 5.20,
-      lastPOCost: 4.90,
-      batchNo: 'B1002',
-      expiryDate: '2024-10-15',
-      abcClass: 'A',
-      facilityTransferPrice: 5.50
-    },
-    {
-      id: 'ITM-1003',
-      name: 'Surgical Gloves (Medium)',
-      category: 'Consumables',
-      totalQty: 2000,
-      inUse: 800,
-      available: 1200,
-      lastUpdated: '2023-10-22',
-      unit: 'pairs',
-      minLevel: 500,
-      standardCost: 0.20,
-      movingAvgCost: 0.22,
-      lastPOCost: 0.18,
-      batchNo: 'B1003',
-      expiryDate: '2026-06-30',
-      abcClass: 'B',
-      facilityTransferPrice: 0.25
-    },
-    {
-      id: 'ITM-1004',
-      name: 'Digital Thermometer',
-      category: 'Equipment',
-      totalQty: 85,
-      inUse: 40,
-      available: 45,
-      lastUpdated: '2023-10-20',
-      unit: 'pieces',
-      minLevel: 20,
-      standardCost: 15.00,
-      movingAvgCost: 15.50,
-      lastPOCost: 14.75,
-      batchNo: 'B1004',
-      expiryDate: null,
-      abcClass: 'C',
-      facilityTransferPrice: 16.00
-    },
-    {
-      id: 'ITM-1005',
-      name: 'Face Masks (Surgical)',
-      category: 'Consumables',
-      totalQty: 5000,
-      inUse: 1200,
-      available: 3800,
-      lastUpdated: '2023-10-24',
-      unit: 'pieces',
-      minLevel: 1000,
-      standardCost: 0.15,
-      movingAvgCost: 0.16,
-      lastPOCost: 0.14,
-      batchNo: 'B1005',
-      expiryDate: '2025-03-31',
-      abcClass: 'B',
-      facilityTransferPrice: 0.20
-    },
-    {
-      id: 'ITM-1006',
-      name: 'Malaria Test Kits',
-      category: 'Diagnostics',
-      totalQty: 600,
-      inUse: 200,
-      available: 400,
-      lastUpdated: '2023-10-21',
-      unit: 'kits',
-      minLevel: 150,
-      standardCost: 2.50,
-      movingAvgCost: 2.60,
-      lastPOCost: 2.40,
-      batchNo: 'B1006',
-      expiryDate: '2024-12-15',
-      abcClass: 'A',
-      facilityTransferPrice: 2.75
-    }
-  ];
-
   // === STATE ===
+  const [inventory, setInventory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewItem, setViewItem] = useState(null);
   const [currentItem, setCurrentItem] = useState(null);
+  const [editForm, setEditForm] = useState({});
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRestockModal, setShowRestockModal] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
 
+  // Base URL for API
+  const BASE_URL = '{{base_url}}';
+
+  // === FETCH INVENTORY DATA ===
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        setLoading(true);
+        const response = await axiosInstance.get(`${BaseUrl}/inventory`);
+        if (response.data.success) {
+          setInventory(response.data.data.items);
+        } else {
+          setError('Failed to fetch inventory data');
+        }
+      } catch (err) {
+        setError('Error fetching inventory: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInventory();
+  }, []);
+
   // === FILTER LOGIC ===
-  const filteredInventory = mockInventory.filter(item => {
+  const filteredInventory = inventory.filter(item => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return true;
     return (
-      item.id.toLowerCase().includes(q) ||
-      item.name.toLowerCase().includes(q) ||
+      item.item_code.toLowerCase().includes(q) ||
+      item.item_name.toLowerCase().includes(q) ||
       item.category.toLowerCase().includes(q)
     );
   });
@@ -145,6 +64,14 @@ const SuperAdminInventory = () => {
   
   const openEditModal = (item) => {
     setCurrentItem(item);
+    setEditForm({
+      item_name: item.item_name,
+      category: item.category,
+      description: item.description,
+      unit: item.unit,
+      quantity: item.quantity,
+      reorder_level: item.reorder_level
+    });
     setShowEditModal(true);
   };
 
@@ -159,16 +86,40 @@ const SuperAdminInventory = () => {
     }
   };
 
-  // === ACTION HANDLERS (UI-only) ===
-  const handleSaveEdit = () => {
-    alert(`Item ${currentItem.id} updated (UI demo)`);
-    setShowEditModal(false);
+  // === FORM HANDLER ===
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // === ACTION HANDLERS ===
+  const handleSaveEdit = async () => {
+    try {
+      const response = await axiosInstance.put(`${BaseUrl}/inventory/${currentItem.id}`, editForm);
+      if (response.data.success) {
+        // Update the local state with the updated item
+        setInventory(prevInventory => 
+          prevInventory.map(item => 
+            item.id === currentItem.id ? response.data.data : item
+          )
+        );
+        alert(`Item ${currentItem.item_code} updated successfully`);
+        setShowEditModal(false);
+      } else {
+        alert('Failed to update item');
+      }
+    } catch (err) {
+      alert('Error updating item: ' + err.message);
+    }
   };
 
   // === HELPER FUNCTIONS ===
   const calculateStatus = (item) => {
-    if (item.available === 0) return 'out_of_stock';
-    if (item.available < item.minLevel) return 'low_stock';
+    if (item.quantity === 0) return 'out_of_stock';
+    if (item.quantity < item.reorder_level) return 'low_stock';
     return 'in_stock';
   };
 
@@ -205,69 +156,88 @@ const SuperAdminInventory = () => {
         </div>
       </div>
 
-      {/* ===== TABLE ===== */}
-      <div className="card border-0 shadow-sm">
-        <div className="table-responsive">
-          <table className="table table-hover mb-0 align-middle">
-            <thead className="bg-light">
-              <tr>
-                <th>Item Code</th>
-                <th>Item Name</th>
-                <th>Category</th>
-                <th>Total Qty</th>
-                <th>In Use</th>
-                <th>Available</th>
-                <th>Last Updated</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredInventory.length === 0 ? (
-                <tr>
-                  <td colSpan="8" className="text-center py-4">No inventory items found.</td>
-                </tr>
-              ) : (
-                filteredInventory.map((item, i) => (
-                  <tr key={i}>
-                    <td className="fw-bold">{item.id}</td>
-                    <td>{item.name}</td>
-                    <td><span className="badge bg-light text-dark">{item.category}</span></td>
-                    <td>{item.totalQty.toLocaleString()}</td>
-                    <td className="text-warning fw-medium">{item.inUse.toLocaleString()}</td>
-                    <td className="text-success fw-medium">{item.available.toLocaleString()}</td>
-                    <td>{new Date(item.lastUpdated).toLocaleDateString()}</td>
-                    <td>
-                      <div className="btn-group" role="group">
-                        <button
-                          className="btn btn-sm btn-outline-primary"
-                          title="Edit Item"
-                          onClick={() => openEditModal(item)}
-                        >
-                          <FaEdit />
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-info"
-                          title="View Movement History"
-                          onClick={() => openHistoryModal(item)}
-                        >
-                          <FaHistory />
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-success"
-                          title="View Details"
-                          onClick={() => openViewModal(item)}
-                        >
-                          View
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* ===== LOADING AND ERROR STATES ===== */}
+      {loading && (
+        <div className="text-center py-4">
+          <div className="spinner-border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
         </div>
-      </div>
+      )}
+      
+      {error && (
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      )}
+
+      {/* ===== TABLE ===== */}
+      {!loading && !error && (
+        <div className="card border-0 shadow-sm">
+          <div className="table-responsive">
+            <table className="table table-hover mb-0 align-middle">
+              <thead className="bg-light">
+                <tr>
+                  <th>Item Code</th>
+                  <th>Item Name</th>
+                  <th>Category</th>
+                  <th>Quantity</th>
+                  <th>Reorder Level</th>
+                  <th>Facility</th>
+                  <th>Last Updated</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredInventory.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="text-center py-4">No inventory items found.</td>
+                  </tr>
+                ) : (
+                  filteredInventory.map((item, i) => (
+                    <tr key={item.id}>
+                      <td className="fw-bold">{item.item_code}</td>
+                      <td>{item.item_name}</td>
+                      <td><span className="badge bg-light text-dark">{item.category}</span></td>
+                      <td className={item.quantity < item.reorder_level ? "text-warning fw-medium" : "text-success fw-medium"}>
+                        {item.quantity.toLocaleString()}
+                      </td>
+                      <td>{item.reorder_level.toLocaleString()}</td>
+                      <td>{item.facility_name || 'Central Warehouse'}</td>
+                      <td>{new Date(item.updated_at).toLocaleDateString()}</td>
+                      <td>
+                        <div className="btn-group" role="group">
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            title="Edit Item"
+                            onClick={() => openEditModal(item)}
+                          >
+                            <FaEdit />
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-info"
+                            title="View Movement History"
+                            onClick={() => openHistoryModal(item)}
+                          >
+                            <FaHistory />
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-success"
+                            title="View Details"
+                            onClick={() => openViewModal(item)}
+                          >
+                            View
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ===== EDIT MODAL ===== */}
       {showEditModal && currentItem && (
@@ -275,37 +245,74 @@ const SuperAdminInventory = () => {
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Edit Inventory Item: {currentItem.id}</h5>
+                <h5 className="modal-title">Edit Inventory Item: {currentItem.item_code}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowEditModal(false)}></button>
               </div>
               <div className="modal-body">
                 <form>
                   <div className="row g-3">
                     <div className="col-md-6">
-                      <label className="form-label">Item Name</label>
-                      <input className="form-control" defaultValue={currentItem.name} readOnly />
+                      <label className="form-label">Item Code</label>
+                      <input className="form-control" defaultValue={currentItem.item_code} readOnly />
                     </div>
                     <div className="col-md-6">
                       <label className="form-label">Category</label>
-                      <input className="form-control" defaultValue={currentItem.category} readOnly />
+                      <input 
+                        className="form-control" 
+                        name="category"
+                        value={editForm.category || ''}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="col-md-12">
+                      <label className="form-label">Item Name</label>
+                      <input 
+                        className="form-control" 
+                        name="item_name"
+                        value={editForm.item_name || ''}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="col-md-12">
+                      <label className="form-label">Description</label>
+                      <textarea 
+                        className="form-control" 
+                        name="description"
+                        value={editForm.description || ''}
+                        onChange={handleInputChange}
+                      />
                     </div>
                     <div className="col-md-4">
-                      <label className="form-label">Total Quantity</label>
-                      <input type="number" className="form-control" defaultValue={currentItem.totalQty} />
+                      <label className="form-label">Unit</label>
+                      <input 
+                        className="form-control" 
+                        name="unit"
+                        value={editForm.unit || ''}
+                        onChange={handleInputChange}
+                      />
                     </div>
                     <div className="col-md-4">
-                      <label className="form-label">In Use</label>
-                      <input type="number" className="form-control" defaultValue={currentItem.inUse} />
+                      <label className="form-label">Quantity</label>
+                      <input 
+                        type="number" 
+                        className="form-control" 
+                        name="quantity"
+                        value={editForm.quantity || ''}
+                        onChange={handleInputChange}
+                      />
                     </div>
                     <div className="col-md-4">
-                      <label className="form-label">Available</label>
-                      <input type="number" className="form-control" defaultValue={currentItem.available} readOnly />
+                      <label className="form-label">Reorder Level</label>
+                      <input 
+                        type="number" 
+                        className="form-control" 
+                        name="reorder_level"
+                        value={editForm.reorder_level || ''}
+                        onChange={handleInputChange}
+                      />
                     </div>
                   </div>
                 </form>
-                <div className="alert alert-info mt-3">
-                  <strong>Note:</strong> In a real system, "Available" = Total Qty - In Use. This is a UI demo.
-                </div>
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
@@ -322,11 +329,11 @@ const SuperAdminInventory = () => {
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Movement History: {currentItem.name}</h5>
+                <h5 className="modal-title">Movement History: {currentItem.item_name}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowHistoryModal(false)}></button>
               </div>
               <div className="modal-body">
-                <p className="text-muted">Recent stock movements for <strong>{currentItem.id}</strong></p>
+                <p className="text-muted">Recent stock movements for <strong>{currentItem.item_code}</strong></p>
                 <div className="table-responsive">
                   <table className="table table-sm">
                     <thead>
@@ -381,7 +388,7 @@ const SuperAdminInventory = () => {
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header border-bottom-0">
-                <h5 className="modal-title">Item Details: {viewItem.name}</h5>
+                <h5 className="modal-title">Item Details: {viewItem.item_name}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
               </div>
               <div className="modal-body">
@@ -390,56 +397,40 @@ const SuperAdminInventory = () => {
                   <div className="col-6">{viewItem.id}</div>
                 </div>
                 <div className="row mb-3">
+                  <div className="col-6 fw-bold">Item Code:</div>
+                  <div className="col-6">{viewItem.item_code}</div>
+                </div>
+                <div className="row mb-3">
                   <div className="col-6 fw-bold">Name:</div>
-                  <div className="col-6">{viewItem.name}</div>
+                  <div className="col-6">{viewItem.item_name}</div>
                 </div>
                 <div className="row mb-3">
                   <div className="col-6 fw-bold">Category:</div>
                   <div className="col-6">{viewItem.category}</div>
                 </div>
                 <div className="row mb-3">
+                  <div className="col-6 fw-bold">Description:</div>
+                  <div className="col-6">{viewItem.description || '—'}</div>
+                </div>
+                <div className="row mb-3">
                   <div className="col-6 fw-bold">Stock:</div>
-                  <div className="col-6">{viewItem.available} {viewItem.unit}</div>
+                  <div className="col-6">{viewItem.quantity} {viewItem.unit}</div>
                 </div>
                 <div className="row mb-3">
                   <div className="col-6 fw-bold">Unit:</div>
                   <div className="col-6">{viewItem.unit}</div>
                 </div>
                 <div className="row mb-3">
-                  <div className="col-6 fw-bold">Min Level:</div>
-                  <div className="col-6">{viewItem.minLevel}</div>
+                  <div className="col-6 fw-bold">Reorder Level:</div>
+                  <div className="col-6">{viewItem.reorder_level}</div>
                 </div>
                 <div className="row mb-3">
-                  <div className="col-6 fw-bold">Standard Cost:</div>
-                  <div className="col-6">₵{viewItem.standardCost?.toFixed(2)}</div>
+                  <div className="col-6 fw-bold">Facility:</div>
+                  <div className="col-6">{viewItem.facility_name || 'Central Warehouse'}</div>
                 </div>
                 <div className="row mb-3">
-                  <div className="col-6 fw-bold">Moving Avg Cost:</div>
-                  <div className="col-6">₵{viewItem.movingAvgCost?.toFixed(2)}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Last PO Cost:</div>
-                  <div className="col-6">₵{viewItem.lastPOCost?.toFixed(2)}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Batch/Lot No:</div>
-                  <div className="col-6">{viewItem.batchNo || '—'}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Expiry Date:</div>
-                  <div className="col-6">{viewItem.expiryDate ? viewItem.expiryDate.split('-').reverse().join('/') : '—'}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">ABC Class:</div>
-                  <div className="col-6">
-                    <span className={`badge bg-${viewItem.abcClass === 'A' ? 'success' : viewItem.abcClass === 'B' ? 'warning' : 'info'} text-dark`}>
-                      {viewItem.abcClass}
-                    </span>
-                  </div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Transfer Price:</div>
-                  <div className="col-6">₵{viewItem.facilityTransferPrice?.toFixed(2)}</div>
+                  <div className="col-6 fw-bold">Last Updated:</div>
+                  <div className="col-6">{new Date(viewItem.updated_at).toLocaleString()}</div>
                 </div>
                 <div className="row mb-3">
                   <div className="col-6 fw-bold">Status:</div>

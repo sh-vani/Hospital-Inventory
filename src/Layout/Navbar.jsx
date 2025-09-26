@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FaBell, FaSearch, FaUserCircle, FaBars } from "react-icons/fa";
+import { Link } from "react-router-dom";
 
 const Navbar = ({ toggleSidebar }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -123,7 +124,7 @@ const Navbar = ({ toggleSidebar }) => {
               <li><a className="dropdown-item" href="#" style={{ color: '#0056b3' }}>Profile</a></li>
               <li><a className="dropdown-item" href="#" style={{ color: '#0056b3' }}>Settings</a></li>
               <li><hr className="dropdown-divider" /></li>
-              <li><a className="dropdown-item text-danger" href="/">Logout</a></li>
+              <li><Link to="/" className="dropdown-item text-danger">Logout</Link></li>
             </ul>
           )}
         </div>
