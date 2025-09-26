@@ -248,7 +248,7 @@ const SuperAdminAssets = () => {
               <FaSearch />
             </button>
           </div>
-          <button className="btn btn-primary btn-sm" style={{ height: "40px" }} onClick={() => setShowCreateModal(true)}>
+          <button className="btn btn-primary btn-sm" style={{ height: "40px", width: "150px" }} onClick={() => setShowCreateModal(true)}>
             <FaPlus className="me-1" /> Add Asset
           </button>
         </div>

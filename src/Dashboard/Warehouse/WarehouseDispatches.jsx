@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FaPlus, FaSearch, FaEye, FaTruckLoading, FaCheck, FaTimes, FaFilePdf, FaEnvelope, FaSms, FaBoxOpen
 } from 'react-icons/fa';
+import axios from 'axios';
+import BaseUrl from '../../Api/BaseUrl';
 
 const WarehouseDispatches = () => {
   // State for search
@@ -17,83 +19,62 @@ const WarehouseDispatches = () => {
   const [currentDispatch, setCurrentDispatch] = useState(null);
   // State for new dispatch form
   const [newDispatch, setNewDispatch] = useState({
-    facility: '',
-    items: '',
-    dispatchedBy: '',
-    estimatedDelivery: '',
-    notes: '',
-    batchNumbers: ''
+    facility_id: '',
+    requisition_id: '',
+    remarks: '',
+    user_id: '1' // Default user ID
   });
   // State for current document type
   const [currentDocumentType, setCurrentDocumentType] = useState('');
   // State for notification
   const [notificationMethod, setNotificationMethod] = useState('email');
+  // State for loading
+  const [loading, setLoading] = useState(false);
+  // State for pagination
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 0,
+    totalItems: 0,
+    itemsPerPage: 10
+  });
   
   // Mock data for dispatches
-  const [dispatches, setDispatches] = useState([
-    { 
-      id: '#DSP-0102', 
-      facility: 'Kumasi Branch Hospital', 
-      items: [
-        { name: 'Paracetamol 500mg', quantity: 100, unit: 'Tablets' },
-        { name: 'Surgical Gloves', quantity: 50, unit: 'Pairs' }
-      ],
-      dispatchedBy: 'Warehouse Admin', 
-      date: '23 Oct 2023', 
-      status: 'In Transit',
-      estimatedDelivery: '24 Oct 2023',
-      trackingNumber: 'TRK-2023-0015',
-      notes: 'Urgent delivery for emergency ward',
-      batchNumbers: 'B123, B456',
-      notificationSent: false
-    },
-    { 
-      id: '#DSP-0101', 
-      facility: 'Accra Central Hospital', 
-      items: [
-        { name: 'Amoxicillin 250mg', quantity: 50, unit: 'Capsules' },
-        { name: 'Bandages', quantity: 30, unit: 'Pieces' }
-      ],
-      dispatchedBy: 'Warehouse Admin', 
-      date: '22 Oct 2023', 
-      status: 'Delivered',
-      estimatedDelivery: '23 Oct 2023',
-      trackingNumber: 'TRK-2023-0014',
-      notes: 'Routine supply for pharmacy department',
-      batchNumbers: 'B789',
-      notificationSent: false
-    },
-    { 
-      id: '#DSP-0100', 
-      facility: 'Takoradi Clinic', 
-      items: [
-        { name: 'Test Tubes', quantity: 100, unit: 'Pieces' }
-      ],
-      dispatchedBy: 'Warehouse Admin', 
-      date: '21 Oct 2023', 
-      status: 'In Transit',
-      estimatedDelivery: '25 Oct 2023',
-      trackingNumber: 'TRK-2023-0013',
-      notes: 'Laboratory supplies',
-      currentLocation: 'Cape Town Distribution Center',
-      progress: 65,
-      batchNumbers: 'B321, B654',
-      notificationSent: false
+  const [dispatches, setDispatches] = useState([]);
+
+  // Fetch dispatches on component mount
+  useEffect(() => {
+    fetchDispatches();
+  }, []);
+
+  // Function to fetch dispatches
+  const fetchDispatches = async (page = 1) => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${BaseUrl}/dispatches`);
+      if (response.data.success) {
+        setDispatches(response.data.data.dispatches);
+        setPagination(response.data.data.pagination);
+      }
+    } catch (error) {
+      console.error('Error fetching dispatches:', error);
+      alert('Failed to fetch dispatches. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   // Status badge component
   const StatusBadge = ({ status }) => {
     const statusColors = {
-      'Delivered': 'bg-success text-white',
-      'In Transit': 'bg-warning text-dark',
-      'Processing': 'bg-info text-white',
-      'Cancelled': 'bg-danger text-white',
-      'Received': 'bg-primary text-white'
+      'delivered': 'bg-success text-white',
+      'in_transit': 'bg-warning text-dark',
+      'processing': 'bg-info text-white',
+      'cancelled': 'bg-danger text-white',
+      'received': 'bg-primary text-white'
     };
     return (
       <span className={`badge ${statusColors[status] || 'bg-secondary'} rounded-pill px-3 py-1 fw-medium`}>
-        {status}
+        {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
       </span>
     );
   };
@@ -101,12 +82,10 @@ const WarehouseDispatches = () => {
   // Modal handlers
   const openCreateModal = () => {
     setNewDispatch({
-      facility: '',
-      items: '',
-      dispatchedBy: '',
-      estimatedDelivery: '',
-      notes: '',
-      batchNumbers: ''
+      facility_id: '',
+      requisition_id: '',
+      remarks: '',
+      user_id: '1'
     });
     setShowCreateModal(true);
   };
@@ -131,58 +110,83 @@ const WarehouseDispatches = () => {
   };
 
   // Action handlers
-  const handleCreateDispatch = () => {
-    if (!newDispatch.facility || !newDispatch.dispatchedBy) {
-      alert('Please fill Facility and Dispatched By fields.');
+  const handleCreateDispatch = async () => {
+    if (!newDispatch.facility_id || !newDispatch.requisition_id) {
+      alert('Please fill Facility ID and Requisition ID fields.');
       return;
     }
 
-    const newItem = {
-      id: `#DSP-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
-      facility: newDispatch.facility,
-      items: [{ name: newDispatch.items, quantity: 1, unit: 'item' }],
-      dispatchedBy: newDispatch.dispatchedBy,
-      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-      status: 'In Transit',
-      estimatedDelivery: newDispatch.estimatedDelivery,
-      trackingNumber: `TRK-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
-      notes: newDispatch.notes,
-      batchNumbers: newDispatch.batchNumbers || 'Not specified',
-      notificationSent: false
-    };
-    setDispatches([newItem, ...dispatches]);
-    setShowCreateModal(false);
+    setLoading(true);
+    try {
+      // Generate a tracking number if not provided
+      const trackingNumber = newDispatch.tracking_number || 
+        `TRK${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      
+      const response = await axios.post(`${BaseUrl}/dispatches`, {
+        ...newDispatch,
+        tracking_number: trackingNumber
+      });
+      
+      if (response.data.success) {
+        // Refresh the dispatches list
+        await fetchDispatches(pagination.currentPage);
+        setShowCreateModal(false);
+        alert('Dispatch created successfully!');
+      }
+    } catch (error) {
+      console.error('Error creating dispatch:', error);
+      alert('Failed to create dispatch. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleMarkDelivered = () => {
+  const handleMarkDelivered = async () => {
     if (!currentDispatch) return;
     
-    // Update dispatch status to "Delivered"
-    const updatedDispatches = dispatches.map(dispatch => {
-      if (dispatch.id === currentDispatch.id) {
-        return {
-          ...dispatch,
-          status: 'Delivered'
-        };
+    setLoading(true);
+    try {
+      // Using PUT to the dispatch endpoint with status update
+      const response = await axios.put(`${BaseUrl}/dispatches/${currentDispatch.id}/status`, {
+        status: 'delivered',
+        remarks: 'Delivered successfully',
+        tracking_number: currentDispatch.tracking_number
+      });
+      
+      if (response.data.success) {
+        // Update the dispatch in the local state
+        const updatedDispatches = dispatches.map(dispatch => {
+          if (dispatch.id === currentDispatch.id) {
+            return {
+              ...dispatch,
+              status: 'delivered'
+            };
+          }
+          return dispatch;
+        });
+        
+        setDispatches(updatedDispatches);
+        setCurrentDispatch({
+          ...currentDispatch,
+          status: 'delivered'
+        });
+        
+        alert(`Dispatch ${currentDispatch.id} has been marked as delivered!`);
+        setShowMarkDeliveredModal(false);
       }
-      return dispatch;
-    });
-    
-    setDispatches(updatedDispatches);
-    setCurrentDispatch({
-      ...currentDispatch,
-      status: 'Delivered'
-    });
-    
-    // Show success message
-    alert(`Dispatch ${currentDispatch.id} has been marked as delivered!`);
-    setShowMarkDeliveredModal(false);
+    } catch (error) {
+      console.error('Error updating dispatch status:', error);
+      alert('Failed to update dispatch status. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Filter dispatches by search term
   const filteredDispatches = dispatches.filter(dispatch =>
-    dispatch.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    dispatch.facility.toLowerCase().includes(searchTerm.toLowerCase())
+    dispatch.id?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dispatch.facility?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dispatch.tracking_number?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -204,7 +208,7 @@ const WarehouseDispatches = () => {
                 <FaCheck className="text-success fa-2x" />
               </div>
               <div className="number text-success fw-bold">
-                {dispatches.filter(d => d.status === 'Delivered').length}
+                {dispatches.filter(d => d.status === 'delivered').length}
               </div>
               <div className="label text-muted">Delivered</div>
             </div>
@@ -217,7 +221,7 @@ const WarehouseDispatches = () => {
                 <FaTruckLoading className="text-warning fa-2x" />
               </div>
               <div className="number text-warning fw-bold">
-                {dispatches.filter(d => d.status === 'In Transit').length}
+                {dispatches.filter(d => d.status === 'in_transit').length}
               </div>
               <div className="label text-muted">In Transit</div>
             </div>
@@ -267,59 +271,67 @@ const WarehouseDispatches = () => {
           </div>
         </div>
         <div className="card-body p-0">
-          <div className="table-responsive">
-            <table className="table table-hover mb-0">
-              <thead className="bg-light">
-                <tr>
-                  <th>Dispatch ID</th>
-                  <th>Facility</th>
-                  <th>Item</th>
-                  <th>Qty</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredDispatches.map((dispatch, index) => (
-                  dispatch.items.map((item, itemIndex) => (
-                    <tr key={`${index}-${itemIndex}`}>
-                      <td><span className="fw-bold">{dispatch.id}</span></td>
-                      <td>{dispatch.facility}</td>
-                      <td>{item.name}</td>
-                      <td>{item.quantity} {item.unit}</td>
-                      <td><StatusBadge status={dispatch.status} /></td>
-                      <td>
-                        <div className="d-flex gap-1">
-                          <button
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={() => openViewModal(dispatch)}
-                            title="View Details"
-                          >
-                            <FaEye className="me-1" />
-                            View
-                          </button>
-                          {dispatch.status === 'In Transit' && (
-                            <button
-                              className="btn btn-sm btn-success"
-                              onClick={() => openMarkDeliveredModal(dispatch)}
-                              title="Mark as Delivered"
-                            >
-                              <FaCheck className="me-1" />
-                              Delivered
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {filteredDispatches.length === 0 && (
-            <div className="p-4 text-center text-muted">
-              No dispatches found matching your search.
+          {loading ? (
+            <div className="d-flex justify-content-center align-items-center p-5">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
             </div>
+          ) : (
+            <>
+              <div className="table-responsive">
+                <table className="table table-hover mb-0">
+                  <thead className="bg-light">
+                    <tr>
+                      <th>Dispatch ID</th>
+                      <th>Tracking Number</th>
+                      <th>Facility ID</th>
+                      <th>Requisition ID</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredDispatches.map((dispatch) => (
+                      <tr key={dispatch.id}>
+                        <td><span className="fw-bold">#{dispatch.id}</span></td>
+                        <td>{dispatch.tracking_number}</td>
+                        <td>{dispatch.facility_id}</td>
+                        <td>{dispatch.requisition_id}</td>
+                        <td><StatusBadge status={dispatch.status} /></td>
+                        <td>
+                          <div className="d-flex gap-1">
+                            <button
+                              className="btn btn-sm btn-outline-primary"
+                              onClick={() => openViewModal(dispatch)}
+                              title="View Details"
+                            >
+                              <FaEye className="me-1" />
+                              View
+                            </button>
+                            {dispatch.status === 'in_transit' && (
+                              <button
+                                className="btn btn-sm btn-success"
+                                onClick={() => openMarkDeliveredModal(dispatch)}
+                                title="Mark as Delivered"
+                              >
+                                <FaCheck className="me-1" />
+                                Delivered
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {filteredDispatches.length === 0 && (
+                <div className="p-4 text-center text-muted">
+                  No dispatches found matching your search.
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -340,74 +352,64 @@ const WarehouseDispatches = () => {
                 <form>
                   <div className="row mb-3">
                     <div className="col-md-6">
-                      <label className="form-label fw-medium">To Facility <span className="text-danger">*</span></label>
+                      <label className="form-label fw-medium">Facility ID <span className="text-danger">*</span></label>
                       <input
                         type="text"
                         className="form-control form-control-lg"
-                        name="facility"
-                        value={newDispatch.facility}
+                        name="facility_id"
+                        value={newDispatch.facility_id}
                         onChange={handleInputChange}
-                        placeholder="e.g. Kumasi Branch Hospital"
+                        placeholder="e.g. 1"
                         required
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label fw-medium">Dispatched By <span className="text-danger">*</span></label>
+                      <label className="form-label fw-medium">Requisition ID <span className="text-danger">*</span></label>
                       <input
                         type="text"
                         className="form-control form-control-lg"
-                        name="dispatchedBy"
-                        value={newDispatch.dispatchedBy}
+                        name="requisition_id"
+                        value={newDispatch.requisition_id}
                         onChange={handleInputChange}
-                        placeholder="e.g. Warehouse Admin"
+                        placeholder="e.g. 1"
                         required
                       />
                     </div>
                   </div>
                   <div className="row mb-3">
                     <div className="col-md-6">
-                      <label className="form-label fw-medium">Estimated Delivery Date</label>
-                      <input
-                        type="date"
-                        className="form-control form-control-lg"
-                        name="estimatedDelivery"
-                        value={newDispatch.estimatedDelivery}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label fw-medium">Items</label>
+                      <label className="form-label fw-medium">User ID</label>
                       <input
                         type="text"
                         className="form-control form-control-lg"
-                        name="items"
-                        value={newDispatch.items}
+                        name="user_id"
+                        value={newDispatch.user_id}
                         onChange={handleInputChange}
-                        placeholder="e.g. Medical Supplies"
+                        placeholder="e.g. 1"
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium">Tracking Number</label>
+                      <input
+                        type="text"
+                        className="form-control form-control-lg"
+                        name="tracking_number"
+                        value={newDispatch.tracking_number}
+                        onChange={handleInputChange}
+                        placeholder="e.g. TRK001"
                       />
                     </div>
                   </div>
                   <div className="row mb-3">
-                    <div className="col-md-6">
-                      <label className="form-label fw-medium">Batch Numbers</label>
-                      <input
-                        type="text"
-                        className="form-control form-control-lg"
-                        name="batchNumbers"
-                        value={newDispatch.batchNumbers}
-                        onChange={handleInputChange}
-                        placeholder="e.g. B123, B456"
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label fw-medium">Notes</label>
+                    <div className="col-12">
+                      <label className="form-label fw-medium">Remarks</label>
                       <textarea
                         className="form-control form-control-lg"
-                        name="notes"
-                        value={newDispatch.notes}
+                        name="remarks"
+                        value={newDispatch.remarks}
                         onChange={handleInputChange}
-                        rows="1"
-                        placeholder="Additional notes"
+                        rows="2"
+                        placeholder="Additional remarks"
                       ></textarea>
                     </div>
                   </div>
@@ -417,8 +419,18 @@ const WarehouseDispatches = () => {
                 <button type="button" className="btn btn-secondary px-4" onClick={() => setShowCreateModal(false)}>
                   Cancel
                 </button>
-                <button type="button" className="btn btn-primary px-4" onClick={handleCreateDispatch}>
-                  Create Dispatch
+                <button 
+                  type="button" 
+                  className="btn btn-primary px-4" 
+                  onClick={handleCreateDispatch}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Creating...
+                    </>
+                  ) : 'Create Dispatch'}
                 </button>
               </div>
             </div>
@@ -434,53 +446,30 @@ const WarehouseDispatches = () => {
           <div className="modal-dialog modal-lg modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header border-bottom-0 pb-0">
-                <h5 className="modal-title fw-bold">Dispatch Details: {currentDispatch.id}</h5>
+                <h5 className="modal-title fw-bold">Dispatch Details: #{currentDispatch.id}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
               </div>
               <div className="modal-body py-4">
                 <div className="row mb-4">
                   <div className="col-md-6">
-                    <p><strong>To Facility:</strong> {currentDispatch.facility}</p>
-                    <p><strong>Dispatched By:</strong> {currentDispatch.dispatchedBy}</p>
-                    <p><strong>Dispatch Date:</strong> {currentDispatch.date}</p>
-                    <p><strong>Batch Numbers:</strong> {currentDispatch.batchNumbers}</p>
+                    <p><strong>Dispatch ID:</strong> #{currentDispatch.id}</p>
+                    <p><strong>Tracking Number:</strong> {currentDispatch.tracking_number}</p>
+                    <p><strong>Facility ID:</strong> {currentDispatch.facility_id}</p>
+                    <p><strong>User ID:</strong> {currentDispatch.user_id}</p>
                   </div>
                   <div className="col-md-6">
-                    <p><strong>Tracking Number:</strong> {currentDispatch.trackingNumber}</p>
-                    <p><strong>Estimated Delivery:</strong> {currentDispatch.estimatedDelivery}</p>
+                    <p><strong>Requisition ID:</strong> {currentDispatch.requisition_id}</p>
                     <p><strong>Status:</strong> <StatusBadge status={currentDispatch.status} /></p>
-                  </div>
-                </div>
-                
-                <div className="mb-4">
-                  <h6 className="mb-3">Items</h6>
-                  <div className="table-responsive">
-                    <table className="table table-bordered">
-                      <thead>
-                        <tr>
-                          <th>Item Name</th>
-                          <th>Quantity</th>
-                          <th>Unit</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {currentDispatch.items.map((item, index) => (
-                          <tr key={index}>
-                            <td>{item.name}</td>
-                            <td>{item.quantity}</td>
-                            <td>{item.unit}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <p><strong>Created At:</strong> {currentDispatch.created_at}</p>
+                    <p><strong>Updated At:</strong> {currentDispatch.updated_at}</p>
                   </div>
                 </div>
                 
                 <div className="mb-3">
-                  <h6 className="mb-2">Notes:</h6>
+                  <h6 className="mb-2">Remarks:</h6>
                   <div className="card bg-light">
                     <div className="card-body">
-                      {currentDispatch.notes}
+                      {currentDispatch.remarks || 'No remarks provided'}
                     </div>
                   </div>
                 </div>
@@ -507,17 +496,31 @@ const WarehouseDispatches = () => {
                 <button type="button" className="btn-close" onClick={() => setShowMarkDeliveredModal(false)}></button>
               </div>
               <div className="modal-body py-4">
-                <p>Are you sure you want to mark dispatch <strong>{currentDispatch.id}</strong> to <strong>{currentDispatch.facility}</strong> as delivered?</p>
+                <p>Are you sure you want to mark dispatch <strong>#{currentDispatch.id}</strong> with tracking number <strong>{currentDispatch.tracking_number}</strong> as delivered?</p>
                 <div className="alert alert-info">
-                  This action will update the status from "In Transit" to "Delivered".
+                  This action will update the status from "in_transit" to "delivered".
                 </div>
               </div>
               <div className="modal-footer border-top-0 pt-0">
                 <button type="button" className="btn btn-secondary px-4" onClick={() => setShowMarkDeliveredModal(false)}>
                   Cancel
                 </button>
-                <button type="button" className="btn btn-success px-4" onClick={handleMarkDelivered}>
-                  <FaCheck className="me-2" /> Mark as Delivered
+                <button 
+                  type="button" 
+                  className="btn btn-success px-4" 
+                  onClick={handleMarkDelivered}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <FaCheck className="me-2" /> Mark as Delivered
+                    </>
+                  )}
                 </button>
               </div>
             </div>

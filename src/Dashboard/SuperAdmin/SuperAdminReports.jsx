@@ -1,25 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Bar } from 'react-chartjs-2';
 import { 
   FaDownload, FaChartLine, FaTable, FaSearch, FaBuilding,
   FaFilePdf, FaFileExcel
 } from 'react-icons/fa';
+import BaseUrl from '../../Api/BaseUrl';
+import axiosInstance from '../../Api/axiosInstance';
 
 const SuperAdminReports = () => {
   // State for form inputs
-  const [reportType, setReportType] = useState('Stock Ledger');
+  const [reportType, setReportType] = useState('Requisition Summary');
   const [facility, setFacility] = useState('All Facilities');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   
   // State for modals
-  const [showStockLedgerModal, setShowStockLedgerModal] = useState(false);
   const [showRequisitionModal, setShowRequisitionModal] = useState(false);
-  const [showFacilityUsageModal, setShowFacilityUsageModal] = useState(false);
   const [showGeneratedModal, setShowGeneratedModal] = useState(false);
   
   // State for generated report data
   const [generatedReport, setGeneratedReport] = useState(null);
+  
+  // State for API data
+  const [reportData, setReportData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   // Chart options (shared)
   const chartOptions = {
@@ -57,19 +64,6 @@ const SuperAdminReports = () => {
   };
   
   // Mock data for different report types
-  const stockLedgerData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    datasets: [
-      {
-        label: 'Stock Value',
-        data: [120, 150, 180, 90, 160, 200],
-        backgroundColor: '#4e73df',
-        borderRadius: 8,
-        barThickness: 30
-      }
-    ]
-  };
-  
   const requisitionData = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
     datasets: [
@@ -83,91 +77,255 @@ const SuperAdminReports = () => {
     ]
   };
   
-  const facilityUsageData = {
-    labels: ['Main Warehouse', 'Kumasi Hospital', 'Accra Hospital', 'Takoradi Clinic', 'Cape Coast Hospital'],
-    datasets: [
-      {
-        label: 'Usage %',
-        data: [85, 65, 75, 45, 60],
-        backgroundColor: '#1cc88a',
-        borderRadius: 8,
-        barThickness: 30
+  // === FETCH REPORT DATA ===
+  const fetchReportData = async (filters = {}) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (filters.facility_id && filters.facility_id !== 'All Facilities') {
+        params.append('facility_id', filters.facility_id);
       }
-    ]
+      if (filters.status) {
+        params.append('status', filters.status);
+      }
+      if (filters.date_from) {
+        params.append('date_from', filters.date_from);
+      }
+      if (filters.date_to) {
+        params.append('date_to', filters.date_to);
+      }
+      
+      const response = await axiosInstance.get(`${BaseUrl}/reports/requisitions?${params.toString()}`);
+      if (response.data.success) {
+        setReportData(response.data.data);
+      } else {
+        setError('Failed to fetch report data');
+      }
+    } catch (err) {
+      setError('Error fetching report data: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
   
-  // Mock report data for table views
-  const stockLedgerTableData = [
-    { id: 'DRG-001', name: 'Paracetamol 500mg', category: 'Pharmaceutical', opening: 100, received: 50, issued: 30, closing: 120, value: 7500 },
-    { id: 'DRG-002', name: 'Amoxicillin 250mg', category: 'Pharmaceutical', opening: 80, received: 20, issued: 15, closing: 85, value: 4000 },
-    { id: 'SUP-001', name: 'Surgical Gloves', category: 'Medical Supply', opening: 150, received: 100, issued: 50, closing: 200, value: 6000 },
-    { id: 'CON-001', name: 'Syringe 5ml', category: 'Consumable', opening: 400, received: 200, issued: 100, closing: 500, value: 2500 }
-  ];
-
-  const requisitionTableData = [
-    { id: 'REQ-101', facility: 'Kumasi Hospital', items: 12, status: 'Approved', date: '2023-06-15', value: 3200 },
-    { id: 'REQ-102', facility: 'Accra Hospital', items: 8, status: 'Pending', date: '2023-06-18', value: 1800 },
-    { id: 'REQ-103', facility: 'Takoradi Clinic', items: 15, status: 'Approved', date: '2023-06-20', value: 4500 },
-    { id: 'REQ-104', facility: 'Cape Coast Hospital', items: 10, status: 'Rejected', date: '2023-06-22', value: 2200 }
-  ];
-
-  const facilityUsageTableData = [
-    { facility: 'Main Warehouse', usage: '85%', items: 1250, value: 12500 },
-    { facility: 'Kumasi Hospital', usage: '65%', items: 850, value: 8500 },
-    { facility: 'Accra Hospital', usage: '75%', items: 950, value: 9500 },
-    { facility: 'Takoradi Clinic', usage: '45%', items: 420, value: 4200 },
-    { facility: 'Cape Coast Hospital', usage: '60%', items: 680, value: 6800 }
-  ];
+  // === EXPORT TO PDF ===
+  const exportToPDF = (reportData, reportType) => {
+    // Create a new window for printing
+    const printWindow = window.open('', '_blank');
+    
+    // Create HTML content for the report
+    let htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${reportType} Report</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+          body { font-family: Arial, sans-serif; }
+          .header { text-align: center; margin-bottom: 20px; }
+          .summary-card { border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin-bottom: 20px; }
+          .table { width: 100%; border-collapse: collapse; }
+          .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          .table th { background-color: #f2f2f2; }
+          .badge { display: inline-block; padding: 3px 7px; font-size: 12px; font-weight: bold; border-radius: 4px; }
+          .badge-success { background-color: #28a745; color: white; }
+          .badge-warning { background-color: #ffc107; color: black; }
+          .badge-danger { background-color: #dc3545; color: white; }
+          @media print {
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container-fluid">
+          <div class="header">
+            <h2>${reportType} Report</h2>
+            <p>Generated on: ${new Date().toLocaleDateString()}</p>
+          </div>
+    `;
+    
+    // Add summary cards if available
+    if (reportData?.summary && reportType === 'Requisition Summary') {
+      htmlContent += `
+        <div class="row mb-4">
+          <div class="col-md-3">
+            <div class="summary-card">
+              <h5 class="text-primary">${reportData.summary.total_requisitions}</h5>
+              <p class="mb-0">Total Requisitions</p>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="summary-card">
+              <h5 class="text-warning">${reportData.summary.pending_count}</h5>
+              <p class="mb-0">Pending</p>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="summary-card">
+              <h5 class="text-success">${reportData.summary.approved_count}</h5>
+              <p class="mb-0">Approved</p>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="summary-card">
+              <h5 class="text-info">${reportData.summary.avg_processing_days}</h5>
+              <p class="mb-0">Avg. Processing Days</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Add chart image placeholder
+    htmlContent += `
+      <div class="mb-4 text-center">
+        <h4>Chart Visualization</h4>
+        <div class="alert alert-info">
+          Chart visualization would appear here in the actual application
+        </div>
+      </div>
+    `;
+    
+    // Add table based on report type
+    if (reportType === 'Requisition Summary' && reportData?.requisitions) {
+      htmlContent += `
+        <h4>Requisition Details</h4>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Req ID</th>
+              <th>Facility</th>
+              <th>User</th>
+              <th>Items</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Processing Days</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+      
+      reportData.requisitions.forEach(req => {
+        const statusClass = req.status === 'approved' ? 'badge-success' : 
+                             req.status === 'pending' ? 'badge-warning' : 'badge-danger';
+        
+        htmlContent += `
+          <tr>
+            <td>#${req.id}</td>
+            <td>${req.facility_name}</td>
+            <td>${req.user_name}</td>
+            <td>${req.item_count}</td>
+            <td><span class="badge ${statusClass}">${req.status.charAt(0).toUpperCase() + req.status.slice(1)}</span></td>
+            <td>${new Date(req.created_at).toLocaleDateString()}</td>
+            <td>${req.processing_days}</td>
+          </tr>
+        `;
+      });
+      
+      htmlContent += `
+          </tbody>
+        </table>
+      `;
+    }
+    
+    // Add summary section
+    htmlContent += `
+      <div class="mt-4 p-3 bg-light rounded">
+        <h5>Report Summary</h5>
+    `;
+    
+    if (reportType === 'Requisition Summary' && reportData?.summary) {
+      htmlContent += `
+        <p>Total Requisitions: <span class="fw-bold">${reportData.summary.total_requisitions}</span></p>
+        <p>Pending: <span class="fw-bold">${reportData.summary.pending_count}</span>, Approved: <span class="fw-bold">${reportData.summary.approved_count}</span>, Delivered: <span class="fw-bold">${reportData.summary.delivered_count}</span>, Rejected: <span class="fw-bold">${reportData.summary.rejected_count}</span></p>
+        <p>Average Processing Days: <span class="fw-bold">${reportData.summary.avg_processing_days}</span></p>
+      `;
+    }
+    
+    htmlContent += `
+      </div>
+      <div class="no-print mt-4">
+        <button class="btn btn-primary" onclick="window.print()">Print Report</button>
+        <button class="btn btn-secondary" onclick="window.close()">Close</button>
+      </div>
+    </div>
+    </body>
+    </html>
+    `;
+    
+    // Write the HTML content to the new window
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    
+    // Automatically print the report
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  };
   
   // Modal handlers
-  const openStockLedgerModal = () => setShowStockLedgerModal(true);
-  const openRequisitionModal = () => setShowRequisitionModal(true);
-  const openFacilityUsageModal = () => setShowFacilityUsageModal(true);
+  const openRequisitionModal = async () => {
+    await fetchReportData();
+    setShowRequisitionModal(true);
+  };
   
-  const handleGenerateReport = (e) => {
+  const handleGenerateReport = async (e) => {
     e.preventDefault();
-    let reportData;
     
-    switch(reportType) {
-      case 'Stock Ledger':
-        reportData = stockLedgerTableData;
-        break;
-      case 'Requisition Summary':
-        reportData = requisitionTableData;
-        break;
-      case 'Facility-wise Usage':
-        reportData = facilityUsageTableData;
-        break;
-      default:
-        reportData = stockLedgerTableData;
+    // Build filters based on form inputs
+    const filters = {};
+    if (facility !== 'All Facilities') {
+      filters.facility_id = facility;
     }
+    if (dateFrom) {
+      filters.date_from = dateFrom;
+    }
+    if (dateTo) {
+      filters.date_to = dateTo;
+    }
+    
+    // Fetch data with filters
+    await fetchReportData(filters);
     
     setGeneratedReport({
       type: reportType,
       facility: facility,
       dateFrom: dateFrom,
       dateTo: dateTo,
-      data: reportData
+      data: reportData?.requisitions || [],
+      summary: reportData?.summary || null
     });
     setShowGeneratedModal(true);
+  };
+  
+  // Filter data based on search term
+  const filterData = (data) => {
+    if (!searchTerm.trim()) return data;
+    
+    const term = searchTerm.toLowerCase();
+    return data.filter(req => 
+      req.id.toString().includes(term) ||
+      req.facility_name.toLowerCase().includes(term) ||
+      req.status.toLowerCase().includes(term) ||
+      req.user_name.toLowerCase().includes(term)
+    );
   };
   
   // Get chart data based on report type
   const getChartData = (type) => {
     switch(type) {
-      case 'Stock Ledger': return stockLedgerData;
       case 'Requisition Summary': return requisitionData;
-      case 'Facility-wise Usage': return facilityUsageData;
-      default: return stockLedgerData;
+      default: return requisitionData;
     }
   };
 
   // Get chart title based on report type
   const getChartTitle = (type) => {
     switch(type) {
-      case 'Stock Ledger': return 'Monthly Stock Value';
       case 'Requisition Summary': return 'Monthly Requisition Count';
-      case 'Facility-wise Usage': return 'Facility Usage Percentage';
       default: return 'Report Data';
     }
   };
@@ -196,9 +354,7 @@ const SuperAdminReports = () => {
                     value={reportType}
                     onChange={(e) => setReportType(e.target.value)}
                   >
-                    <option>Stock Ledger</option>
                     <option>Requisition Summary</option>
-                    <option>Facility-wise Usage</option>
                   </select>
                 </div>
                 <div className="mb-3">
@@ -227,11 +383,11 @@ const SuperAdminReports = () => {
                     onChange={(e) => setFacility(e.target.value)}
                   >
                     <option>All Facilities</option>
-                    <option>Main Warehouse</option>
-                    <option>Kumasi Branch Hospital</option>
-                    <option>Accra Central Hospital</option>
-                    <option>Takoradi Clinic</option>
-                    <option>Cape Coast Hospital</option>
+                    <option value="1">Main Hospital</option>
+                    <option value="2">Kumasi Branch Hospital</option>
+                    <option value="3">Accra Central Hospital</option>
+                    <option value="4">Takoradi Clinic</option>
+                    <option value="5">Cape Coast Hospital</option>
                   </select>
                 </div>
                 <button type="submit" className="btn btn-primary w-100 d-flex align-items-center justify-content-center">
@@ -275,17 +431,6 @@ const SuperAdminReports = () => {
             <div className="col-md-4 col-sm-6 mb-3">
               <div className="card border-0 shadow-sm h-100">
                 <div className="card-body text-center p-3">
-                  <div className="bg-primary bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
-                    <FaTable className="text-primary fa-2x" />
-                  </div>
-                  <h6 className="fw-bold">Stock Ledger</h6>
-                  <button className="btn btn-sm btn-outline-primary mt-2" onClick={openStockLedgerModal}>Generate</button>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-4 col-sm-6 mb-3">
-              <div className="card border-0 shadow-sm h-100">
-                <div className="card-body text-center p-3">
                   <div className="bg-danger bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                     <FaSearch className="text-danger fa-2x" />
                   </div>
@@ -294,96 +439,9 @@ const SuperAdminReports = () => {
                 </div>
               </div>
             </div>
-            <div className="col-md-4 col-sm-6 mb-3">
-              <div className="card border-0 shadow-sm h-100">
-                <div className="card-body text-center p-3">
-                  <div className="bg-success bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
-                    <FaBuilding className="text-success fa-2x" />
-                  </div>
-                  <h6 className="fw-bold">Facility-wise Usage</h6>
-                  <button className="btn btn-sm btn-outline-primary mt-2" onClick={openFacilityUsageModal}>Generate</button>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
-
-      {/* Stock Ledger Modal */}
-      {showStockLedgerModal && (
-        <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-xl">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Stock Ledger Report</h5>
-                <button type="button" className="btn-close" onClick={() => setShowStockLedgerModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <div className="mb-4">
-                  <Bar 
-                    data={stockLedgerData} 
-                    options={{
-                      ...chartOptions,
-                      plugins: {
-                        ...chartOptions.plugins,
-                        title: {
-                          ...chartOptions.plugins.title,
-                          text: 'Monthly Stock Value'
-                        }
-                      }
-                    }} 
-                  />
-                </div>
-                <div className="table-responsive">
-                  <table className="table table-sm">
-                    <thead>
-                      <tr>
-                        <th>Item ID</th>
-                        <th>Item Name</th>
-                        <th>Category</th>
-                        <th>Opening Stock</th>
-                        <th>Received</th>
-                        <th>Issued</th>
-                        <th>Closing Stock</th>
-                        <th>Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stockLedgerTableData.map((item, index) => (
-                        <tr key={index}>
-                          <td>{item.id}</td>
-                          <td>{item.name}</td>
-                          <td>{item.category}</td>
-                          <td>{item.opening}</td>
-                          <td>{item.received}</td>
-                          <td>{item.issued}</td>
-                          <td>{item.closing}</td>
-                          <td>${item.value}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="d-flex justify-content-between mt-4">
-                  <div>
-                    <h6>Summary</h6>
-                    <p>Total Items: <span className="fw-bold">{stockLedgerTableData.length}</span></p>
-                    <p>Total Stock Value: <span className="fw-bold">${stockLedgerTableData.reduce((sum, item) => sum + item.value, 0)}</span></p>
-                  </div>
-                  <div className="d-flex align-items-end">
-                    <button className="btn btn-primary me-2">
-                      <FaFilePdf className="me-2" /> Export PDF
-                    </button>
-                    <button className="btn btn-success">
-                      <FaFileExcel className="me-2" /> Export Excel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Requisition Summary Modal */}
       {showRequisitionModal && (
@@ -395,139 +453,151 @@ const SuperAdminReports = () => {
                 <button type="button" className="btn-close" onClick={() => setShowRequisitionModal(false)}></button>
               </div>
               <div className="modal-body">
-                <div className="mb-4">
-                  <Bar 
-                    data={requisitionData} 
-                    options={{
-                      ...chartOptions,
-                      plugins: {
-                        ...chartOptions.plugins,
-                        title: {
-                          ...chartOptions.plugins.title,
-                          text: 'Monthly Requisition Count'
-                        }
-                      }
-                    }} 
-                  />
-                </div>
-                <div className="table-responsive">
-                  <table className="table table-sm">
-                    <thead>
-                      <tr>
-                        <th>Req ID</th>
-                        <th>Facility</th>
-                        <th>Items</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                        <th>Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {requisitionTableData.map((item, index) => (
-                        <tr key={index}>
-                          <td>{item.id}</td>
-                          <td>{item.facility}</td>
-                          <td>{item.items}</td>
-                          <td>
-                            <span className={`badge ${
-                              item.status === 'Approved' ? 'bg-success' : 
-                              item.status === 'Pending' ? 'bg-warning' : 'bg-danger'
-                            }`}>
-                              {item.status}
-                            </span>
-                          </td>
-                          <td>{item.date}</td>
-                          <td>${item.value}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="d-flex justify-content-between mt-4">
-                  <div>
-                    <h6>Summary</h6>
-                    <p>Total Requisitions: <span className="fw-bold">{requisitionTableData.length}</span></p>
-                    <p>Total Value: <span className="fw-bold">${requisitionTableData.reduce((sum, item) => sum + item.value, 0)}</span></p>
-                    <p>Approved: <span className="fw-bold">2</span>, Pending: <span className="fw-bold">1</span>, Rejected: <span className="fw-bold">1</span></p>
+                {loading && (
+                  <div className="d-flex justify-content-center my-5">
+                    <div className="spinner-border text-primary" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
                   </div>
-                  <div className="d-flex align-items-end">
-                    <button className="btn btn-primary me-2">
-                      <FaFilePdf className="me-2" /> Export PDF
-                    </button>
-                    <button className="btn btn-success">
-                      <FaFileExcel className="me-2" /> Export Excel
-                    </button>
+                )}
+                
+                {error && (
+                  <div className="alert alert-danger" role="alert">
+                    {error}
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Facility-wise Usage Modal */}
-      {showFacilityUsageModal && (
-        <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-xl">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Facility-wise Usage Report</h5>
-                <button type="button" className="btn-close" onClick={() => setShowFacilityUsageModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <div className="mb-4">
-                  <Bar 
-                    data={facilityUsageData} 
-                    options={{
-                      ...chartOptions,
-                      plugins: {
-                        ...chartOptions.plugins,
-                        title: {
-                          ...chartOptions.plugins.title,
-                          text: 'Facility Usage Percentage'
-                        }
-                      }
-                    }} 
-                  />
-                </div>
-                <div className="table-responsive">
-                  <table className="table table-sm">
-                    <thead>
-                      <tr>
-                        <th>Facility</th>
-                        <th>Usage %</th>
-                        <th>Items Consumed</th>
-                        <th>Value</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {facilityUsageTableData.map((item, index) => (
-                        <tr key={index}>
-                          <td>{item.facility}</td>
-                          <td>{item.usage}</td>
-                          <td>{item.items}</td>
-                          <td>${item.value}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="d-flex justify-content-between mt-4">
-                  <div>
-                    <h6>Summary</h6>
-                    <p>Average Usage: <span className="fw-bold">66%</span></p>
-                    <p>Total Items Consumed: <span className="fw-bold">{facilityUsageTableData.reduce((sum, item) => sum + item.items, 0)}</span></p>
-                    <p>Total Value: <span className="fw-bold">${facilityUsageTableData.reduce((sum, item) => sum + item.value, 0)}</span></p>
-                  </div>
-                  <div className="d-flex align-items-end">
-                    <button className="btn btn-primary me-2">
-                      <FaFilePdf className="me-2" /> Export PDF
-                    </button>
-                    <button className="btn btn-success">
-                      <FaFileExcel className="me-2" /> Export Excel
-                    </button>
-                  </div>
-                </div>
+                )}
+                
+                {!loading && !error && (
+                  <>
+                    <div className="mb-4">
+                      <Bar 
+                        data={requisitionData} 
+                        options={{
+                          ...chartOptions,
+                          plugins: {
+                            ...chartOptions.plugins,
+                            title: {
+                              ...chartOptions.plugins.title,
+                              text: 'Monthly Requisition Count'
+                            }
+                          }
+                        }} 
+                      />
+                    </div>
+                    
+                    {reportData && (
+                      <div className="row mb-4">
+                        <div className="col-md-3">
+                          <div className="card bg-primary bg-opacity-10 border-0">
+                            <div className="card-body text-center">
+                              <h5 className="text-primary">{reportData.summary.total_requisitions}</h5>
+                              <p className="mb-0">Total Requisitions</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-md-3">
+                          <div className="card bg-warning bg-opacity-10 border-0">
+                            <div className="card-body text-center">
+                              <h5 className="text-warning">{reportData.summary.pending_count}</h5>
+                              <p className="mb-0">Pending</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-md-3">
+                          <div className="card bg-success bg-opacity-10 border-0">
+                            <div className="card-body text-center">
+                              <h5 className="text-success">{reportData.summary.approved_count}</h5>
+                              <p className="mb-0">Approved</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-md-3">
+                          <div className="card bg-info bg-opacity-10 border-0">
+                            <div className="card-body text-center">
+                              <h5 className="text-info">{reportData.summary.avg_processing_days}</h5>
+                              <p className="mb-0">Avg. Processing Days</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Search */}
+                    <div className="mb-3">
+                      <div className="input-group">
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Search requisitions..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                        <button className="btn btn-outline-secondary" type="button">
+                          <FaSearch />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="table-responsive">
+                      <table className="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Req ID</th>
+                            <th>Facility</th>
+                            <th>User</th>
+                            <th>Items</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Processing Days</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filterData(reportData?.requisitions || []).map((item, index) => (
+                            <tr key={index}>
+                              <td>#{item.id}</td>
+                              <td>{item.facility_name}</td>
+                              <td>{item.user_name}</td>
+                              <td>{item.item_count}</td>
+                              <td>
+                                <span className={`badge ${
+                                  item.status === 'approved' ? 'bg-success' : 
+                                  item.status === 'pending' ? 'bg-warning' : 'bg-danger'
+                                }`}>
+                                  {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                                </span>
+                              </td>
+                              <td>{new Date(item.created_at).toLocaleDateString()}</td>
+                              <td>{item.processing_days}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    <div className="d-flex justify-content-between mt-4">
+                      <div>
+                        <h6>Summary</h6>
+                        {reportData ? (
+                          <>
+                            <p>Total Requisitions: <span className="fw-bold">{reportData.summary.total_requisitions}</span></p>
+                            <p>Pending: <span className="fw-bold">{reportData.summary.pending_count}</span>, Approved: <span className="fw-bold">{reportData.summary.approved_count}</span>, Delivered: <span className="fw-bold">{reportData.summary.delivered_count}</span>, Rejected: <span className="fw-bold">{reportData.summary.rejected_count}</span></p>
+                            <p>Average Processing Days: <span className="fw-bold">{reportData.summary.avg_processing_days}</span></p>
+                          </>
+                        ) : (
+                          <p>No data available</p>
+                        )}
+                      </div>
+                      <div className="d-flex align-items-end">
+                        <button className="btn btn-primary me-2" onClick={() => exportToPDF(reportData, 'Requisition Summary')}>
+                          <FaFilePdf className="me-2" /> Export PDF
+                        </button>
+                        <button className="btn btn-success">
+                          <FaFileExcel className="me-2" /> Export Excel
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -550,7 +620,7 @@ const SuperAdminReports = () => {
                     <p><strong>Generated On:</strong> {new Date().toLocaleDateString()}</p>
                   </div>
                   <div>
-                    <button className="btn btn-primary me-2">
+                    <button className="btn btn-primary me-2" onClick={() => exportToPDF(reportData, generatedReport.type)}>
                       <FaFilePdf className="me-2" /> Export PDF
                     </button>
                     <button className="btn btn-success">
@@ -575,115 +645,73 @@ const SuperAdminReports = () => {
                   />
                 </div>
                 
+                {/* Search */}
+                <div className="mb-3">
+                  <div className="input-group">
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Search requisitions..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    <button className="btn btn-outline-secondary" type="button">
+                      <FaSearch />
+                    </button>
+                  </div>
+                </div>
+                
                 <div className="table-responsive">
-                  {generatedReport.type === 'Stock Ledger' && (
-                    <table className="table table-sm">
-                      <thead>
-                        <tr>
-                          <th>Item ID</th>
-                          <th>Item Name</th>
-                          <th>Category</th>
-                          <th>Opening Stock</th>
-                          <th>Received</th>
-                          <th>Issued</th>
-                          <th>Closing Stock</th>
-                          <th>Value</th>
+                  <table className="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>Req ID</th>
+                        <th>Facility</th>
+                        <th>User</th>
+                        <th>Items</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Processing Days</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filterData(generatedReport.data).map((item, index) => (
+                        <tr key={index}>
+                          <td>#{item.id}</td>
+                          <td>{item.facility_name}</td>
+                          <td>{item.user_name}</td>
+                          <td>{item.item_count}</td>
+                          <td>
+                            <span className={`badge ${
+                              item.status === 'approved' ? 'bg-success' : 
+                              item.status === 'pending' ? 'bg-warning' : 'bg-danger'
+                            }`}>
+                              {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                            </span>
+                          </td>
+                          <td>{new Date(item.created_at).toLocaleDateString()}</td>
+                          <td>{item.processing_days}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {generatedReport.data.map((item, index) => (
-                          <tr key={index}>
-                            <td>{item.id}</td>
-                            <td>{item.name}</td>
-                            <td>{item.category}</td>
-                            <td>{item.opening}</td>
-                            <td>{item.received}</td>
-                            <td>{item.issued}</td>
-                            <td>{item.closing}</td>
-                            <td>${item.value}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                  
-                  {generatedReport.type === 'Requisition Summary' && (
-                    <table className="table table-sm">
-                      <thead>
-                        <tr>
-                          <th>Req ID</th>
-                          <th>Facility</th>
-                          <th>Items</th>
-                          <th>Status</th>
-                          <th>Date</th>
-                          <th>Value</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {generatedReport.data.map((item, index) => (
-                          <tr key={index}>
-                            <td>{item.id}</td>
-                            <td>{item.facility}</td>
-                            <td>{item.items}</td>
-                            <td>
-                              <span className={`badge ${
-                                item.status === 'Approved' ? 'bg-success' : 
-                                item.status === 'Pending' ? 'bg-warning' : 'bg-danger'
-                              }`}>
-                                {item.status}
-                              </span>
-                            </td>
-                            <td>{item.date}</td>
-                            <td>${item.value}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                  
-                  {generatedReport.type === 'Facility-wise Usage' && (
-                    <table className="table table-sm">
-                      <thead>
-                        <tr>
-                          <th>Facility</th>
-                          <th>Usage %</th>
-                          <th>Items Consumed</th>
-                          <th>Value</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {generatedReport.data.map((item, index) => (
-                          <tr key={index}>
-                            <td>{item.facility}</td>
-                            <td>{item.usage}</td>
-                            <td>{item.items}</td>
-                            <td>${item.value}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
                 
                 <div className="mt-4 p-3 bg-light rounded">
                   <h6>Report Summary</h6>
-                  {generatedReport.type === 'Stock Ledger' && (
-                    <>
-                      <p>Total Items: <span className="fw-bold">{generatedReport.data.length}</span></p>
-                      <p>Total Stock Value: <span className="fw-bold">${generatedReport.data.reduce((sum, item) => sum + item.value, 0)}</span></p>
-                    </>
-                  )}
                   {generatedReport.type === 'Requisition Summary' && (
                     <>
-                      <p>Total Requisitions: <span className="fw-bold">{generatedReport.data.length}</span></p>
-                      <p>Total Value: <span className="fw-bold">${generatedReport.data.reduce((sum, item) => sum + item.value, 0)}</span></p>
-                    </>
-                  )}
-                  {generatedReport.type === 'Facility-wise Usage' && (
-                    <>
-                      <p>Total Facilities: <span className="fw-bold">{generatedReport.data.length}</span></p>
-                      <p>Total Items Consumed: <span className="fw-bold">{generatedReport.data.reduce((sum, item) => sum + item.items, 0)}</span></p>
-                      <p>Total Value: <span className="fw-bold">${generatedReport.data.reduce((sum, item) => sum + item.value, 0)}</span></p>
+                      {generatedReport.summary ? (
+                        <>
+                          <p>Total Requisitions: <span className="fw-bold">{generatedReport.summary.total_requisitions}</span></p>
+                          <p>Pending: <span className="fw-bold">{generatedReport.summary.pending_count}</span>, Approved: <span className="fw-bold">{generatedReport.summary.approved_count}</span>, Delivered: <span className="fw-bold">{generatedReport.summary.delivered_count}</span>, Rejected: <span className="fw-bold">{generatedReport.summary.rejected_count}</span></p>
+                          <p>Average Processing Days: <span className="fw-bold">{generatedReport.summary.avg_processing_days}</span></p>
+                        </>
+                      ) : (
+                        <>
+                          <p>Total Requisitions: <span className="fw-bold">{generatedReport.data.length}</span></p>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -694,7 +722,7 @@ const SuperAdminReports = () => {
       )}
 
       {/* Modal Backdrop */}
-      {(showStockLedgerModal || showRequisitionModal || showFacilityUsageModal || showGeneratedModal) && (
+      {(showRequisitionModal || showGeneratedModal) && (
         <div className="modal-backdrop show"></div>
       )}
     </div>
