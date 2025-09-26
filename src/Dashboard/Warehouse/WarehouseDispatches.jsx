@@ -141,35 +141,30 @@ const WarehouseDispatches = () => {
     }
   };
 
+  // FIXED: Updated handleMarkDelivered function with the correct API endpoint
   const handleMarkDelivered = async () => {
     if (!currentDispatch) return;
     
     setLoading(true);
     try {
-      // Using PUT to the dispatch endpoint with status update
-      const response = await axios.put(`${BaseUrl}/dispatches/${currentDispatch.id}/status`, {
+      // Updated API call to use the correct endpoint format
+      const response = await axios.patch(`${BaseUrl}/dispatches/${currentDispatch.id}/status`, {
         status: 'delivered',
         remarks: 'Delivered successfully',
         tracking_number: currentDispatch.tracking_number
       });
       
       if (response.data.success) {
-        // Update the dispatch in the local state
+        // Update the dispatch in the local state with the full response data
         const updatedDispatches = dispatches.map(dispatch => {
           if (dispatch.id === currentDispatch.id) {
-            return {
-              ...dispatch,
-              status: 'delivered'
-            };
+            return response.data.data; // Use the complete updated dispatch object from the response
           }
           return dispatch;
         });
         
         setDispatches(updatedDispatches);
-        setCurrentDispatch({
-          ...currentDispatch,
-          status: 'delivered'
-        });
+        setCurrentDispatch(response.data.data); // Update current dispatch with response data
         
         alert(`Dispatch ${currentDispatch.id} has been marked as delivered!`);
         setShowMarkDeliveredModal(false);
@@ -455,7 +450,7 @@ const WarehouseDispatches = () => {
                     <p><strong>Dispatch ID:</strong> #{currentDispatch.id}</p>
                     <p><strong>Tracking Number:</strong> {currentDispatch.tracking_number}</p>
                     <p><strong>Facility ID:</strong> {currentDispatch.facility_id}</p>
-                    <p><strong>User ID:</strong> {currentDispatch.user_id}</p>
+                    <p><strong>User ID:</strong> {currentDispatch.dispatched_by || currentDispatch.user_id}</p>
                   </div>
                   <div className="col-md-6">
                     <p><strong>Requisition ID:</strong> {currentDispatch.requisition_id}</p>
@@ -473,6 +468,28 @@ const WarehouseDispatches = () => {
                     </div>
                   </div>
                 </div>
+                
+                {currentDispatch.facility_name && (
+                  <div className="mb-3">
+                    <h6 className="mb-2">Facility Name:</h6>
+                    <div className="card bg-light">
+                      <div className="card-body">
+                        {currentDispatch.facility_name}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {currentDispatch.dispatched_by_name && (
+                  <div className="mb-3">
+                    <h6 className="mb-2">Dispatched By:</h6>
+                    <div className="card bg-light">
+                      <div className="card-body">
+                        {currentDispatch.dispatched_by_name}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="modal-footer border-top-0 pt-0">
                 <button type="button" className="btn btn-secondary px-4" onClick={() => setShowViewModal(false)}>

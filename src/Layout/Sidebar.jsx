@@ -140,11 +140,11 @@ useEffect(() => {
         icon: faArchive,
         path: "/warehouse/assets",
       },
-      {
-        name: "Settings",
-        icon: faGear,
-        path: "/warehouse/settings",
-      },
+      // {
+      //   name: "Settings",
+      //   icon: faGear,
+      //   path: "/warehouse/settings",
+      // },
     ],
 
     "facility_admin": [

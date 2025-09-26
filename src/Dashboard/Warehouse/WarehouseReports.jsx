@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bar, Line } from 'react-chartjs-2';
 import { 
   FaDownload, FaChartLine, FaWarehouse, FaExchangeAlt, FaBuilding, FaFilePdf, FaFileExcel, FaEye, FaTimes
 } from 'react-icons/fa';
+import axios from 'axios'; // Import Axios
+import BaseUrl from '../../Api/BaseUrl';
 
 const WarehouseReports = () => {
   // State
@@ -13,14 +15,131 @@ const WarehouseReports = () => {
   const [showFacilityDemandModal, setShowFacilityDemandModal] = useState(false);
   const [showItemMovementModal, setShowItemMovementModal] = useState(false);
   const [timeRange, setTimeRange] = useState('monthly');
+  const [loading, setLoading] = useState(false);
+  const [reportData, setReportData] = useState(null);
+  const [facilities, setFacilities] = useState([]); // State for facilities list
+  const [categories, setCategories] = useState([]); // State for categories list
+  const [category, setCategory] = useState('All Categories'); // State for selected category
   
-  // Facility Demand Chart Data
+  // Fetch all facilities
+  const fetchFacilities = async () => {
+    try {
+      const response = await axios.get(`${BaseUrl}/facilities`);
+      if (response.data.success) {
+        setFacilities(response.data.data.facilities);
+      } else {
+        console.error('Failed to fetch facilities');
+        // Fallback to default facilities if API fails
+        setFacilities([
+          { id: '1', name: 'Facility 1' },
+          { id: '2', name: 'Facility 2' },
+          { id: '3', name: 'Facility 3' }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching facilities:', error);
+      // Fallback to default facilities if API fails
+      setFacilities([
+        { id: '1', name: 'Facility 1' },
+        { id: '2', name: 'Facility 2' },
+        { id: '3', name: 'Facility 3' }
+      ]);
+    }
+  };
+  
+  // Fetch all categories
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get(`${BaseUrl}/department`);
+      if (response.data.success) {
+        setCategories(response.data.data);
+      } else {
+        console.error('Failed to fetch categories');
+        // Fallback to default categories if API fails
+        setCategories([
+          { id: 'medicines', name: 'Medicines' },
+          { id: 'equipment', name: 'Medical Equipment' },
+          { id: 'supplies', name: 'Medical Supplies' },
+          { id: 'ppe', name: 'PPE' }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      // Fallback to default categories if API fails
+      setCategories([
+        { id: 'medicines', name: 'Medicines' },
+        { id: 'equipment', name: 'Medical Equipment' },
+        { id: 'supplies', name: 'Medical Supplies' },
+        { id: 'ppe', name: 'PPE' }
+      ]);
+    }
+  };
+  
+  // Fetch report data
+  const fetchReportData = async () => {
+    setLoading(true);
+    try {
+      // Get facility ID based on selected facility name
+      let facilityId = '';
+      if (facility !== 'All Facilities') {
+        const selectedFacility = facilities.find(f => f.name === facility);
+        facilityId = selectedFacility ? selectedFacility.id : '';
+      }
+      
+      // Get category ID based on selected category name
+      let categoryId = '';
+      if (category !== 'All Categories') {
+        const selectedCategory = categories.find(c => c.name === category);
+        categoryId = selectedCategory ? selectedCategory.id : '';
+      }
+      
+      // Build query parameters
+      const params = {
+        facility_id: facilityId,
+        category: categoryId || 'Medicines', // Use selected category or default
+        date_from: dateFrom || '2025-09-26', // Default date if not selected
+        date_to: dateTo || '2025-09-26' // Default date if not selected
+      };
+      
+      // Make API call
+      const response = await axios.get(`${BaseUrl}/reports/stock`, { params });
+      
+      if (response.data.success) {
+        setReportData(response.data.data);
+      } else {
+        console.error('Failed to fetch report data');
+      }
+    } catch (error) {
+      console.error('Error fetching report data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Fetch facilities and categories when component mounts
+  useEffect(() => {
+    fetchFacilities();
+    fetchCategories();
+  }, []);
+  
+  // Fetch report data when facilities, categories are loaded or filters change
+  useEffect(() => {
+    if (facilities.length > 0 && categories.length > 0) {
+      fetchReportData();
+    }
+  }, [facility, dateFrom, dateTo, timeRange, facilities, categories, category]);
+  
+  // Facility Demand Chart Data - now using report data if available
   const facilityDemandData = {
-    labels: ['Main Warehouse', 'North Branch', 'South Branch', 'East Branch', 'West Branch'],
+    labels: reportData && reportData.items && reportData.items.length > 0 
+      ? reportData.items.map(item => item.facility_name || 'Unknown')
+      : Array.isArray(facilities) && facilities.length > 0 ? facilities.map(f => f.name) : [],
     datasets: [
       {
         label: 'Demand',
-        data: [120, 90, 150, 100, 130],
+        data: reportData && reportData.items && reportData.items.length > 0 
+          ? reportData.items.map(item => item.quantity || 0)
+          : Array.isArray(facilities) && facilities.length > 0 ? facilities.map(() => Math.floor(Math.random() * 150) + 50) : [], // Random data for demo
         backgroundColor: '#3498db',
         borderRadius: 6,
         barThickness: 40
@@ -59,7 +178,7 @@ const WarehouseReports = () => {
     }
   };
 
-  // Item Movement Chart Data
+  // Item Movement Chart Data - you might need to adjust this based on your actual API response structure
   const itemMovementData = {
     labels: timeRange === 'monthly' 
       ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -119,16 +238,24 @@ const WarehouseReports = () => {
     }
   };
 
-  // Mock data for facility demand details
-  const facilityDemandDetails = [
-    { id: 1, facility: 'Main Warehouse', demand: 120, topItems: 'Paracetamol, Gloves, Masks', percentage: 22 },
-    { id: 2, facility: 'North Branch', demand: 90, topItems: 'Ibuprofen, Bandages', percentage: 16 },
-    { id: 3, facility: 'South Branch', demand: 150, topItems: 'Syringes, Antiseptic', percentage: 27 },
-    { id: 4, facility: 'East Branch', demand: 100, topItems: 'Thermometers, Gauze', percentage: 18 },
-    { id: 5, facility: 'West Branch', demand: 130, topItems: 'Vitamins, Creams', percentage: 17 }
-  ];
+  // Mock data for facility demand details - update with real data when available
+  const facilityDemandDetails = reportData && reportData.items && reportData.items.length > 0
+    ? reportData.items.map((item, index) => ({
+        id: index + 1,
+        facility: item.facility_name || 'Unknown',
+        demand: item.quantity || 0,
+        topItems: item.top_items || 'N/A',
+        percentage: Math.round((item.quantity || 0) / (reportData.summary.total_quantity || 1) * 100)
+      }))
+    : Array.isArray(facilities) && facilities.length > 0 ? facilities.map((facility, index) => ({
+        id: index + 1,
+        facility: facility.name,
+        demand: Math.floor(Math.random() * 150) + 50,
+        topItems: 'Sample Item 1, Sample Item 2',
+        percentage: Math.floor(Math.random() * 30) + 10
+      })) : [];
 
-  // Mock data for item movement details
+  // Mock data for item movement details - you might need to adjust this based on your API
   const itemMovementDetails = timeRange === 'monthly' 
     ? [
         { id: 1, period: 'Jan', stockIn: 120, stockOut: 80, netMovement: 40 },
@@ -156,7 +283,13 @@ const WarehouseReports = () => {
     setExportFormat(format);
     alert(`Exporting ${chartType} as ${format.toUpperCase()} with filters: 
            Facility: ${facility}, 
+           Category: ${category},
            Date Range: ${dateFrom} to ${dateTo}`);
+  };
+
+  // Handle apply filters
+  const handleApplyFilters = () => {
+    fetchReportData();
   };
 
   // Open chart modal
@@ -207,7 +340,7 @@ const WarehouseReports = () => {
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">
           <div className="row align-items-end">
-            <div className="col-md-4 mb-3">
+            <div className="col-md-3 mb-3">
               <label className="form-label fw-bold">Facility</label>
               <select 
                 className="form-select"
@@ -215,14 +348,25 @@ const WarehouseReports = () => {
                 onChange={(e) => setFacility(e.target.value)}
               >
                 <option>All Facilities</option>
-                <option>Main Warehouse</option>
-                <option>North Branch</option>
-                <option>South Branch</option>
-                <option>East Branch</option>
-                <option>West Branch</option>
+                {Array.isArray(facilities) && facilities.map(facility => (
+                  <option key={facility.id} value={facility.name}>{facility.name}</option>
+                ))}
               </select>
             </div>
-            <div className="col-md-4 mb-3">
+            <div className="col-md-3 mb-3">
+              <label className="form-label fw-bold">Category</label>
+              <select 
+                className="form-select"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <option>All Categories</option>
+                {Array.isArray(categories) && categories.map(category => (
+                  <option key={category.id} value={category.department_name}>{category.department_name} </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-md-3 mb-3">
               <label className="form-label fw-bold">Time Range</label>
               <select 
                 className="form-select"
@@ -233,12 +377,17 @@ const WarehouseReports = () => {
                 <option value="weekly">Weekly</option>
               </select>
             </div>
-            <div className="col-md-4 mb-3">
-              <button className="btn btn-primary w-100">Apply Filters</button>
+            <div className="col-md-3 mb-3">
+              <button className="btn btn-primary w-100" onClick={handleApplyFilters} disabled={loading}>
+                {loading ? 'Loading...' : 'Apply Filters'}
+              </button>
             </div>
           </div>
         </div>
       </div>
+      
+      {/* Summary Cards */}
+   
       
       {/* Charts */}
       <div className="row">
@@ -267,7 +416,15 @@ const WarehouseReports = () => {
               </div>
             </div>
             <div className="card-body" style={{ height: '320px' }}>
-              <Bar data={facilityDemandData} options={facilityDemandOptions} />
+              {loading ? (
+                <div className="d-flex justify-content-center align-items-center h-100">
+                  <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : (
+                <Bar data={facilityDemandData} options={facilityDemandOptions} />
+              )}
             </div>
           </div>
         </div>
@@ -297,7 +454,15 @@ const WarehouseReports = () => {
               </div>
             </div>
             <div className="card-body" style={{ height: '320px' }}>
-              <Line data={itemMovementData} options={itemMovementOptions} />
+              {loading ? (
+                <div className="d-flex justify-content-center align-items-center h-100">
+                  <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : (
+                <Line data={itemMovementData} options={itemMovementOptions} />
+              )}
             </div>
           </div>
         </div>
@@ -318,6 +483,7 @@ const WarehouseReports = () => {
                 <div className="row mb-4">
                   <div className="col-md-6">
                     <p><strong>Facility:</strong> {facility}</p>
+                    <p><strong>Category:</strong> {category}</p>
                     <p><strong>Date Range:</strong> {dateFrom || 'Not specified'} to {dateTo || 'Not specified'}</p>
                   </div>
                   <div className="col-md-6">
@@ -405,6 +571,7 @@ const WarehouseReports = () => {
                 <div className="row mb-4">
                   <div className="col-md-6">
                     <p><strong>Facility:</strong> {facility}</p>
+                    <p><strong>Category:</strong> {category}</p>
                     <p><strong>Date Range:</strong> {dateFrom || 'Not specified'} to {dateTo || 'Not specified'}</p>
                     <p><strong>Time Range:</strong> {timeRange === 'monthly' ? 'Monthly' : 'Weekly'}</p>
                   </div>
