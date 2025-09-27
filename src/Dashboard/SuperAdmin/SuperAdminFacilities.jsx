@@ -5,6 +5,7 @@ import {
 } from 'react-icons/fa';
 import axios from 'axios';
 import BaseUrl from '../../Api/BaseUrl';
+import axiosInstance from '../../Api/axiosInstance';
 
 const SuperAdminFacilities = () => {
   // Base URL for API
@@ -63,7 +64,7 @@ const SuperAdminFacilities = () => {
   const fetchFacilities = async (page = 1, limit = 10, status = 'active') => {
     try {
       setLoading(true);
-      const response = await axios.get(`${BaseUrl}/facilities?page=${page}&limit=${limit}&status=${status}`);
+      const response = await axiosInstance.get(`${BaseUrl}/facilities?page=${page}&limit=${limit}&status=${status}`);
       
       if (response.data.success) {
         setFacilities(response.data.data.facilities);
@@ -132,7 +133,7 @@ const SuperAdminFacilities = () => {
   const handleCreateFacility = async () => {
     try {
       setLoading(true);
-      const response = await axios.post(`${BaseUrl}/facilities`, createFacility);
+      const response = await axiosInstance.post(`${BaseUrl}/facilities`, createFacility);
       
       if (response.data.success) {
         setShowCreateModal(false);
@@ -157,7 +158,7 @@ const SuperAdminFacilities = () => {
     
     try {
       setDeleteLoading(true);
-      const response = await axios.delete(`${BaseUrl}/facilities/${currentFacility.id}`);
+      const response = await axiosInstance.delete(`${BaseUrl}/facilities/${currentFacility.id}`);
       
       if (response.data.success) {
         setShowDeleteModal(false);
