@@ -32,7 +32,7 @@ const FacilityUserInventory = () => {
           setLoading(false);
         }
       } catch (e) {
-        setError('Error parsing user data from localStorage');
+        setError('Error parsing user data from localStorage', e);
         setLoading(false);
       }
     } else {
