@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaPlus, FaSearch, FaEye, FaFilePdf } from 'react-icons/fa';
 import axios from 'axios';
 import BaseUrl from '../../Api/BaseUrl';
+import axiosInstance from '../../Api/axiosInstance';
 
 const WarehouseRequisitions = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,6 +20,7 @@ const WarehouseRequisitions = () => {
   const [partialRemarks, setPartialRemarks] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [userId, setUserId] = useState(null);
 
   const [requisitions, setRequisitions] = useState([]);
   const [pagination, setPagination] = useState({
@@ -103,6 +105,8 @@ const WarehouseRequisitions = () => {
   const openApproveModal = (req, item) => {
     setCurrentRequisition(req);
     setCurrentItem(item);
+    // Fixed: Use the user_id from the requisition instead of item
+    setUserId(req.user_id || 1); // Default to 1 if user_id is not available
     setApproveQty(item.quantity);
     setRemarks('');
     setShowApproveModal(true);
@@ -111,6 +115,8 @@ const WarehouseRequisitions = () => {
   const openPartialApproveModal = (req, item) => {
     setCurrentRequisition(req);
     setCurrentItem(item);
+    // Fixed: Use the user_id from the requisition instead of item
+    setUserId(req.user_id || 1); // Default to 1 if user_id is not available
     setPartialApproveQty(item.quantity);
     setPartialRemarks('');
     setShowPartialApproveModal(true);
@@ -127,6 +133,7 @@ const WarehouseRequisitions = () => {
     
     setLoading(true);
     try {
+      // Fixed: Ensure userId is properly included in the payload
       const payload = {
         items: [
           {
@@ -134,10 +141,12 @@ const WarehouseRequisitions = () => {
             approved_quantity: parseInt(approveQty)
           }
         ],
-        remarks: remarks || 'Approved without remarks'
+        remarks: remarks || 'Approved without remarks',
+        userId: userId // Ensure userId is included
       };
       
-      const response = await axios.patch(`${BaseUrl}/requisitions/${currentRequisition.id}/approve`, payload);
+      // Fixed: Use the correct endpoint and axiosInstance
+      const response = await axiosInstance.patch(`/requisitions/${currentRequisition.id}/approve`, payload);
       
       if (response.data.success) {
         // Update the local state
@@ -155,10 +164,13 @@ const WarehouseRequisitions = () => {
         
         setShowApproveModal(false);
       } else {
-        setError('Failed to approve requisition');
+        setError('Failed to approve requisition: ' + (response.data.message || 'Unknown error'));
       }
     } catch (err) {
-      setError('Error approving requisition: ' + err.message);
+      // Fixed: Better error handling
+      const errorMessage = err.response?.data?.message || err.message || 'Error approving requisition';
+      setError('Error approving requisition: ' + errorMessage);
+      console.error('Approval error:', err);
     } finally {
       setLoading(false);
     }
@@ -172,6 +184,7 @@ const WarehouseRequisitions = () => {
     
     setLoading(true);
     try {
+      // Fixed: Ensure userId is properly included in the payload
       const payload = {
         items: [
           {
@@ -179,10 +192,12 @@ const WarehouseRequisitions = () => {
             approved_quantity: parseInt(partialApproveQty)
           }
         ],
-        remarks: partialRemarks || 'Partially approved without remarks'
+        remarks: partialRemarks || 'Partially approved without remarks',
+        userId: userId // Ensure userId is included
       };
       
-      const response = await axios.patch(`${BaseUrl}/requisitions/${currentRequisition.id}/approve`, payload);
+      // Fixed: Use axiosInstance instead of axios directly
+      const response = await axiosInstance.patch(`/requisitions/${currentRequisition.id}/approve`, payload);
       
       if (response.data.success) {
         // Update the local state
@@ -200,10 +215,13 @@ const WarehouseRequisitions = () => {
         
         setShowPartialApproveModal(false);
       } else {
-        setError('Failed to partially approve requisition');
+        setError('Failed to partially approve requisition: ' + (response.data.message || 'Unknown error'));
       }
     } catch (err) {
-      setError('Error partially approving requisition: ' + err.message);
+      // Fixed: Better error handling
+      const errorMessage = err.response?.data?.message || err.message || 'Error partially approving requisition';
+      setError('Error partially approving requisition: ' + errorMessage);
+      console.error('Partial approval error:', err);
     } finally {
       setLoading(false);
     }
@@ -223,11 +241,12 @@ const WarehouseRequisitions = () => {
         items: rejectingRequisition.items.map(item => ({
           item_id: item.item_id,
           approved_quantity: 0 // Setting to 0 for rejection
-        }))
+        })),
+        userId: rejectingRequisition.user_id || 1 // Ensure userId is included
       };
       
-      // Fixed: Changed the endpoint to match the API specification
-      const response = await axios.patch(`${BaseUrl}/requisitions/${rejectingRequisition.id}/reject`, payload);
+      // Fixed: Use axiosInstance instead of axios directly
+      const response = await axiosInstance.patch(`/requisitions/${rejectingRequisition.id}/reject`, payload);
       
       if (response.data.success) {
         // Update the local state
@@ -239,10 +258,13 @@ const WarehouseRequisitions = () => {
         
         setShowRejectModal(false);
       } else {
-        setError('Failed to reject requisition');
+        setError('Failed to reject requisition: ' + (response.data.message || 'Unknown error'));
       }
     } catch (err) {
-      setError('Error rejecting requisition: ' + err.message);
+      // Fixed: Better error handling
+      const errorMessage = err.response?.data?.message || err.message || 'Error rejecting requisition';
+      setError('Error rejecting requisition: ' + errorMessage);
+      console.error('Rejection error:', err);
     } finally {
       setLoading(false);
     }
@@ -346,6 +368,7 @@ const WarehouseRequisitions = () => {
                         {req.status === 'pending' && (
                           <>
                             <button className="btn btn-sm btn-success" onClick={() => openApproveModal(req, item)} disabled={loading}>Approve</button>
+                            {/* Uncomment if needed */}
                             {/* <button className="btn btn-sm btn-warning" onClick={() => openPartialApproveModal(req, item)} disabled={loading}>Partial Approve</button> */}
                             <button className="btn btn-sm btn-danger" onClick={() => openRejectModal(req)} disabled={loading}>Reject</button>
                           </>
