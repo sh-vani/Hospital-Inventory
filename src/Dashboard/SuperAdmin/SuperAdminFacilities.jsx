@@ -380,6 +380,7 @@ const SuperAdminFacilities = () => {
                         {getInventoryBadge(facility.inventory_count)}
                       </td>
                       <td>
+                        
                         <div className="d-flex gap-2">
                           <button 
                             className="btn btn-sm btn-outline-primary" 
