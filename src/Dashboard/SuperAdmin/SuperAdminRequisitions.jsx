@@ -33,8 +33,8 @@ const SuperAdminRequisitions = () => {
       setError(null);
       const response = await axiosInstance.get(`${BaseUrl}/requisitions?page=${page}&limit=10&status=${status}`);
       if (response.data.success) {
-        setRequisitions(response.data.data.requisitions);
-        setPagination(response.data.data.pagination);
+        setRequisitions(response.data.data);
+        setPagination(response.data.data);
       } else {
         setError('Failed to fetch requisitions');
       }
@@ -420,7 +420,7 @@ const SuperAdminRequisitions = () => {
                 <table className="table table-sm">
                   <thead><tr><th>Item</th><th>Code</th><th>Qty</th><th>Unit</th><th>Priority</th></tr></thead>
                   <tbody>
-                    {currentRequisition.items.map((item, i) => (
+                    {currentRequisition?.items?.map((item, i) => (
                       <tr key={i}>
                         <td>{item.item_name}</td>
                         <td>{item.item_code}</td>

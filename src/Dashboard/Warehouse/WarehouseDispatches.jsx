@@ -52,8 +52,8 @@ const WarehouseDispatches = () => {
     try {
       const response = await axios.get(`${BaseUrl}/dispatches`);
       if (response.data.success) {
-        setDispatches(response.data.data.dispatches);
-        setPagination(response.data.data.pagination);
+        setDispatches(response.data.data);
+        setPagination(response.data.data);
       }
     } catch (error) {
       console.error('Error fetching dispatches:', error);

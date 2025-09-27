@@ -26,7 +26,7 @@ const WarehouseReports = () => {
     try {
       const response = await axios.get(`${BaseUrl}/facilities`);
       if (response.data.success) {
-        setFacilities(response.data.data.facilities);
+        setFacilities(response.data.data);
       } else {
         console.error('Failed to fetch facilities');
         // Fallback to default facilities if API fails
