@@ -32,7 +32,7 @@ const SuperAdminInventory = () => {
         setLoading(true);
         const response = await axiosInstance.get(`${BaseUrl}/inventory`);
         if (response.data.success) {
-          setInventory(response.data.data.items);
+          setInventory(response.data.data);
         } else {
           setError('Failed to fetch inventory data');
         }

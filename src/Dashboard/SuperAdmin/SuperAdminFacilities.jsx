@@ -66,8 +66,8 @@ const SuperAdminFacilities = () => {
       const response = await axios.get(`${BaseUrl}/facilities?page=${page}&limit=${limit}&status=${status}`);
       
       if (response.data.success) {
-        setFacilities(response.data.data.facilities);
-        setPagination(response.data.data.pagination);
+        setFacilities(response.data.data);
+        setPagination(response.data.data);
         setError(null);
       } else {
         setError('Failed to fetch facilities data.');
