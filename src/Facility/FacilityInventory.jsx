@@ -32,7 +32,7 @@ const FacilityDashboard = () => {
         const response = await axiosInstance.get(
           `/inventory`
         );
-        const items = response.data?.data?.items || [];
+        const items = response.data?.data || [];
 
         // ✅ Filter items with matching facility_id
         const filteredItems = items.filter(
