@@ -22,8 +22,7 @@ const SuperAdminInventory = () => {
   const [movements, setMovements] = useState([]);
   const [movementsLoading, setMovementsLoading] = useState(false);
 
-  // Base URL for API
-  const BASE_URL = '{{base_url}}';
+
 
   // === FETCH INVENTORY DATA ===
   useEffect(() => {
