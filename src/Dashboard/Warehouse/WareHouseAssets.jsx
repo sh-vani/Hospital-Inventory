@@ -35,10 +35,10 @@ const WarehouseAssets = () => {
       const data = await response.json();
       
       if (data.success) {
-        setAssets(data.data.assets);
-        setCurrentPage(data.data.pagination.currentPage);
-        setTotalPages(data.data.pagination.totalPages);
-        setTotalItems(data.data.pagination.totalItems);
+        setAssets(data.data);
+        setCurrentPage(data.data);
+        setTotalPages(data.data);
+        setTotalItems(data.data);
       } else {
         setError('Failed to fetch assets');
       }

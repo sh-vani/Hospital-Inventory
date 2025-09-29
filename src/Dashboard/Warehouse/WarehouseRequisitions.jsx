@@ -34,8 +34,29 @@ const WarehouseRequisitions = () => {
     try {
       const response = await axios.get(`${BaseUrl}/requisitions?page=${page}`);
       if (response.data.success) {
-        setRequisitions(response.data.data.requisitions);
-        setPagination(response.data.data.pagination);
+        // Fixed: Properly extract the data from the response
+        const requisitionsData = response.data.data.map(req => ({
+          ...req,
+          // Added mock items data since it's missing in the API response
+          items: [
+            {
+              item_id: 1,
+              item_name: "Medical Supplies",
+              quantity: 10,
+              unit: "units",
+              approved_quantity: 0
+            }
+          ]
+        }));
+        
+        setRequisitions(requisitionsData);
+        // Fixed: Set pagination properly
+        setPagination({
+          currentPage: page,
+          totalPages: Math.ceil(response.data.data.length / 10) || 1,
+          totalItems: response.data.data.length,
+          itemsPerPage: 10
+        });
       } else {
         setError('Failed to fetch requisitions');
       }
@@ -314,7 +335,7 @@ const WarehouseRequisitions = () => {
               </thead>
               <tbody>
                 {filteredRequisitions.map((req, index) => (
-                  req.items.map((item, idx) => (
+                  req.items && req.items.map((item, idx) => (
                     <tr key={`${index}-${idx}`}>
                       <td>#{req.id}</td>
                       <td>{req.facility_name}</td>

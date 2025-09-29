@@ -72,7 +72,7 @@ const SuperAdminDashboard = () => {
   const kpis = dashboardData ? [
     { 
       title: 'Total Inventory', 
-      value: dashboardData.stats.total_stock_quantity, 
+      value: dashboardData.stats.total_inventory_items, 
       change: '+2.3%', 
       positive: true 
     },

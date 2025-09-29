@@ -159,8 +159,8 @@ const WarehouseInventory = () => {
 
       // Correctly extract items array from response
       let itemsArray = [];
-      if (Array.isArray(response?.data?.data?.items)) {
-        itemsArray = response.data.data.items;
+      if (Array.isArray(response?.data?.data)) {
+        itemsArray = response.data.data;
       } else {
         itemsArray = [];
       }

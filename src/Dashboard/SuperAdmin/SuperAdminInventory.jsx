@@ -22,8 +22,7 @@ const SuperAdminInventory = () => {
   const [movements, setMovements] = useState([]);
   const [movementsLoading, setMovementsLoading] = useState(false);
 
-  // Base URL for API
-  const BASE_URL = '{{base_url}}';
+
 
   // === FETCH INVENTORY DATA ===
   useEffect(() => {
@@ -32,7 +31,7 @@ const SuperAdminInventory = () => {
         setLoading(true);
         const response = await axiosInstance.get(`${BaseUrl}/inventory`);
         if (response.data.success) {
-          setInventory(response.data.data.items);
+          setInventory(response.data.data);
         } else {
           setError('Failed to fetch inventory data');
         }
