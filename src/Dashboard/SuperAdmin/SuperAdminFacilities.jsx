@@ -229,30 +229,30 @@ const SuperAdminFacilities = () => {
   };
   
   const handleAssignAdmin = async () => {
-    if (!currentFacility || !selectedAdminId) {
-      alert('Please select an admin to assign');
-      return;
-    }
+    if (!currentFacility) return;
     
     try {
       setAssignAdminLoading(true);
       const response = await axiosInstance.put(`${BaseUrl}/facilities/${currentFacility.id}/assign-admin`, {
-        admin_user_id: parseInt(selectedAdminId)
+        admin_user_id: selectedAdminId ? parseInt(selectedAdminId) : null
       });
       
       if (response.data.success) {
         setShowAssignAdminModal(false);
         // Refresh the facilities list
         fetchFacilities();
-        alert(`Admin assigned successfully to ${currentFacility.name}!`);
+        alert(selectedAdminId ? 
+          `Admin assigned successfully to ${currentFacility.name}!` : 
+          `Admin unassigned successfully from ${currentFacility.name}!`
+        );
       } else {
-        setError('Failed to assign admin.');
-        alert('Failed to assign admin. Please try again.');
+        setError(selectedAdminId ? 'Failed to assign admin.' : 'Failed to unassign admin.');
+        alert(selectedAdminId ? 'Failed to assign admin. Please try again.' : 'Failed to unassign admin. Please try again.');
       }
     } catch (err) {
-      setError('Failed to assign admin. Please try again later.');
-      console.error('Error assigning admin:', err);
-      alert('Failed to assign admin. Please try again later.');
+      setError(selectedAdminId ? 'Failed to assign admin. Please try again later.' : 'Failed to unassign admin. Please try again later.');
+      console.error('Error assigning/unassigning admin:', err);
+      alert(selectedAdminId ? 'Failed to assign admin. Please try again later.' : 'Failed to unassign admin. Please try again later.');
     } finally {
       setAssignAdminLoading(false);
     }
@@ -371,7 +371,7 @@ const SuperAdminFacilities = () => {
                       <td>{facility.location}</td>
                       <td>{facility.type}</td>
                       <td>{facility.contact_person}</td>
-                      <td>{facility.admin_name || '-'}</td>
+                      <td>{facility?.admin_name || '-'}</td>
                       <td>{getStatusBadge(facility.status)}</td>
                       <td>
                         <span className="badge bg-info">{facility.user_count}</span>
@@ -380,6 +380,7 @@ const SuperAdminFacilities = () => {
                         {getInventoryBadge(facility.inventory_count)}
                       </td>
                       <td>
+                        
                         <div className="d-flex gap-2">
                           <button 
                             className="btn btn-sm btn-outline-primary" 
@@ -388,23 +389,13 @@ const SuperAdminFacilities = () => {
                           >
                             <FaInfoCircle />
                           </button>
-                          {facility.assigned_To ? (
-                            <button 
-                              className="btn btn-sm btn-outline-warning" 
-                              onClick={() => openUnassignAdminModal(facility)}
-                              title="Unassign Admin"
-                            >
-                              <FaUserTimes />
-                            </button>
-                          ) : (
-                            <button 
-                              className="btn btn-sm btn-outline-info" 
-                              onClick={() => openAssignAdminModal(facility)}
-                              title="Assign Admin"
-                            >
-                              <FaUserPlus />
-                            </button>
-                          )}
+                          <button 
+                            className="btn btn-sm btn-outline-info" 
+                            onClick={() => openAssignAdminModal(facility)}
+                            title={facility.assigned_To ? "Change Admin" : "Assign Admin"}
+                          >
+                            {facility.assigned_To ? <FaUserTimes /> : <FaUserPlus />}
+                          </button>
                           <button 
                             className="btn btn-sm btn-outline-danger" 
                             onClick={() => openDeleteModal(facility)}
@@ -563,15 +554,12 @@ const SuperAdminFacilities = () => {
                 )}
                 
                 <div className="d-flex justify-content-end">
-                  {currentFacility.assigned_To ? (
-                    <button className="btn btn-outline-warning me-2" onClick={() => openUnassignAdminModal(currentFacility)}>
-                      <FaUserTimes className="me-2" /> Unassign Admin
-                    </button>
-                  ) : (
-                    <button className="btn btn-outline-info me-2" onClick={() => openAssignAdminModal(currentFacility)}>
-                      <FaUserPlus className="me-2" /> Assign Admin
-                    </button>
-                  )}
+                  <button className="btn btn-outline-info me-2" onClick={() => openAssignAdminModal(currentFacility)}>
+                    {currentFacility.assigned_To ? 
+                      <><FaUserTimes className="me-2" /> Change Admin</> : 
+                      <><FaUserPlus className="me-2" /> Assign Admin</>
+                    }
+                  </button>
                   <button className="btn btn-outline-danger" onClick={() => openDeleteModal(currentFacility)}>
                     <FaTrash className="me-2" /> Delete
                   </button>
@@ -698,18 +686,28 @@ const SuperAdminFacilities = () => {
         </div>
       )}
       
-      {/* Assign Admin Modal */}
+      {/* Assign/Change Admin Modal */}
       {showAssignAdminModal && currentFacility && (
         <div className="modal show d-block" tabIndex="-1">
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Assign Admin to {currentFacility.name}</h5>
+                <h5 className="modal-title">
+                  {currentFacility.assigned_To ? "Change Admin" : "Assign Admin"} to {currentFacility.name}
+                </h5>
                 <button type="button" className="btn-close" onClick={() => setShowAssignAdminModal(false)}></button>
               </div>
               <div className="modal-body">
+                {currentFacility.assigned_To && (
+                  <div className="alert alert-info mb-3">
+                    <strong>Current Admin:</strong> {currentFacility.admin_name}
+                  </div>
+                )}
+                
                 <div className="mb-3">
-                  <label className="form-label">Select Admin</label>
+                  <label className="form-label">
+                    {currentFacility.assigned_To ? "Select New Admin" : "Select Admin"}
+                  </label>
                   {adminLoading ? (
                     <div className="text-center py-2">
                       <div className="spinner-border spinner-border-sm text-primary" role="status">
@@ -724,7 +722,7 @@ const SuperAdminFacilities = () => {
                       onChange={handleAdminChange}
                       required
                     >
-                      <option value="">-- Select Admin --</option>
+                      <option value="">-- {currentFacility.assigned_To ? "Select New Admin" : "Select Admin"} --</option>
                       {adminUsers.map(user => (
                         <option key={user.id} value={user.id}>
                           {user.name} ({formatRoleName(user.role)})
@@ -733,6 +731,24 @@ const SuperAdminFacilities = () => {
                     </select>
                   )}
                 </div>
+                
+                <div className="form-check mb-3">
+                  <input 
+                    className="form-check-input" 
+                    type="checkbox" 
+                    id="unassignAdmin"
+                    checked={!selectedAdminId}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedAdminId('');
+                      }
+                    }}
+                  />
+                  <label className="form-check-label" htmlFor="unassignAdmin">
+                    Unassign admin (no admin will be assigned to this facility)
+                  </label>
+                </div>
+                
                 <div className="text-muted small">
                   <p className="mb-0">Note: Only warehouse admins and facility users can be assigned as admins.</p>
                 </div>
@@ -743,18 +759,21 @@ const SuperAdminFacilities = () => {
                 </button>
                 <button 
                   type="button" 
-                  className="btn btn-info" 
+                  className={selectedAdminId ? "btn btn-info" : "btn btn-warning"} 
                   onClick={handleAssignAdmin}
-                  disabled={assignAdminLoading || !selectedAdminId}
+                  disabled={assignAdminLoading}
                 >
                   {assignAdminLoading ? (
                     <>
                       <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                      Assigning...
+                      {selectedAdminId ? "Assigning..." : "Unassigning..."}
                     </>
                   ) : (
                     <>
-                      <FaUserPlus className="me-2" /> Assign Admin
+                      {selectedAdminId ? 
+                        <><FaUserPlus className="me-2" /> {currentFacility.assigned_To ? "Change Admin" : "Assign Admin"}</> : 
+                        <><FaUserTimes className="me-2" /> Unassign Admin</>
+                      }
                     </>
                   )}
                 </button>
