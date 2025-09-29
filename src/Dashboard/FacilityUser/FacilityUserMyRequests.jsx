@@ -41,7 +41,6 @@ const FacilityUserMyRequests = () => {
           delay *= 2; // Exponential backoff
         } else {
           throw error;
-        }
       }
     }
     

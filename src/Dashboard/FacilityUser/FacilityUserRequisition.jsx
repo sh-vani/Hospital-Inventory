@@ -3,7 +3,7 @@ import { FaPlus, FaEye, FaTimes } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import BaseUrl from '../../Api/BaseUrl';
 import axiosInstance from '../../Api/axiosInstance';
-import Swal from 'sweetalert2'; // ✅ Import SweetAlert2
+
 
 const FacilityUserRequisition = () => {
   // Form states
