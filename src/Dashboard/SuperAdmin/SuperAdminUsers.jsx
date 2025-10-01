@@ -455,7 +455,7 @@ const SuperAdminUsers = () => {
                           <button className="btn btn-sm btn-outline-danger" onClick={() => deleteUser(user.id)}>
                             <FaTrash />
                           </button>
-                        </div>
+                        </div>  
                       </td>
                     </tr>
                   );
@@ -820,3 +820,5 @@ const SuperAdminUsers = () => {
 };
 
 export default SuperAdminUsers;
+
+
