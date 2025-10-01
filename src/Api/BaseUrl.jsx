@@ -1,5 +1,5 @@
 
 
-const BaseUrl = 'https://ssknf82q-3000.inc1.devtunnels.ms/api';
+const BaseUrl = 'https://hospitalinventory-backend-production.up.railway.app/api';
 
 export default BaseUrl;

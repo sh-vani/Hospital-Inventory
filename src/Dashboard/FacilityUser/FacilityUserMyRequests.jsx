@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FaClipboardList, FaEye, FaSearch, FaFilter, 
-  FaCheck, FaTimes, FaExclamationTriangle, FaClock, FaPaperPlane
+  FaCheck, FaTimes, FaExclamationTriangle, FaClock, FaPaperPlane,
+  FaChevronLeft, FaChevronRight
 } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import axios from 'axios';
 import BaseUrl from '../../Api/BaseUrl';
+import axiosInstance from '../../Api/axiosInstance';
 
 const FacilityUserMyRequests = () => {
   // State for modals
@@ -20,6 +22,10 @@ const FacilityUserMyRequests = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [userId, setUserId] = useState(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
 
   const baseUrl = BaseUrl;
   
@@ -100,7 +106,7 @@ const FacilityUserMyRequests = () => {
       try {
         // First, try to get all requisitions for the user using the retry function
         const response = await fetchWithRetry(() => 
-          axios.get(`${baseUrl}/requisitions/user/${userId}`)
+          axiosInstance.get(`${baseUrl}/requisitions/user/${userId}`)
         );
         
         if (response.data.success) {
@@ -139,7 +145,7 @@ const FacilityUserMyRequests = () => {
         // If the first approach fails, try the alternative endpoint
         try {
           const response = await fetchWithRetry(() => 
-            axios.get(`${baseUrl}/requisitions/user/${userId}`)
+            axiosInstance.get(`${baseUrl}/requisitions/user/${userId}`)
           );
           
           if (response.data.success) {
@@ -231,6 +237,17 @@ const FacilityUserMyRequests = () => {
       request.status.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
+  
+  // Pagination logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredRequests.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
+  
+  // Reset to first page when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
   
   // Function to open status timeline modal
   const openStatusTimeline = (request) => {
@@ -347,53 +364,94 @@ const FacilityUserMyRequests = () => {
               <p className="mt-2 text-muted">Loading requisitions data...</p>
             </div>
           ) : (
-            <div className="table-responsive">
-              <table className="table table-hover mb-0">
-                <thead>
-                  <tr>
-                    <th>Request ID</th>
-                    <th>Item(s)</th>
-                    <th>Date Raised</th>
-                    <th>Quantity</th>
-                    <th>Current Status</th>
-                    <th>Last Updated</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRequests.length > 0 ? (
-                    filteredRequests.map(request => (
-                      <tr key={request.id}>
-                        <td>{request.id}</td>
-                        <td>{request.item}</td>
-                        <td>{request.dateRaised}</td>
-                        <td>{request.quantity}</td>
-                        <td>
-                          <span className={`badge ${getStatusBadgeClass(request.status)}`}>
-                            {getStatusIcon(request.status)} {request.status}
-                          </span>
-                        </td>
-                        <td>{request.lastUpdated}</td>
-                        <td>
-                          <button className="btn btn-sm btn-outline-primary" onClick={() => openStatusTimeline(request)}>
-                            <FaEye /> <span className="d-none d-md-inline-block ms-1">View</span>
-                          </button>
+            <>
+              <div className="table-responsive">
+                <table className="table table-hover mb-0">
+                  <thead>
+                    <tr>
+                      <th>Request ID</th>
+                      <th>Item(s)</th>
+                      <th>Date Raised</th>
+                      <th>Quantity</th>
+                      <th>Current Status</th>
+                      <th>Last Updated</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentItems.length > 0 ? (
+                      currentItems.map(request => (
+                        <tr key={request.id}>
+                          <td>{request.id}</td>
+                          <td>{request.item}</td>
+                          <td>{request.dateRaised}</td>
+                          <td>{request.quantity}</td>
+                          <td>
+                            <span className={`badge ${getStatusBadgeClass(request.status)}`}>
+                              {getStatusIcon(request.status)} {request.status}
+                            </span>
+                          </td>
+                          <td>{request.lastUpdated}</td>
+                          <td>
+                            <button className="btn btn-sm btn-outline-primary" onClick={() => openStatusTimeline(request)}>
+                              <FaEye /> <span className="d-none d-md-inline-block ms-1">View</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="7" className="text-center py-4">
+                          <div className="text-muted">
+                            <FaClipboardList size={24} className="mb-2" />
+                            <p>No requisitions found matching your search criteria.</p>
+                          </div>
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="7" className="text-center py-4">
-                        <div className="text-muted">
-                          <FaClipboardList size={24} className="mb-2" />
-                          <p>No requisitions found matching your search criteria.</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Pagination Controls */}
+              {filteredRequests.length > itemsPerPage && (
+                <div className="d-flex justify-content-between align-items-center p-3 border-top">
+                  <div className="text-muted small">
+                    Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredRequests.length)} of {filteredRequests.length} requests
+                  </div>
+                  <nav>
+                    <ul className="pagination pagination-sm mb-0">
+                      <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                        <button 
+                          className="page-link" 
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        >
+                          <FaChevronLeft />
+                        </button>
+                      </li>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNumber => (
+                        <li key={pageNumber} className={`page-item ${currentPage === pageNumber ? 'active' : ''}`}>
+                          <button 
+                            className="page-link" 
+                            onClick={() => setCurrentPage(pageNumber)}
+                          >
+                            {pageNumber}
+                          </button>
+                        </li>
+                      ))}
+                      <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                        <button 
+                          className="page-link" 
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        >
+                          <FaChevronRight />
+                        </button>
+                      </li>
+                    </ul>
+                  </nav>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
