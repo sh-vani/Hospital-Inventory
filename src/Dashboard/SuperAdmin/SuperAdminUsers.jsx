@@ -69,18 +69,32 @@ const SuperAdminUsers = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
+  
+      // ✅ Use environment-based base URL
+  
       const response = await axiosInstance.get(`${BaseUrl}/users`);
       
       if (response.data.success) {
-        const usersData = response.data.data;
-        setUsers(usersData);
-        
-        // Calculate user summary stats
-        const totalUsers = usersData.length;
-        const facilityUsers = usersData.filter(u => u.role === 'facility_user').length;
-        const warehouseAdmins = usersData.filter(u => u.role === 'warehouse_admin').length;
-        const facilityAdmins = usersData.filter(u => u.role === 'facility_admin').length;
-        const superAdmins = usersData.filter(u => u.role === 'super_admin').length;
+        // 🔍 Fix: Choose the correct data structure
+        let usersData = response.data.data;
+  
+        // If the API returns { data: { users: [...] } }, handle it
+        if (usersData && Array.isArray(usersData.users)) {
+          usersData = usersData.users;
+        }
+  
+        // Ensure it's an array
+        const safeUsers = Array.isArray(usersData) ? usersData : [];
+  
+        setUsers(safeUsers);
+        console.log('Fetched users:', safeUsers);
+  
+        // Calculate stats
+        const totalUsers = safeUsers.length;
+        const facilityUsers = safeUsers.filter(u => u.role === 'facility_user').length;
+        const warehouseAdmins = safeUsers.filter(u => u.role === 'warehouse_admin').length;
+        const facilityAdmins = safeUsers.filter(u => u.role === 'facility_admin').length;
+        const superAdmins = safeUsers.filter(u => u.role === 'super_admin').length;
         
         setUserSummary({
           totalUsers,
@@ -291,21 +305,23 @@ const SuperAdminUsers = () => {
   };
 
   // Search filter
-  const filtered = users.filter(u => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return true;
-    
-    const facility = facilities.find(f => f.id === u.facility_id);
-    
-    return (
-      u.id?.toString().toLowerCase().includes(q) ||
-      u.name?.toLowerCase().includes(q) ||
-      u.email?.toLowerCase().includes(q) ||
-      u.role?.toLowerCase().includes(q) ||
-      facility?.name?.toLowerCase().includes(q) ||
-      u.status?.toLowerCase().includes(q)
-    );
-  });
+  const filtered = Array.isArray(users)
+  ? users.filter(u => {
+      const q = searchTerm.trim().toLowerCase();
+      if (!q) return true;
+
+      const facility = facilities.find(f => f.id === u.facility_id);
+
+      return (
+        u.id?.toString().toLowerCase().includes(q) ||
+        u.name?.toLowerCase().includes(q) ||
+        u.email?.toLowerCase().includes(q) ||
+        u.role?.toLowerCase().includes(q) ||
+        facility?.name?.toLowerCase().includes(q) ||
+        u.status?.toLowerCase().includes(q)
+      );
+    })
+  : [];
 
   return (
     <div className="container-fluid py-3">
