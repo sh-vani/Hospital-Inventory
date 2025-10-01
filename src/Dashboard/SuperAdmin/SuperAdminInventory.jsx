@@ -249,13 +249,13 @@ const SuperAdminInventory = () => {
                           >
                             <FaEdit />
                           </button>
-                          <button
+                          {/* <button
                             className="btn btn-sm btn-outline-info"
                             title="View Movement History"
                             onClick={() => openHistoryModal(item)}
                           >
                             <FaHistory />
-                          </button>
+                          </button> */}
                           <button
                             className="btn btn-sm btn-outline-success"
                             title="View Details"
