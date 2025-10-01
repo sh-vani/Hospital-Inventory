@@ -52,7 +52,7 @@ import FacilityUserInventory from "./Dashboard/FacilityUser/FacilityUserInventor
 import FacilityUserRequisition from "./Dashboard/FacilityUser/FacilityUserRequisition"
 import FacilityUserDashboard from "./Dashboard/FacilityUser/FacilityUserDashboard"
 import AcknowledgementOfReceipts from "./Dashboard/FacilityUser/AcknowledgementOfReceipts"
-// import ReturnsRecalls from "./Dashboard/WareHouse/ReturnsRecalls"
+import ReturnsRecalls from "./Dashboard/Warehouse/ReturnsRecalls";
 
 
 function App() {
