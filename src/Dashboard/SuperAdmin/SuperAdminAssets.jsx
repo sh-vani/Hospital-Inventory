@@ -40,7 +40,6 @@ const SuperAdminAssets = () => {
   });
   const [assignForm, setAssignForm] = useState({ facility_id: '' });
   const [assets, setAssets] = useState([]);
-  console.log("Assets:", assets);
   const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [facilitiesLoading, setFacilitiesLoading] = useState(true);
@@ -231,7 +230,7 @@ const SuperAdminAssets = () => {
   };
 
   // Search
-  const filtered = assets?.assets?.filter(a => {
+  const filtered = assets.filter(a => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -247,9 +246,9 @@ const SuperAdminAssets = () => {
 
   // Stats calculation
   const totalAssets = assets.length;
-  const inUseAssets = assets?.assets?.filter(a => a.status === 'active' && a.assigned_to).length;
-  const maintenanceAssets = assets?.assets?.filter(a => a.status === 'maintenance').length;
-  const needAttentionAssets = assets?.assets?.filter(a => a.status === 'active' && !a.assigned_to).length;
+  const inUseAssets = assets.filter(a => a.status === 'active' && a.assigned_to).length;
+  const maintenanceAssets = assets.filter(a => a.status === 'maintenance').length;
+  const needAttentionAssets = assets.filter(a => a.status === 'active' && !a.assigned_to).length;
 
   return (
     <div className="container-fluid py-3">
