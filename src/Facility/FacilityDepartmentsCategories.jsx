@@ -14,6 +14,10 @@ const FacilityDepartmentsCategories = () => {
     department_head: ''
   });
 
+  // ✅ Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const entriesPerPage = 10;
+
   // Fetch departments on mount
   useEffect(() => {
     fetchDepartments();
@@ -25,32 +29,43 @@ const FacilityDepartmentsCategories = () => {
       setDepartments(res.data.data || []);
     } catch (error) {
       console.error('Error fetching departments:', error);
-      toast.error('Failed to fetch departments');
+      // toast.error('Failed to fetch departments');
     }
   };
 
   const handleAddDepartment = async () => {
     try {
       await axiosInstance.post('/department', newDept);
-      toast.success('Department added successfully!');
+      // toast.success('Department added successfully!');
       setShowAddModal(false);
       setNewDept({ department_name: '', department_head: '' });
       fetchDepartments();
     } catch (error) {
       console.error('Error adding department:', error);
-      toast.error('Failed to add department');
+      // toast.error('Failed to add department');
     }
   };
 
   const handleRemoveDepartment = async () => {
     try {
       await axiosInstance.delete(`/department/${selectedDept.id}`);
-      toast.success('Department removed successfully!');
+      // toast.success('Department removed successfully!');
       setShowRemoveModal(false);
       fetchDepartments();
     } catch (error) {
       console.error('Error removing department:', error);
-      toast.error('Failed to remove department');
+      // toast.error('Failed to remove department');
+    }
+  };
+
+  // ✅ Pagination logic
+  const totalPages = Math.ceil(departments.length / entriesPerPage);
+  const indexOfLastEntry = currentPage * entriesPerPage;
+  const currentEntries = departments.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
     }
   };
 
@@ -94,22 +109,23 @@ const FacilityDepartmentsCategories = () => {
               </tr>
             </thead>
             <tbody>
-              {departments.map(dept => (
-                <tr key={dept.id}>
-                  <td className="fw-medium">{dept.id}</td>
-                  <td>{dept.department_name}</td>
-                  <td>{dept.department_head}</td>
-                  <td>
-                    <button
-                      className="btn btn-sm btn-outline-danger"
-                      onClick={() => { setSelectedDept(dept); setShowRemoveModal(true); }}
-                    >
-                      <FaTrash />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {departments.length === 0 && (
+              {currentEntries.length > 0 ? (
+                currentEntries.map(dept => (
+                  <tr key={dept.id}>
+                    <td className="fw-medium">{dept.id}</td>
+                    <td>{dept.department_name}</td>
+                    <td>{dept.department_head}</td>
+                    <td>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => { setSelectedDept(dept); setShowRemoveModal(true); }}
+                      >
+                        <FaTrash />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
                 <tr>
                   <td colSpan="4" className="text-center text-muted">No departments found.</td>
                 </tr>
@@ -118,105 +134,147 @@ const FacilityDepartmentsCategories = () => {
           </table>
         </div>
       </div>
+      {/* ✅ PAGINATION UI — Same as your other components */}
+      <div className="d-flex justify-content-end mt-3">
+        <nav>
+          <ul className="pagination mb-0">
+            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+            </li>
 
-   {/* Add Department Modal */}
-{showAddModal && (
-  <>
-    <div
-      className="modal d-block"
-      tabIndex="-1"
-      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-    >
-      <div className="modal-dialog">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Add Department</h5>
-            <button className="btn-close" onClick={() => setShowAddModal(false)}></button>
-          </div>
-          <div className="modal-body">
-            <div className="mb-3">
-              <label className="form-label">Department Name</label>
-              <input
-                type="text"
-                className="form-control"
-                value={newDept.department_name}
-                onChange={(e) =>
-                  setNewDept({ ...newDept, department_name: e.target.value })
-                }
-                placeholder="Enter department name"
-              />
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Head of Department</label>
-              <input
-                type="text"
-                className="form-control"
-                value={newDept.department_head}
-                onChange={(e) =>
-                  setNewDept({ ...newDept, department_head: e.target.value })
-                }
-                placeholder="Enter head name"
-              />
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button
-              className="btn btn-secondary"
-              onClick={() => setShowAddModal(false)}
-            >
-              Cancel
-            </button>
-            <button className="btn btn-primary" onClick={handleAddDepartment}>
-              Add
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </>
-)}
+            {[...Array(totalPages)].map((_, i) => {
+              const page = i + 1;
+              return (
+                <li
+                  key={page}
+                  className={`page-item ${currentPage === page ? 'active' : ''}`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => handlePageChange(page)}
+                  >
+                    {page}
+                  </button>
+                </li>
+              );
+            })}
 
-{/* Remove Department Modal */}
-{showRemoveModal && (
-  <>
-    <div
-      className="modal d-block"
-      tabIndex="-1"
-      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-    >
-      <div className="modal-dialog">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Remove Department</h5>
-            <button
-              className="btn-close"
-              onClick={() => setShowRemoveModal(false)}
-            ></button>
-          </div>
-          <div className="modal-body">
-            <p>
-              Are you sure you want to remove{' '}
-              <strong>{selectedDept?.department_name}</strong>?
-            </p>
-            <p className="text-muted">This action cannot be undone.</p>
-          </div>
-          <div className="modal-footer">
-            <button
-              className="btn btn-secondary"
-              onClick={() => setShowRemoveModal(false)}
-            >
-              Cancel
-            </button>
-            <button className="btn btn-danger" onClick={handleRemoveDepartment}>
-              Remove
-            </button>
-          </div>
-        </div>
+            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                Next
+              </button>
+            </li>
+          </ul>
+        </nav>
       </div>
-    </div>
-  </>
-)}
-  
+
+      {/* Add Department Modal */}
+      {showAddModal && (
+        <>
+          <div
+            className="modal d-block"
+            tabIndex="-1"
+            style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          >
+            <div className="modal-dialog">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">Add Department</h5>
+                  <button className="btn-close" onClick={() => setShowAddModal(false)}></button>
+                </div>
+                <div className="modal-body">
+                  <div className="mb-3">
+                    <label className="form-label">Department Name</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={newDept.department_name}
+                      onChange={(e) =>
+                        setNewDept({ ...newDept, department_name: e.target.value })
+                      }
+                      placeholder="Enter department name"
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Head of Department</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={newDept.department_head}
+                      onChange={(e) =>
+                        setNewDept({ ...newDept, department_head: e.target.value })
+                      }
+                      placeholder="Enter head name"
+                    />
+                  </div>
+                </div>
+                <div className="modal-footer">
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setShowAddModal(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button className="btn btn-primary" onClick={handleAddDepartment}>
+                    Add
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Remove Department Modal */}
+      {showRemoveModal && (
+        <>
+          <div
+            className="modal d-block"
+            tabIndex="-1"
+            style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          >
+            <div className="modal-dialog">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">Remove Department</h5>
+                  <button
+                    className="btn-close"
+                    onClick={() => setShowRemoveModal(false)}
+                  ></button>
+                </div>
+                <div className="modal-body">
+                  <p>
+                    Are you sure you want to remove{' '}
+                    <strong>{selectedDept?.department_name}</strong>?
+                  </p>
+                  <p className="text-muted">This action cannot be undone.</p>
+                </div>
+                <div className="modal-footer">
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setShowRemoveModal(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button className="btn btn-danger" onClick={handleRemoveDepartment}>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
