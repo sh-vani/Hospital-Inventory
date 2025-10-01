@@ -88,8 +88,8 @@ const SuperAdminAssets = () => {
       if (response.data.success) {
         setFacilities(response.data.data.facilities);
         // Set default facility_id to the first facility if available
-        if (response.data.data.facilities.length > 0 && !assignForm.facility_id) {
-          setAssignForm(prev => ({ ...prev, facility_id: response.data.data.facilities[0].id }));
+        if (response.data.data.facilities?.length > 0 && !assignForm?.facility_id) {
+          setAssignForm(prev => ({ ...prev, facility_id: response.data.data.facilities[0]?.id }));
         }
       } else {
         console.error('Failed to fetch facilities data');
@@ -644,7 +644,7 @@ const SuperAdminAssets = () => {
                       onChange={handleAssignChange}
                     >
                       <option value="">Select a facility</option>
-                      {facilities.map((facility) => (
+                      {facilities?.map((facility) => (
                         <option key={facility.id} value={facility.id}>
                           {facility.name} ({facility.location})
                         </option>
