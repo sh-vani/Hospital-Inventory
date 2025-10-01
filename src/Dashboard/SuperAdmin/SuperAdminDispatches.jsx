@@ -36,8 +36,8 @@ const SuperAdminDispatches = () => {
       setError(null);
       const response = await axiosInstance.get(`${BaseUrl}/dispatches?page=${page}&limit=10`);
       if (response.data.success) {
-        setDispatches(response.data.data.dispatches);
-        setPagination(response.data.data.pagination);
+        setDispatches(response.data.data);
+        setPagination(response.data.data);
       } else {
         setError('Failed to fetch dispatches');
       }

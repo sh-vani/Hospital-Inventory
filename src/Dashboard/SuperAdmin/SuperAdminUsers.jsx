@@ -72,7 +72,7 @@ const SuperAdminUsers = () => {
       const response = await axiosInstance.get(`${BaseUrl}/users`);
       
       if (response.data.success) {
-        const usersData = response.data.data.users;
+        const usersData = response.data.data;
         setUsers(usersData);
         
         // Calculate user summary stats
@@ -108,7 +108,7 @@ const SuperAdminUsers = () => {
       const response = await axiosInstance.get(`${BaseUrl}/facilities`);
       
       if (response.data.success) {
-        const facilitiesData = response.data.data.facilities;
+        const facilitiesData = response.data.data;
         setFacilities(facilitiesData);
         
         // Set default facility_id to the first facility if available
@@ -451,15 +451,7 @@ const SuperAdminUsers = () => {
                           <button className="btn btn-sm btn-outline-primary" onClick={() => openEditModal(user)}>
                             <FaEdit />
                           </button>
-                          {user.status === 'active' ? (
-                            <button className="btn btn-sm btn-outline-danger" onClick={() => openStatusModal(user)}>
-                              <FaTimes />
-                            </button>
-                          ) : (
-                            <button className="btn btn-sm btn-outline-success" onClick={() => openStatusModal(user)}>
-                              <FaCheck />
-                            </button>
-                          )}
+                        
                           <button className="btn btn-sm btn-outline-danger" onClick={() => deleteUser(user.id)}>
                             <FaTrash />
                           </button>

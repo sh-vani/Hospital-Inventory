@@ -67,8 +67,8 @@ const SuperAdminAssets = () => {
       const response = await axiosInstance.get('/assets', { params });
       
       if (response.data.success) {
-        setAssets(response.data.data.assets);
-        setPagination(response.data.data.pagination);
+        setAssets(response.data.data);
+        setPagination(response.data.data);
       } else {
         setError('Failed to fetch assets');
       }

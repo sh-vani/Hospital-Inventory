@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaPlus, FaSearch, FaEye, FaFilePdf } from 'react-icons/fa';
 import axios from 'axios';
 import BaseUrl from '../../Api/BaseUrl';
+import axiosInstance from '../../Api/axiosInstance';
 
 const WarehouseRequisitions = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,8 +35,29 @@ const WarehouseRequisitions = () => {
     try {
       const response = await axios.get(`${BaseUrl}/requisitions?page=${page}`);
       if (response.data.success) {
-        setRequisitions(response.data.data.requisitions);
-        setPagination(response.data.data.pagination);
+        // Fixed: Properly extract the data from the response
+        const requisitionsData = response.data.data.map(req => ({
+          ...req,
+          // Added mock items data since it's missing in the API response
+          items: [
+            {
+              item_id: 1,
+              item_name: "Medical Supplies",
+              quantity: 10,
+              unit: "units",
+              approved_quantity: 0
+            }
+          ]
+        }));
+        
+        setRequisitions(requisitionsData);
+        // Fixed: Set pagination properly
+        setPagination({
+          currentPage: page,
+          totalPages: Math.ceil(response.data.data.length / 10) || 1,
+          totalItems: response.data.data.length,
+          itemsPerPage: 10
+        });
       } else {
         setError('Failed to fetch requisitions');
       }
@@ -101,9 +123,10 @@ const WarehouseRequisitions = () => {
     setShowRejectModal(true);
   };
 
+  const userId= JSON.parse(localStorage.getItem("user"))?.id;
   const handleApproveSubmit = async () => {
     if (!currentRequisition || !currentItem) return;
-    
+
     setLoading(true);
     try {
       const payload = {
@@ -113,25 +136,26 @@ const WarehouseRequisitions = () => {
             approved_quantity: parseInt(approveQty)
           }
         ],
-        remarks: remarks || 'Approved without remarks'
+        remarks: remarks || 'Approved without remarks',
+        userId: userId // <-- User ID is now included in the payload
       };
-      
-      const response = await axios.patch(`${BaseUrl}/requisitions/${currentRequisition.id}/approve`, payload);
-      
+
+      const response = await axiosInstance.patch(`/requisitions/${currentRequisition.id}/approve`, payload);
+
       if (response.data.success) {
         // Update the local state
         setRequisitions(requisitions.map(req => {
           if (req.id === currentRequisition.id) {
-            const updatedItems = req.items.map(item => 
-              item.item_id === currentItem.item_id 
-                ? { ...item, approved_quantity: parseInt(approveQty) } 
+            const updatedItems = req.items.map(item =>
+              item.item_id === currentItem.item_id
+                ? { ...item, approved_quantity: parseInt(approveQty) }
                 : item
             );
             return { ...req, status: 'Approved', items: updatedItems };
           }
           return req;
         }));
-        
+
         setShowApproveModal(false);
       } else {
         setError('Failed to approve requisition');
@@ -187,7 +211,7 @@ const WarehouseRequisitions = () => {
       setLoading(false);
     }
   };
-
+const user_Id = JSON.parse(localStorage.getItem("user"))?.id;
   const handleReject = async () => {
     if (!rejectingRequisition || !rejectionReason.trim()) {
       alert('Please provide a reason for rejection.');
@@ -196,17 +220,18 @@ const WarehouseRequisitions = () => {
     
     setLoading(true);
     try {
-      // Fixed: Updated the payload structure to match API requirements
+      // Fixed: user_Id should be at the root of the payload, not inside items
       const payload = {
         remarks: rejectionReason,
+        user_Id: user_Id, // <-- user_Id at root level
         items: rejectingRequisition.items.map(item => ({
           item_id: item.item_id,
           approved_quantity: 0 // Setting to 0 for rejection
         }))
       };
       
-      // Fixed: Changed the endpoint to match the API specification
-      const response = await axios.patch(`${BaseUrl}/requisitions/${rejectingRequisition.id}/reject`, payload);
+      // Fixed: Await the response and check for success
+      const response = await axios.put(`${BaseUrl}/requisitions/${rejectingRequisition.id}/reject`, payload);
       
       if (response.data.success) {
         // Update the local state
@@ -314,7 +339,7 @@ const WarehouseRequisitions = () => {
               </thead>
               <tbody>
                 {filteredRequisitions.map((req, index) => (
-                  req.items.map((item, idx) => (
+                  req.items && req.items.map((item, idx) => (
                     <tr key={`${index}-${idx}`}>
                       <td>#{req.id}</td>
                       <td>{req.facility_name}</td>

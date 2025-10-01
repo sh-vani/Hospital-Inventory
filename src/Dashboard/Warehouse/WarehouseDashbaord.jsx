@@ -15,6 +15,7 @@ import {
   FaExclamationTriangle,
   FaFileImport,
 } from "react-icons/fa";
+import BaseUrl from "../../Api/BaseUrl";
 
 const WarehouseDashboard = () => {
   const [kpiData, setKpiData] = useState({
@@ -30,7 +31,7 @@ const WarehouseDashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get('https://ssknf82q-3000.inc1.devtunnels.ms/api/dashboard/getWarehouseAdminDashboard');
+        const response = await axios.get(`${BaseUrl}/dashboard/getWarehouseAdminDashboard`);
         
         if (response.data.success) {
           const data = response.data.data;
