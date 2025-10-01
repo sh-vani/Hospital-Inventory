@@ -88,7 +88,7 @@ const SuperAdminAssets = () => {
       if (response.data.success) {
         setFacilities(response.data.data.facilities);
         // Set default facility_id to the first facility if available
-        if (response.data.data.facilities.length > 0 && !assignForm.facility_id) {
+        if (response.data.data.facilities?.length > 0 && !assignForm.facility_id) {
           setAssignForm(prev => ({ ...prev, facility_id: response.data.data.facilities[0].id }));
         }
       } else {
