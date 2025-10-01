@@ -14,7 +14,7 @@ const FacilityUserMyRequests = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
   
   // State for search term
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');  
   
   // State for API data
   const [requests, setRequests] = useState([]);
@@ -41,7 +41,8 @@ const FacilityUserMyRequests = () => {
           delay *= 2; // Exponential backoff
         } else {
           throw error;
-      }
+        }
+      } 
     }
     
     throw new Error('Max retries reached');
