@@ -3,11 +3,7 @@ import { FaPlus, FaEye, FaTrash } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import BaseUrl from '../../Api/BaseUrl';
 import axiosInstance from '../../Api/axiosInstance';
-<<<<<<< HEAD
-
-=======
-import Swal from 'sweetalert2';
->>>>>>> f5b4f4cc94359f1e20c3183172e55149b55257e4
+// import Swal from 'sweetalert2';
 
 const FacilityUserRequisition = () => {
   // Form states
@@ -38,6 +34,10 @@ const FacilityUserRequisition = () => {
   // Real facility items from API
   const [facilityItems, setFacilityItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(true);
+
+  // ✅ Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const entriesPerPage = 10;
 
   // Get user from localStorage
   const getUserFromStorage = () => {
@@ -165,7 +165,7 @@ const FacilityUserRequisition = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     if (!selectedItem || !quantity || quantity <= 0) {
       Swal.fire({
         icon: 'warning',
@@ -174,7 +174,7 @@ const FacilityUserRequisition = () => {
       });
       return;
     }
-  
+
     const user = getUserFromStorage();
     if (!user || !user.facility_id || !user.id) {
       Swal.fire({
@@ -184,7 +184,7 @@ const FacilityUserRequisition = () => {
       });
       return;
     }
-  
+
     setLoading(true);
     try {
       const payload = {
@@ -199,20 +199,20 @@ const FacilityUserRequisition = () => {
           }
         ]
       };
-  
+
       const response = await axiosInstance.post(`${BaseUrl}/requisitions`, payload);
-  
+
       if (response.data.success) {
         setSuccess(true);
         fetchRequisitionHistory(user.id);
-  
+
         // Reset form
         setSelectedItem('');
         setQuantity('');
         setPriority('Normal');
         setRemarks('');
         setShowRequisitionModal(false);
-  
+
         Swal.fire({
           icon: 'success',
           title: 'Submitted!',
@@ -240,6 +240,7 @@ const FacilityUserRequisition = () => {
       setTimeout(() => setSuccess(false), 3000);
     }
   };
+
   // Cancel requisition with SweetAlert confirmation
   const handleCancelRequisition = async (id) => {
     const result = await Swal.fire({
@@ -341,6 +342,22 @@ const FacilityUserRequisition = () => {
 
     return matchesSearch && matchesStatus && matchesPriority;
   });
+
+  // ✅ Pagination logic
+  const totalPages = Math.ceil(filteredRequisitions.length / entriesPerPage);
+  const indexOfLastEntry = currentPage * entriesPerPage;
+  const currentEntries = filteredRequisitions.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // Reset to page 1 when filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, priorityFilter]);
 
   return (
     <div className="container py-4">
@@ -478,8 +495,8 @@ const FacilityUserRequisition = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRequisitions.length > 0 ? (
-                    filteredRequisitions.map((req, index) => (
+                  {currentEntries.length > 0 ? (
+                    currentEntries.map((req, index) => (
                       <tr key={req.id}>
                         <td>{req.id}</td>
                         <td>{req.item_name || 'N/A'}</td>
@@ -528,8 +545,53 @@ const FacilityUserRequisition = () => {
                 </tbody>
               </table>
             </div>
+
+
           </div>
         </div>
+      </div>
+      {/* ✅ PAGINATION UI — Always shown when not loading */}
+      <div className="d-flex justify-content-end mt-3">
+        <nav>
+          <ul className="pagination mb-0">
+            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+            </li>
+
+            {[...Array(totalPages)].map((_, i) => {
+              const page = i + 1;
+              return (
+                <li
+                  key={page}
+                  className={`page-item ${currentPage === page ? 'active' : ''}`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => handlePageChange(page)}
+                  >
+                    {page}
+                  </button>
+                </li>
+              );
+            })}
+
+            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                Next
+              </button>
+            </li>
+          </ul>
+        </nav>
       </div>
 
       {/* Create Requisition Modal */}
@@ -803,6 +865,7 @@ const FacilityUserRequisition = () => {
       {showDetailModal && <div className="modal-backdrop fade show"></div>}
       {showItemDetailModal && <div className="modal-backdrop fade show"></div>}
     </div>
+
   );
 };
 

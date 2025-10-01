@@ -21,8 +21,10 @@ const SuperAdminInventory = () => {
   const [showBatchModal, setShowBatchModal] = useState(false);
   const [movements, setMovements] = useState([]);
   const [movementsLoading, setMovementsLoading] = useState(false);
-
-
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // === FETCH INVENTORY DATA ===
   useEffect(() => {
@@ -73,8 +75,17 @@ const SuperAdminInventory = () => {
     );
   });
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredInventory.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentInventory = filteredInventory.slice(startIndex, startIndex + itemsPerPage);
+
+  // Reset to first page when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   // === MODAL HANDLERS ===
-  // View Modal Handler
   const openViewModal = (item) => {
     setViewItem(item);
     setShowViewModal(true);
@@ -96,7 +107,6 @@ const SuperAdminInventory = () => {
   const openHistoryModal = async (item) => {
     setCurrentItem(item);
     setShowHistoryModal(true);
-    // Fetch movements when opening the modal
     await fetchMovements(item.id);
   };
 
@@ -120,7 +130,6 @@ const SuperAdminInventory = () => {
     try {
       const response = await axiosInstance.put(`${BaseUrl}/inventory/${currentItem.id}`, editForm);
       if (response.data.success) {
-        // Update the local state with the updated item
         setInventory(prevInventory => 
           prevInventory.map(item => 
             item.id === currentItem.id ? response.data.data : item
@@ -169,6 +178,96 @@ const SuperAdminInventory = () => {
     }
   };
 
+  // Pagination controls
+  const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const renderPagination = () => {
+    // Only hide pagination if there are NO items at all
+    if (filteredInventory.length === 0) return null;
+
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+    
+    return (
+      <nav className="d-flex justify-content-center mt-3">
+        <ul className="pagination mb-0">
+          <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+            <button 
+              className="page-link" 
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </button>
+          </li>
+          
+          {startPage > 1 && (
+            <>
+              <li className="page-item">
+                <button className="page-link" onClick={() => goToPage(1)}>
+                  1
+                </button>
+              </li>
+              {startPage > 2 && (
+                <li className="page-item disabled">
+                  <span className="page-link">...</span>
+                </li>
+              )}
+            </>
+          )}
+          
+          {pageNumbers.map(number => (
+            <li key={number} className={`page-item ${number === currentPage ? 'active' : ''}`}>
+              <button className="page-link" onClick={() => goToPage(number)}>
+                {number}
+              </button>
+            </li>
+          ))}
+          
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && (
+                <li className="page-item disabled">
+                  <span className="page-link">...</span>
+                </li>
+              )}
+              <li className="page-item">
+                <button className="page-link" onClick={() => goToPage(totalPages)}>
+                  {totalPages}
+                </button>
+              </li>
+            </>
+          )}
+          
+          <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+            <button 
+              className="page-link" 
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </button>
+          </li>
+        </ul>
+      </nav>
+    );
+  };
+
   return (
     <div className="container-fluid py-3">
       {/* ===== Top Toolbar ===== */}
@@ -209,6 +308,7 @@ const SuperAdminInventory = () => {
       {/* ===== TABLE ===== */}
       {!loading && !error && (
         <div className="card border-0 shadow-sm">
+          
           <div className="table-responsive">
             <table className="table table-hover mb-0 align-middle">
               <thead className="bg-light">
@@ -224,12 +324,12 @@ const SuperAdminInventory = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredInventory.length === 0 ? (
+                {currentInventory.length === 0 ? (
                   <tr>
                     <td colSpan="8" className="text-center py-4">No inventory items found.</td>
                   </tr>
                 ) : (
-                  filteredInventory.map((item, i) => (
+                  currentInventory.map((item) => (
                     <tr key={item.id}>
                       <td className="fw-bold">{item.item_code}</td>
                       <td>{item.item_name}</td>
@@ -271,6 +371,9 @@ const SuperAdminInventory = () => {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
+          {renderPagination()}
         </div>
       )}
 

@@ -20,6 +20,10 @@ const FacilityUser = () => {
     facility_admin_id: ''
   });
 
+  // ✅ Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const entriesPerPage = 10;
+
   // ✅ Get logged-in user info from localStorage
   const getLoggedInUser = () => {
     const userData = localStorage.getItem('user');
@@ -124,6 +128,17 @@ const FacilityUser = () => {
     }
   };
 
+  // ✅ Pagination logic
+  const totalPages = Math.ceil(users.length / entriesPerPage);
+  const indexOfLastEntry = currentPage * entriesPerPage;
+  const currentEntries = users.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
   return (
     <div className="container-fluid p-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -144,23 +159,73 @@ const FacilityUser = () => {
             </tr>
           </thead>
           <tbody>
-            {users?.map((u, index) => (
-              <tr key={u.id}>
-                <td>{index + 1}</td>
-                <td>{u.name}</td>
-                <td>{u.email}</td>
-                <td>{u.phone}</td>
-                <td>{u.department_name}</td>
-                <td>
-                  <Button size="sm" onClick={() => openEditModal(u)}>Edit</Button>{' '}
-                  <Button size="sm" variant="danger" onClick={() => handleDelete(u)}>Delete</Button>
+            {currentEntries.length > 0 ? (
+              currentEntries.map((u, index) => (
+                <tr key={u.id}>
+                  <td>{(currentPage - 1) * entriesPerPage + index + 1}</td>
+                  <td>{u.name}</td>
+                  <td>{u.email}</td>
+                  <td>{u.phone}</td>
+                  <td>{u.department_name}</td>
+                  <td>
+                    <Button size="sm" onClick={() => openEditModal(u)}>Edit</Button>{' '}
+                    <Button size="sm" variant="danger" onClick={() => handleDelete(u)}>Delete</Button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" className="text-center text-muted py-3">
+                  No users found.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
+      {/* ✅ PAGINATION UI — Same as your other components */}
+        <div className="d-flex justify-content-end mt-3">
+          <nav>
+            <ul className="pagination mb-0">
+              <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                <button
+                  className="page-link"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+              </li>
 
+              {[...Array(totalPages)].map((_, i) => {
+                const page = i + 1;
+                return (
+                  <li
+                    key={page}
+                    className={`page-item ${currentPage === page ? 'active' : ''}`}
+                  >
+                    <button
+                      className="page-link"
+                      onClick={() => handlePageChange(page)}
+                    >
+                      {page}
+                    </button>
+                  </li>
+                );
+              })}
+
+              <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+                <button
+                  className="page-link"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                >
+                  Next
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
       <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered>
         <Modal.Header closeButton>
           <Modal.Title>{modalType === 'add' ? 'Add User' : 'Edit User'}</Modal.Title>

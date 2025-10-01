@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  FaSearch, FaFileCsv, FaFilePdf, FaBox, FaExclamationTriangle 
+import {
+  FaSearch, FaFileCsv, FaFilePdf, FaBox, FaExclamationTriangle
 } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import axios from 'axios';
@@ -13,13 +13,15 @@ const FacilityUserInventory = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [facilityId, setFacilityId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const entriesPerPage = 10;
 
   const baseUrl = BaseUrl;
-  
+
   useEffect(() => {
-    const userStr = localStorage.getItem('user') || 
-                    localStorage.getItem('userData') || 
-                    localStorage.getItem('authUser');
+    const userStr = localStorage.getItem('user') ||
+      localStorage.getItem('userData') ||
+      localStorage.getItem('authUser');
 
     if (userStr) {
       try {
@@ -49,9 +51,8 @@ const FacilityUserInventory = () => {
         if (response.data?.success) {
           let rawData = response.data.data;
 
-          // ✅ Handle both single object and array
-          const items = Array.isArray(rawData) 
-            ? rawData 
+          const items = Array.isArray(rawData)
+            ? rawData
             : (rawData && typeof rawData === 'object' ? [rawData] : []);
 
           const transformedData = items.map(item => ({
@@ -97,7 +98,19 @@ const FacilityUserInventory = () => {
       );
       setFilteredData(filtered);
     }
+    setCurrentPage(1); // Reset to first page on search
   }, [searchTerm, inventoryData]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredData.length / entriesPerPage);
+  const indexOfLastEntry = currentPage * entriesPerPage;
+  const currentEntries = filteredData.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
 
   const handleExportCSV = () => alert('Exporting data to CSV');
   const handleExportPDF = () => alert('Exporting data to PDF');
@@ -131,10 +144,10 @@ const FacilityUserInventory = () => {
         <div className="card-body d-flex flex-wrap justify-content-between gap-2">
           <div className="input-group" style={{ maxWidth: '300px' }}>
             <span className="input-group-text"><FaSearch /></span>
-            <input 
-              type="text" 
-              className="form-control" 
-              placeholder="Search by item name, batch, lot..." 
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Search by item name, batch, lot..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -158,56 +171,109 @@ const FacilityUserInventory = () => {
               <p className="mt-2 text-muted">Loading inventory data...</p>
             </div>
           ) : (
-            <div className="table-responsive">
-              <table className="table table-hover mb-0">
-                <thead className="table-light">
-                  <tr>
-                    <th>Item Name</th>
-                    <th>Category</th>
-                    <th>Batch / Lot</th>
-                    <th>Expiry Date</th>
-                    <th>Available Qty</th>
-                    <th>Status</th>
-                    <th>Remarks</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredData.length > 0 ? (
-                    filteredData.map((item) => {
-                      const status = getExpiryStatus(item.expiryDate, item.availableQty);
-                      return (
-                        <tr key={item.id}>
-                          <td>{item.itemName}</td>
-                          <td>{item.category}</td>
-                          <td>{item.batch} / {item.lot}</td>
-                          <td>
-                            {item.expiryDate === 'N/A' 
-                              ? 'N/A' 
-                              : new Date(item.expiryDate).toLocaleDateString()}
-                          </td>
-                          <td>{item.availableQty}</td>
-                          <td>
-                            <span className={`badge ${status.class} rounded-pill px-2 py-1`}>
-                              {status.text}
-                            </span>
-                          </td>
-                          <td>{item.remarks}</td>
-                        </tr>
-                      );
-                    })
-                  ) : (
+            <>
+              <div className="table-responsive">
+                <table className="table table-hover mb-0">
+                  <thead className="table-light">
                     <tr>
-                      <td colSpan="7" className="text-center py-4 text-muted">
-                        <FaBox size={20} className="me-2" />
-                        No inventory items found.
-                      </td>
+                      <th>Item Name</th>
+                      <th>Category</th>
+                      <th>Batch / Lot</th>
+                      <th>Expiry Date</th>
+                      <th>Available Qty</th>
+                      <th>Status</th>
+                      <th>Remarks</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {currentEntries.length > 0 ? (
+                      currentEntries.map((item) => {
+                        const status = getExpiryStatus(item.expiryDate, item.availableQty);
+                        return (
+                          <tr key={item.id}>
+                            <td>{item.itemName}</td>
+                            <td>{item.category}</td>
+                            <td>{item.batch} / {item.lot}</td>
+                            <td>
+                              {item.expiryDate === 'N/A'
+                                ? 'N/A'
+                                : new Date(item.expiryDate).toLocaleDateString()}
+                            </td>
+                            <td>{item.availableQty}</td>
+                            <td>
+                              <span className={`badge ${status.class} rounded-pill px-2 py-1`}>
+                                {status.text}
+                              </span>
+                            </td>
+                            <td>{item.remarks}</td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan="7" className="text-center py-4 text-muted">
+                          <FaBox size={20} className="me-2" />
+                          No inventory items found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
+      </div>
+
+      {/* ✅ Pagination always shown when not loading (even for 1 page or empty) */}
+      <div className="d-flex justify-content-end mt-3">
+        <nav>
+          <ul className="pagination mb-0">
+            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+            </li>
+
+            {/* Show page numbers only if there's at least one entry */}
+            {filteredData.length > 0 ? (
+              [...Array(totalPages)].map((_, i) => {
+                const page = i + 1;
+                return (
+                  <li
+                    key={page}
+                    className={`page-item ${currentPage === page ? 'active' : ''}`}
+                  >
+                    <button
+                      className="page-link"
+                      onClick={() => handlePageChange(page)}
+                    >
+                      {page}
+                    </button>
+                  </li>
+                );
+              })
+            ) : (
+              <li className="page-item disabled">
+                <span className="page-link">0</span>
+              </li>
+            )}
+
+            <li className={`page-item ${currentPage === totalPages || filteredData.length === 0 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || filteredData.length === 0}
+              >
+                Next
+              </button>
+            </li>
+          </ul>
+        </nav>
       </div>
     </div>
   );

@@ -22,30 +22,29 @@ const FacilityDashboard = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // ✅ Get facility_id from localStorage (assuming you stored user object as JSON)
+  // ✅ Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const entriesPerPage = 10;
+
+  // ✅ Get facility_id from localStorage
   const facilityId = JSON.parse(localStorage.getItem("user"))?.facility_id;
 
-  // ✅ Fetch Inventory from API
   useEffect(() => {
     const fetchInventory = async () => {
       try {
-        const response = await axiosInstance.get(
-          `/inventory`
-        );
+        const response = await axiosInstance.get(`/inventory`);
         const items = response.data?.data || [];
 
-        // ✅ Filter items with matching facility_id
         const filteredItems = items.filter(
           (item) => item.facility_id === facilityId
         );
 
-        // ✅ Map API data into table-friendly format
         const formattedItems = filteredItems.map((item) => ({
           id: item.id,
           code: item.item_code,
           name: item.item_name,
           qty: item.quantity,
-          reserved: 0, // Reserved value (if available from API, replace here)
+          reserved: 0,
           lastReceipt: new Date(item.updated_at).toLocaleDateString(),
           category: item.category,
           description: item.description,
@@ -63,24 +62,32 @@ const FacilityDashboard = () => {
     fetchInventory();
   }, [facilityId]);
 
-  // ✅ Handle View
   const handleView = (item) => {
     setSelectedItem(item);
     setShowViewModal(true);
   };
 
-  // ✅ Handle Edit
   const handleEdit = (item) => {
     setSelectedItem(item);
     setShowEditModal(true);
   };
 
-  // ✅ Handle Save (Edit Modal)
   const handleSaveEdit = () => {
     setInventoryData((prev) =>
       prev.map((item) => (item.id === selectedItem.id ? selectedItem : item))
     );
     setShowEditModal(false);
+  };
+
+  // ✅ Pagination logic
+  const totalPages = Math.ceil(inventoryData.length / entriesPerPage);
+  const indexOfLastEntry = currentPage * entriesPerPage;
+  const currentEntries = inventoryData.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
   };
 
   return (
@@ -113,51 +120,97 @@ const FacilityDashboard = () => {
                   No inventory data available for this facility.
                 </p>
               ) : (
-                <Table responsive striped hover>
-                  <thead>
-                    <tr>
-                      <th>Item Code</th>
-                      <th>Item Name</th>
-                      <th>Available Qty</th>
-                      <th>Reserved</th>
-                      <th>Last Receipt</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {inventoryData.map((item) => (
-                      <tr key={item.id}>
-                        <td>{item.code}</td>
-                        <td>{item.name}</td>
-                        <td>{item.qty}</td>
-                        <td>{item.reserved}</td>
-                        <td>{item.lastReceipt}</td>
-                        <td>
-                          <Button
-                            size="sm"
-                            variant="outline-primary"
-                            className="me-2"
-                            onClick={() => handleView(item)}
-                          >
-                            View
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline-success"
-                            onClick={() => handleEdit(item)}
-                          >
-                            Edit
-                          </Button>
-                        </td>
+                <>
+                  <Table responsive striped hover>
+                    <thead>
+                      <tr>
+                        <th>Item Code</th>
+                        <th>Item Name</th>
+                        <th>Available Qty</th>
+                        <th>Reserved</th>
+                        <th>Last Receipt</th>
+                        <th>Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </Table>
+                    </thead>
+                    <tbody>
+                      {currentEntries.map((item) => (
+                        <tr key={item.id}>
+                          <td>{item.code}</td>
+                          <td>{item.name}</td>
+                          <td>{item.qty}</td>
+                          <td>{item.reserved}</td>
+                          <td>{item.lastReceipt}</td>
+                          <td>
+                            <Button
+                              size="sm"
+                              variant="outline-primary"
+                              className="me-2"
+                              onClick={() => handleView(item)}
+                            >
+                              View
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline-success"
+                              onClick={() => handleEdit(item)}
+                            >
+                              Edit
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </>
               )}
             </Card.Body>
           </Card>
         </Col>
       </Row>
+
+      {/* ✅ PAGINATION — Same as your earlier components */}
+      <div className="d-flex justify-content-end mt-3">
+        <nav>
+          <ul className="pagination mb-0">
+            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+            </li>
+
+            {[...Array(totalPages)].map((_, i) => {
+              const page = i + 1;
+              return (
+                <li
+                  key={page}
+                  className={`page-item ${currentPage === page ? 'active' : ''}`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => handlePageChange(page)}
+                  >
+                    {page}
+                  </button>
+                </li>
+              );
+            })}
+
+            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                Next
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
 
       {/* View Modal */}
       <Modal
