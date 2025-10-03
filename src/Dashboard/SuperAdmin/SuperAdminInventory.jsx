@@ -532,10 +532,7 @@ const SuperAdminInventory = () => {
                 <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
               </div>
               <div className="modal-body">
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Item ID:</div>
-                  <div className="col-6">{viewItem.id}</div>
-                </div>
+                
                 <div className="row mb-3">
                   <div className="col-6 fw-bold">Item Code:</div>
                   <div className="col-6">{viewItem.item_code}</div>

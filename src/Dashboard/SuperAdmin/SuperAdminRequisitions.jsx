@@ -290,7 +290,7 @@ const SuperAdminRequisitions = () => {
                 ) : (
                   filteredBySearch.map((req, i) => (
                     <tr key={i}>
-                      <td className="fw-bold">#{req.id}</td>
+                      <td className="fw-bold">{i+1}</td>
                       <td>{req.facility_name}</td>
                       <td>{req.items && req.items.length > 0 ? req.items[0].item_name : 'N/A'}</td>
                       <td>{req.total_quantity}</td>

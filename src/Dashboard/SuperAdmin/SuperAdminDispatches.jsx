@@ -257,7 +257,7 @@ const SuperAdminDispatches = () => {
                 ) : (
                   filtered.map((dispatch, index) => (
                     <tr key={dispatch.id || index}>
-                      <td className="fw-bold">#{dispatch.id}</td>
+                      <td className="fw-bold">Tracking Number:{index+1}</td>
                       <td>{dispatch.facility_name || 'Unknown Facility'}</td>
                       <td>{getItemsPreview(dispatch.items)}</td>
                       <td>{getTotalQty(dispatch.items)}</td>
@@ -386,8 +386,7 @@ const SuperAdminDispatches = () => {
                     </div>
                   </div>
                   <div className="col-12 col-md-6">
-                    <p className="mb-1"><strong>Tracking Number:</strong> {currentDispatch.tracking_number || 'N/A'}</p>
-                    <p className="mb-1"><strong>Estimated Delivery:</strong> {currentDispatch.estimated_delivery ? new Date(currentDispatch.estimated_delivery).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}</p>
+                 
                     <p className="mb-1"><strong>Status:</strong> <StatusBadge status={currentDispatch.status} /></p>
                   </div>
                 </div>
