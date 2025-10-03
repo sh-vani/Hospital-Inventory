@@ -21,8 +21,8 @@ const Login = () => {
       password: "123",
     },
     "Facility Admin": {
-      email: "hospital.admin@hospital.com",
-      password: "123",
+      email: "facilityadmin@hospital.com",
+      password: "123456",
     },
     "Facility User": {
       email: "alice.brown@hospital.com",

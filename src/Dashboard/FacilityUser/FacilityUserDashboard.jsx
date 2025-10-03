@@ -1,506 +1,414 @@
 import React, { useState, useEffect } from 'react';
-import { FaBoxOpen, FaExclamationTriangle, FaClock, FaHourglassHalf, FaShoppingCart, FaFileCsv, FaFilePdf, FaSearch, FaFilter, FaArrowUp, FaChartLine } from 'react-icons/fa';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import {
+  FaHome, FaClipboardList, FaBox, FaBell, FaWarehouse, FaPlus, FaSearch, FaTimes,
+  FaCheck, FaExclamationTriangle, FaTruck, FaClock, FaUser, FaSignOutAlt,
+  FaFilter, FaEye, FaDownload, FaCalendarAlt, FaBars, FaListAlt, FaReceipt,
+  FaChartLine, FaCog, FaArrowRight
+} from 'react-icons/fa';
+import axios from 'axios';
+import BaseUrl from '../../Api/BaseUrl';
+import axiosInstance from '../../Api/axiosInstance';
 
 const FacilityUserDashboard = () => {
-  // State for dashboard data
-  const [dashboardData, setDashboardData] = useState({
-    outOfStock: 5,
-    lowStock: 12,
-    nearExpiry: 8,
-    pendingApprovals: 3,
-    itemsIssuedCount: 42,
-    itemsIssuedValue: 2450.75,
-    monthlyTrend: '+12%'
+  // State management
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [deliveredItems, setDeliveredItems] = useState([]);
+  const [inventory, setInventory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [user, setUser] = useState({ 
+    name: 'John Doe', 
+    facility: 'City General Hospital',
+    id: 1,
+    facility_id: 1
+  });
+  
+  // New request form state
+  const [newRequest, setNewRequest] = useState({
+    item: '',
+    quantity: 1,
+    purpose: '',
+    urgency: 'normal'
   });
 
-  // State for drill-down modal
-  const [showModal, setShowModal] = useState(false);
-  const [modalTitle, setModalTitle] = useState('');
-  const [modalData, setModalData] = useState([]);
-  const [modalColumns, setModalColumns] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // Simulate fetching dashboard data
+  // Fetch data on component mount
   useEffect(() => {
-    // In a real app, this would come from an API
-    setDashboardData({
-      outOfStock: 5,
-      lowStock: 12,
-      nearExpiry: 8,
-      pendingApprovals: 3,
-      itemsIssuedCount: 42,
-      itemsIssuedValue: 2450.75,
-      monthlyTrend: '+12%'
-    });
+    fetchDashboardData();
+    fetchNotifications();
   }, []);
 
-  // Handle widget click
-  const handleWidgetClick = (widgetType) => {
-    let title = '';
-    let columns = [];
-    let data = [];
+  // Fetch dashboard data
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch pending requests
+      const pendingResponse = await axiosInstance.get(`${BaseUrl}/requisitions?status=pending,processing&user_id=${user.id}`);
+      if (pendingResponse.data.success) {
+        setPendingRequests(pendingResponse.data.data || []);
+      }
+      
+      // Fetch delivered items (last 7 days)
+      const deliveredResponse = await axiosInstance.get(`${BaseUrl}/requisitions?status=delivered&days=7&user_id=${user.id}`);
+      if (deliveredResponse.data.success) {
+        setDeliveredItems(deliveredResponse.data.data || []);
+      }
+      
+      // Fetch facility inventory
+      const inventoryResponse = await axiosInstance.get(`${BaseUrl}/inventory?facility_id=${user.facility_id}`);
+      if (inventoryResponse.data.success) {
+        setInventory(inventoryResponse.data.data || []);
+      }
+      
+      setError(null);
+    } catch (err) {
+      setError('Failed to load dashboard data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // Set title, columns and mock data based on widget type
-    switch(widgetType) {
-      case 'outOfStock':
-        title = 'Out of Stock Items';
-        columns = ['Item Code', 'Item Name', 'Category', 'Last Stock Date', 'Days Since'];
-        data = [
-          { id: 1, code: 'MED001', name: 'Paracetamol 500mg', category: 'Medicine', lastStockDate: '2023-10-15', daysSince: 12 },
-          { id: 2, code: 'SUP023', name: 'Surgical Gloves', category: 'Supplies', lastStockDate: '2023-10-10', daysSince: 17 },
-          { id: 3, code: 'MED045', name: 'Antiseptic Solution', category: 'Medicine', lastStockDate: '2023-10-05', daysSince: 22 },
-          { id: 4, code: 'EQ078', name: 'Thermometer Covers', category: 'Equipment', lastStockDate: '2023-10-01', daysSince: 26 },
-          { id: 5, code: 'MED102', name: 'Insulin Syringes', category: 'Medicine', lastStockDate: '2023-09-28', daysSince: 29 }
-        ];
-        break;
-      case 'lowStock':
-        title = 'Low Stock Items';
-        columns = ['Item Code', 'Item Name', 'Current Stock', 'Min Level', 'Reorder Point', 'Status'];
-        data = [
-          { id: 1, code: 'MED003', name: 'Amoxicillin 500mg', currentStock: 15, minLevel: 30, reorderPoint: 25, status: 'Critical' },
-          { id: 2, code: 'SUP015', name: 'Face Masks', currentStock: 40, minLevel: 100, reorderPoint: 80, status: 'Low' },
-          { id: 3, code: 'MED027', name: 'Vitamin C Tablets', currentStock: 25, minLevel: 50, reorderPoint: 40, status: 'Low' },
-          { id: 4, code: 'EQ056', name: 'Blood Pressure Cuffs', currentStock: 3, minLevel: 10, reorderPoint: 8, status: 'Critical' },
-          { id: 5, code: 'SUP089', name: 'Alcohol Swabs', currentStock: 60, minLevel: 200, reorderPoint: 150, status: 'Low' }
-        ];
-        break;
-      case 'nearExpiry':
-        title = 'Near Expiry Items';
-        columns = ['Item Code', 'Item Name', 'Batch/Lot', 'Expiry Date', 'Days Remaining', 'Quantity'];
-        data = [
-          { id: 1, code: 'MED007', name: 'Ibuprofen 400mg', batch: 'B789', expiryDate: '2023-12-15', daysRemaining: 30, quantity: 120 },
-          { id: 2, code: 'MED019', name: 'Cough Syrup', batch: 'L456', expiryDate: '2023-11-30', daysRemaining: 15, quantity: 45 },
-          { id: 3, code: 'SUP034', name: 'Bandages', batch: 'B234', expiryDate: '2024-01-10', daysRemaining: 56, quantity: 200 },
-          { id: 4, code: 'MED056', name: 'Antihistamine', batch: 'L789', expiryDate: '2023-12-01', daysRemaining: 16, quantity: 75 },
-          { id: 5, code: 'SUP067', name: 'Sterile Gauze', batch: 'B567', expiryDate: '2024-01-20', daysRemaining: 66, quantity: 150 }
-        ];
-        break;
-      case 'pendingApprovals':
-        title = 'Pending Approvals';
-        columns = ['Requisition ID', 'Date Submitted', 'Items Count', 'Total Value', 'Status', 'Admin Notes'];
-        data = [
-          { id: 1, reqId: 'REQ-2023-045', date: '2023-10-20', itemsCount: 8, totalValue: 425.50, status: 'Pending', notes: '' },
-          { id: 2, reqId: 'REQ-2023-042', date: '2023-10-18', itemsCount: 5, totalValue: 210.75, status: 'Pending', notes: '' },
-          { id: 3, reqId: 'REQ-2023-039', date: '2023-10-15', itemsCount: 12, totalValue: 680.25, status: 'Pending', notes: 'Waiting for vendor confirmation' }
-        ];
-        break;
-      case 'itemsIssued':
-        title = 'Items Issued This Month';
-        columns = ['Issue Date', 'Item Name', 'Quantity', 'Unit Price', 'Total Value', 'Department'];
-        data = [
-          { id: 1, date: '2023-10-25', name: 'Paracetamol 500mg', quantity: 100, unitPrice: 2.50, totalValue: 250.00, department: 'Pharmacy' },
-          { id: 2, date: '2023-10-23', name: 'Surgical Gloves', quantity: 200, unitPrice: 0.75, totalValue: 150.00, department: 'Surgery' },
-          { id: 3, date: '2023-10-20', name: 'Antiseptic Solution', quantity: 50, unitPrice: 5.25, totalValue: 262.50, department: 'Emergency' },
-          { id: 4, date: '2023-10-18', name: 'Insulin Pens', quantity: 30, unitPrice: 15.00, totalValue: 450.00, department: 'Endocrinology' },
-          { id: 5, date: '2023-10-15', name: 'Blood Test Kits', quantity: 25, unitPrice: 12.50, totalValue: 312.50, department: 'Lab' }
-        ];
-        break;
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    try {
+      const response = await axiosInstance.get(`${BaseUrl}/notifications?user_id=${user.id}`);
+      if (response.data.success) {
+        setNotifications(response.data.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+      // Set mock notifications if API fails
+      setNotifications([
+        {
+          id: 1,
+          message: 'Your request for Gloves (100 pcs) has been Delivered.',
+          type: 'success',
+          timestamp: new Date(Date.now() - 3600000).toISOString()
+        },
+        {
+          id: 2,
+          message: 'Request for Thermometer is now Processing.',
+          type: 'info',
+          timestamp: new Date(Date.now() - 7200000).toISOString()
+        },
+        {
+          id: 3,
+          message: 'Request rejected: Insufficient justification.',
+          type: 'error',
+          timestamp: new Date(Date.now() - 10800000).toISOString()
+        },
+        {
+          id: 4,
+          message: 'Dispatch for your request is In Transit.',
+          type: 'info',
+          timestamp: new Date(Date.now() - 14400000).toISOString()
+        }
+      ]);
+    }
+  };
+
+  // Handle new request form submission
+  const handleNewRequest = async () => {
+    if (!newRequest.item || !newRequest.purpose) {
+      setError('Please fill all required fields');
+      return;
+    }
+
+    try {
+      const response = await axiosInstance.post(`${BaseUrl}/requisitions`, {
+        ...newRequest,
+        user_id: user.id,
+        facility_id: user.facility_id
+      });
+      
+      if (response.data.success) {
+        // Reset form
+        setNewRequest({
+          item: '',
+          quantity: 1,
+          purpose: '',
+          urgency: 'normal'
+        });
+        setShowRequestModal(false);
+        
+        // Refresh data
+        fetchDashboardData();
+        
+        // Add success notification
+        setNotifications(prev => [
+          {
+            id: Date.now(),
+            message: `Your request for ${newRequest.item} (${newRequest.quantity} pcs) has been submitted.`,
+            type: 'success',
+            timestamp: new Date().toISOString()
+          },
+          ...prev
+        ]);
+      } else {
+        setError(response.data.message || 'Failed to submit request');
+      }
+    } catch (err) {
+      setError('Failed to submit request');
+      console.error(err);
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Get status badge color
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'pending':
+        return <span className="badge bg-warning text-dark">Pending</span>;
+      case 'processing':
+        return <span className="badge bg-info">Processing</span>;
+      case 'approved':
+        return <span className="badge bg-primary">Approved</span>;
+      case 'dispatched':
+        return <span className="badge bg-secondary">Dispatched</span>;
+      case 'delivered':
+        return <span className="badge bg-success">Delivered</span>;
+      case 'rejected':
+        return <span className="badge bg-danger">Rejected</span>;
       default:
-        return;
-    }
-
-    setModalTitle(title);
-    setModalColumns(columns);
-    setModalData(data);
-    setShowModal(true);
-  };
-
-  // Handle CSV export
-  const handleExportCSV = () => {
-    alert(`Exporting ${modalTitle} data to CSV`);
-    // In a real app, this would generate and download a CSV file
-  };
-
-  // Handle PDF export
-  const handleExportPDF = () => {
-    alert(`Exporting ${modalTitle} data to PDF`);
-    // In a real app, this would generate and download a PDF file
-  };
-
-  // Filter data based on search term
-  const filteredData = modalData.filter(item => {
-    return Object.values(item).some(val => 
-      String(val).toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
-
-  // Get status badge class
-  const getStatusBadgeClass = (status) => {
-    switch(status?.toLowerCase()) {
-      case 'critical': return 'bg-danger';
-      case 'low': return 'bg-warning';
-      case 'pending': return 'bg-secondary';
-      default: return 'bg-info';
+        return <span className="badge bg-secondary">{status}</span>;
     }
   };
 
-  // Get icon color based on widget type
-  const getIconColor = (widgetType) => {
-    switch(widgetType) {
-      case 'outOfStock': return 'text-danger';
-      case 'lowStock': return 'text-warning';
-      case 'nearExpiry': return 'text-info';
-      case 'pendingApprovals': return 'text-secondary';
-      case 'itemsIssued': return 'text-success';
-      default: return 'text-primary';
+  // Get notification icon
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'success':
+        return <FaCheck className="text-success me-2" />;
+      case 'error':
+        return <FaTimes className="text-danger me-2" />;
+      case 'info':
+        return <FaTruck className="text-info me-2" />;
+      case 'warning':
+        return <FaExclamationTriangle className="text-warning me-2" />;
+      default:
+        return <FaBell className="text-secondary me-2" />;
     }
   };
 
-  // Get card background color based on widget type
-  const getCardBgColor = (widgetType) => {
-    switch(widgetType) {
-      case 'outOfStock': return '#ffebee'; // Very light red
-      case 'lowStock': return '#fff8e1'; // Very light yellow
-      case 'nearExpiry': return '#e1f5fe'; // Very light blue
-      case 'pendingApprovals': return '#f5f5f5'; // Very light gray
-      case 'itemsIssued': return '#e8f5e9'; // Very light green
-      default: return '#ffffff';
+  // Get stock status
+  const getStockStatus = (quantity) => {
+    if (quantity === 0) {
+      return { text: 'Out of Stock', class: 'text-danger', icon: <FaTimes /> };
+    } else if (quantity < 20) {
+      return { text: 'Low Stock', class: 'text-warning', icon: <FaExclamationTriangle /> };
+    } else {
+      return { text: 'Available', class: 'text-success', icon: <FaCheck /> };
     }
-  };
-
-  // Get stat card background color based on index
-  const getStatCardBgColor = (index) => {
-    const colors = [
-      '#e8f5e9', // Very light green - Inventory Accuracy
-      '#e1f5fe', // Very light blue - Requisitions This Month
-      '#fff8e1', // Very light yellow - Fulfillment Rate
-      '#ffebee'  // Very light red - Days Lead Time
-    ];
-    return colors[index % colors.length];
   };
 
   return (
-    <div className="container py-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h2 className="mb-1">Facility User Dashboard</h2>
-          <p className="text-muted mb-0">Pharmacy Department | Dr. Sharma</p>
-        </div>
+    <div className="bg-light" style={{ minHeight: '100vh' }}>
+      {/* Top Bar */}
+      <div className="bg-white shadow-sm p-3 d-flex justify-content-between align-items-center">
         <div className="d-flex align-items-center">
-          <div className="text-end me-3">
-            <div className="text-muted small">Last Updated</div>
-            <div>Today, 10:30 AM</div>
+          <div className="bg-primary bg-opacity-10 p-2 rounded-circle me-3">
+            <FaUser className="text-primary" />
           </div>
-          <div className="bg-light rounded-circle p-2">
-            <FaChartLine size={24} className="text-primary" />
+          <div>
+            <h4 className="mb-0 fw-bold">Facility User Dashboard</h4>
+            <p className="mb-0 text-muted small">{user.name} - {user.facility}</p>
           </div>
         </div>
+        
+        
       </div>
 
-      <div className="row g-4">
-        {/* Out of Stock Widget */}
-        <div className="col-md-6 col-lg-4">
-          <div 
-            className="card widget-card h-100 shadow-sm border-0" 
-            style={{ backgroundColor: getCardBgColor('outOfStock') }}
-            onClick={() => handleWidgetClick('outOfStock')}
-          >
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-start mb-3">
-                <div>
-                  <h5 className="card-title">Out of Stock</h5>
-                  <p className="text-muted small mb-0">Items completely out of stock</p>
-                </div>
-                <div className={`widget-icon ${getIconColor('outOfStock')}`}>
-                  <FaBoxOpen size={24} />
-                </div>
-              </div>
-              <div className="d-flex align-items-center mb-3">
-                <h2 className="mb-0 me-3">{dashboardData.outOfStock}</h2>
-                <div>
-                  <div className="text-danger small fw-bold">Requires immediate attention</div>
-                </div>
-              </div>
-              <div className="progress" style={{ height: '5px' }}>
-                <div className="progress-bar bg-danger" role="progressbar" style={{ width: '100%' }}></div>
-              </div>
-            </div>
-            <div className="card-footer bg-transparent border-0 py-2">
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="text-muted small">Click to view details</span>
-                <span className="text-danger small fw-bold">Critical</span>
-              </div>
+      {/* Dashboard Content */}
+      <div className="p-4">
+        {error && <div className="alert alert-danger">{error}</div>}
+        {loading ? (
+          <div className="d-flex justify-content-center my-5">
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">Loading...</span>
             </div>
           </div>
-        </div>
-
-        {/* Low Stock Widget */}
-        <div className="col-md-6 col-lg-4">
-          <div 
-            className="card widget-card h-100 shadow-sm border-0" 
-            style={{ backgroundColor: getCardBgColor('lowStock') }}
-            onClick={() => handleWidgetClick('lowStock')}
-          >
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-start mb-3">
-                <div>
-                  <h5 className="card-title">Low Stock</h5>
-                  <p className="text-muted small mb-0">Items below minimum level</p>
-                </div>
-                <div className={`widget-icon ${getIconColor('lowStock')}`}>
-                  <FaExclamationTriangle size={24} />
-                </div>
-              </div>
-              <div className="d-flex align-items-center mb-3">
-                <h2 className="mb-0 me-3">{dashboardData.lowStock}</h2>
-                <div>
-                  <div className="text-warning small fw-bold">Action required soon</div>
-                </div>
-              </div>
-              <div className="progress" style={{ height: '5px' }}>
-                <div className="progress-bar bg-warning" role="progressbar" style={{ width: '75%' }}></div>
-              </div>
-            </div>
-            <div className="card-footer bg-transparent border-0 py-2">
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="text-muted small">Click to view details</span>
-                <span className="text-warning small fw-bold">Warning</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Near Expiry Widget */}
-        <div className="col-md-6 col-lg-4">
-          <div 
-            className="card widget-card h-100 shadow-sm border-0" 
-            style={{ backgroundColor: getCardBgColor('nearExpiry') }}
-            onClick={() => handleWidgetClick('nearExpiry')}
-          >
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-start mb-3">
-                <div>
-                  <h5 className="card-title">Near Expiry</h5>
-                  <p className="text-muted small mb-0">Items expiring soon</p>
-                </div>
-                <div className={`widget-icon ${getIconColor('nearExpiry')}`}>
-                  <FaClock size={24} />
-                </div>
-              </div>
-              <div className="d-flex align-items-center mb-3">
-                <h2 className="mb-0 me-3">{dashboardData.nearExpiry}</h2>
-                <div>
-                  <div className="text-info small fw-bold">Plan usage or return</div>
-                </div>
-              </div>
-              <div className="d-flex justify-content-between mb-1">
-                <span className="small">30 days: 3</span>
-                <span className="small">60 days: 3</span>
-                <span className="small">90 days: 2</span>
-              </div>
-              <div className="progress" style={{ height: '5px' }}>
-                <div className="progress-bar bg-info" role="progressbar" style={{ width: '60%' }}></div>
-              </div>
-            </div>
-            <div className="card-footer bg-transparent border-0 py-2">
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="text-muted small">Click to view details</span>
-                <span className="text-info small fw-bold">Monitor</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Pending Approvals Widget */}
-        <div className="col-md-6 col-lg-4">
-          <div 
-            className="card widget-card h-100 shadow-sm border-0" 
-            style={{ backgroundColor: getCardBgColor('pendingApprovals') }}
-            onClick={() => handleWidgetClick('pendingApprovals')}
-          >
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-start mb-3">
-                <div>
-                  <h5 className="card-title">Pending Approvals</h5>
-                  <p className="text-muted small mb-0">Requisitions awaiting approval</p>
-                </div>
-                <div className={`widget-icon ${getIconColor('pendingApprovals')}`}>
-                  <FaHourglassHalf size={24} />
-                </div>
-              </div>
-              <div className="d-flex align-items-center mb-3">
-                <h2 className="mb-0 me-3">{dashboardData.pendingApprovals}</h2>
-                <div>
-                  <div className="text-secondary small fw-bold">Avg. wait: 2.5 days</div>
-                </div>
-              </div>
-              <div className="progress" style={{ height: '5px' }}>
-                <div className="progress-bar bg-secondary" role="progressbar" style={{ width: '45%' }}></div>
-              </div>
-            </div>
-            <div className="card-footer bg-transparent border-0 py-2">
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="text-muted small">Click to view details</span>
-                <span className="text-secondary small fw-bold">Waiting</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Items Issued This Month Widget */}
-        <div className="col-md-6 col-lg-4">
-          <div 
-            className="card widget-card h-100 shadow-sm border-0" 
-            style={{ backgroundColor: getCardBgColor('itemsIssued') }}
-            onClick={() => handleWidgetClick('itemsIssued')}
-          >
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-start mb-3">
-                <div>
-                  <h5 className="card-title">Items Issued This Month</h5>
-                  <p className="text-muted small mb-0">Total items issued</p>
-                </div>
-                <div className={`widget-icon ${getIconColor('itemsIssued')}`}>
-                  <FaShoppingCart size={24} />
-                </div>
-              </div>
-              <div className="d-flex align-items-center mb-3">
-                <h2 className="mb-0 me-3">{dashboardData.itemsIssuedCount}</h2>
-                <div>
-                  <div className="text-success small fw-bold d-flex align-items-center">
-                    <FaArrowUp className="me-1" /> {dashboardData.monthlyTrend} from last month
-                  </div>
-                </div>
-              </div>
-              <div className="d-flex justify-content-between mb-1">
-                <span className="small">Value: ${dashboardData.itemsIssuedValue.toFixed(2)}</span>
-                <span className="small">Avg: ${(dashboardData.itemsIssuedValue / dashboardData.itemsIssuedCount).toFixed(2)}/item</span>
-              </div>
-              <div className="progress" style={{ height: '5px' }}>
-                <div className="progress-bar bg-success" role="progressbar" style={{ width: '85%' }}></div>
-              </div>
-            </div>
-            <div className="card-footer bg-transparent border-0 py-2">
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="text-muted small">Click to view details</span>
-                <span className="text-success small fw-bold">On Track</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Stats Row */}
-      <div className="row mt-4">
-        <div className="col-12">
-          <div className="card shadow-sm border-0">
-            <div className="card-body">
-              <h5 className="card-title mb-4">Quick Stats</h5>
-              <div className="row text-center">
-                <div className="col-md-3 mb-3 mb-md-0">
-                  <div className="p-3 rounded" style={{ backgroundColor: getStatCardBgColor(0) }}>
-                    <h3 className="mb-1">87%</h3>
-                    <p className="text-muted mb-0">Inventory Accuracy</p>
-                  </div>
-                </div>
-                <div className="col-md-3 mb-3 mb-md-0">
-                  <div className="p-3 rounded" style={{ backgroundColor: getStatCardBgColor(1) }}>
-                    <h3 className="mb-1">24</h3>
-                    <p className="text-muted mb-0">Requisitions This Month</p>
-                  </div>
-                </div>
-                <div className="col-md-3 mb-3 mb-md-0">
-                  <div className="p-3 rounded" style={{ backgroundColor: getStatCardBgColor(2) }}>
-                    <h3 className="mb-1">96%</h3>
-                    <p className="text-muted mb-0">Fulfillment Rate</p>
-                  </div>
-                </div>
-                <div className="col-md-3">
-                  <div className="p-3 rounded" style={{ backgroundColor: getStatCardBgColor(3) }}>
-                    <h3 className="mb-1">1.8</h3>
-                    <p className="text-muted mb-0">Days Lead Time</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Drill-down Modal */}
-      {showModal && (
-        <div className="modal fade show d-block" tabIndex="-1" role="dialog">
-          <div className="modal-dialog modal-lg" role="document">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">{modalTitle}</h5>
-                <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <div className="d-flex justify-content-between mb-3">
-                  <div className="d-flex">
-                    <div className="input-group me-2" style={{ width: '300px' }}>
-                      <span className="input-group-text"><FaSearch /></span>
-                      <input 
-                        type="text" 
-                        className="form-control" 
-                        placeholder="Search..." 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
+        ) : (
+          <>
+            {/* Stats Cards */}
+            <div className="row mb-4">
+              <div className="col-md-3 col-sm-6 mb-3">
+                <div className="card border-0 shadow-sm h-100">
+                  <div className="card-body p-3">
+                    <div className="d-flex align-items-center">
+                      <div className="bg-warning bg-opacity-10 p-3 rounded-circle me-3">
+                        <FaClock className="text-warning fs-4" />
+                      </div>
+                      <div>
+                        <h5 className="mb-0 fw-bold">{pendingRequests.length}</h5>
+                        <p className="mb-0 text-muted small">Pending Requests</p>
+                      </div>
                     </div>
-                    <button className="btn btn-outline-secondary">
-                      <FaFilter /> Filter
-                    </button>
                   </div>
-                  <div>
-                    <button className="btn btn-outline-success me-2" onClick={handleExportCSV}>
-                      <FaFileCsv /> CSV
-                    </button>
-                    <button className="btn btn-outline-danger" onClick={handleExportPDF}>
-                      <FaFilePdf /> PDF
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="table-responsive">
-                  <table className="table table-striped table-hover">
-                    <thead className="table-light">
-                      <tr>
-                        {modalColumns.map((col, index) => (
-                          <th key={index}>{col}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredData.length > 0 ? (
-                        filteredData.map((row) => (
-                          <tr key={row.id}>
-                            {Object.values(row).slice(1).map((value, idx) => (
-                              <td key={idx}>
-                                {typeof value === 'string' && (value.toLowerCase() === 'critical' || value.toLowerCase() === 'low' || value.toLowerCase() === 'pending') ? (
-                                  <span className={`badge ${getStatusBadgeClass(value)}`}>{value}</span>
-                                ) : (
-                                  value
-                                )}
-                              </td>
-                            ))}
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={modalColumns.length} className="text-center py-3">
-                            No matching records found
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
                 </div>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
-                  Close
-                </button>
+              
+              <div className="col-md-3 col-sm-6 mb-3">
+                <div className="card border-0 shadow-sm h-100">
+                  <div className="card-body p-3">
+                    <div className="d-flex align-items-center">
+                      <div className="bg-success bg-opacity-10 p-3 rounded-circle me-3">
+                        <FaBox className="text-success fs-4" />
+                      </div>
+                      <div>
+                        <h5 className="mb-0 fw-bold">{deliveredItems.length}</h5>
+                        <p className="mb-0 text-muted small">Delivered This Week</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="col-md-3 col-sm-6 mb-3">
+                <div className="card border-0 shadow-sm h-100">
+                  <div className="card-body p-3">
+                    <div className="d-flex align-items-center">
+                      <div className="bg-info bg-opacity-10 p-3 rounded-circle me-3">
+                        <FaTruck className="text-info fs-4" />
+                      </div>
+                      <div>
+                        <h5 className="mb-0 fw-bold">3</h5>
+                        <p className="mb-0 text-muted small">In Transit</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="col-md-3 col-sm-6 mb-3">
+                <div className="card border-0 shadow-sm h-100">
+                  <div className="card-body p-3">
+                    <div className="d-flex align-items-center">
+                      <div className="bg-primary bg-opacity-10 p-3 rounded-circle me-3">
+                        <FaClipboardList className="text-primary fs-4" />
+                      </div>
+                      <div>
+                        <h5 className="mb-0 fw-bold">12</h5>
+                        <p className="mb-0 text-muted small">Total Requests</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Backdrop for modal */}
-      {showModal && <div className="modal-backdrop fade show"></div>}
+
+            {/* My Pending Requests - Card View */}
+            <div className="row mb-4">
+              <div className="col-12">
+                <div className="card border-0 shadow-sm">
+                  <div className="card-header bg-white border-0 pt-4 pb-2">
+                    <h5 className="mb-0 fw-bold d-flex align-items-center">
+                      <FaClock className="me-2 text-warning" /> My Pending Requests
+                    </h5>
+                  </div>
+                  <div className="card-body">
+                    {pendingRequests.length === 0 ? (
+                      <div className="text-center py-4">
+                        <FaClock className="text-muted mb-3" style={{ fontSize: '48px' }} />
+                        <p className="text-muted">You have no pending requests</p>
+                      </div>
+                    ) : (
+                      <div className="row">
+                        {pendingRequests.map(request => (
+                          <div className="col-md-6 col-lg-4 mb-3" key={request.id}>
+                            <div className="card border h-100">
+                              <div className="card-body">
+                                <div className="d-flex justify-content-between align-items-start mb-2">
+                                  <h6 className="card-title mb-0">{request.item}</h6>
+                                  {getStatusBadge(request.status)}
+                                </div>
+                                <p className="card-text">
+                                  <small className="text-muted">Quantity: {request.quantity}</small><br/>
+                                  <small className="text-muted">Raised: {formatDate(request.created_at)}</small>
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Recently Delivered Items - Card View */}
+            <div className="row mb-4">
+              <div className="col-12">
+                <div className="card border-0 shadow-sm">
+                  <div className="card-header bg-white border-0 pt-4 pb-2">
+                    <h5 className="mb-0 fw-bold d-flex align-items-center">
+                      <FaBox className="me-2 text-success" /> Recently Delivered Items
+                    </h5>
+                  </div>
+                  <div className="card-body">
+                    {deliveredItems.length === 0 ? (
+                      <div className="text-center py-4">
+                        <FaBox className="text-muted mb-3" style={{ fontSize: '48px' }} />
+                        <p className="text-muted">No items delivered in the last 7 days</p>
+                      </div>
+                    ) : (
+                      <div className="row">
+                        {deliveredItems.map(item => (
+                          <div className="col-md-6 col-lg-4 mb-3" key={item.id}>
+                            <div className="card border h-100">
+                              <div className="card-body">
+                                <div className="d-flex justify-content-between align-items-start mb-2">
+                                  <h6 className="card-title mb-0">{item.item}</h6>
+                                  <span className="badge bg-success">Delivered</span>
+                                </div>
+                                <p className="card-text">
+                                  <small className="text-muted">Quantity: {item.quantity}</small><br/>
+                                  <small className="text-muted">Delivered: {formatDate(item.delivered_at)}</small><br/>
+                                  <small className="text-primary">
+                                    Receipt: <a href="#" className="text-decoration-none">
+                                      {item.receipt_id || `RCP-${item.id}`}
+                                    </a>
+                                  </small>
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          
+          </>
+        )}
+      </div>
+
+      {/* Floating Action Button */}
+     
+
+      {/* New Request Modal */}
+
+
+      {/* Modal Backdrop */}
+
     </div>
   );
 };
