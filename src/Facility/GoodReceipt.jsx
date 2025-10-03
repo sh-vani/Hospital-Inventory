@@ -43,9 +43,13 @@ const GoodsReceipt = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
 
+  // ✅ Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const entriesPerPage = 10;
+
   // Get status class for badge
   const getStatusClass = (status) => {
-    switch(status) {
+    switch (status) {
       case 'Verified':
         return 'bg-success';
       case 'Pending':
@@ -69,7 +73,7 @@ const GoodsReceipt = () => {
 
   // Handle verify action
   const handleVerifyReceipt = (receiptId) => {
-    setReceipts(receipts.map(receipt => 
+    setReceipts(receipts.map(receipt =>
       receipt.id === receiptId ? { ...receipt, status: 'Verified' } : receipt
     ));
   };
@@ -78,6 +82,23 @@ const GoodsReceipt = () => {
   const filteredReceipts = receipts.filter(receipt => {
     return filterStatus === 'All' || receipt.status === filterStatus;
   });
+
+  // ✅ Pagination logic
+  const totalPages = Math.ceil(filteredReceipts.length / entriesPerPage);
+  const indexOfLastEntry = currentPage * entriesPerPage;
+  const currentEntries = filteredReceipts.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // Reset to page 1 when filter changes
+  const resetFilters = () => {
+    setFilterStatus('All');
+    setCurrentPage(1);
+  };
 
   return (
     <div className="container-fluid p-4" style={{ backgroundColor: '#ffff', minHeight: '100vh' }}>
@@ -88,17 +109,20 @@ const GoodsReceipt = () => {
           <p className="text-muted mb-0">Acknowledge dispatched items from warehouse</p>
         </div>
       </div>
-      
+
       {/* Filters */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">
           <div className="row g-3">
             <div className="col-md-4">
               <label className="form-label">Filter by Status</label>
-              <select 
+              <select
                 className="form-select"
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(e) => {
+                  setFilterStatus(e.target.value);
+                  setCurrentPage(1); // Reset to page 1 on filter change
+                }}
               >
                 <option value="All">All Status</option>
                 <option value="Pending">Pending</option>
@@ -106,9 +130,9 @@ const GoodsReceipt = () => {
               </select>
             </div>
             <div className="col-md-4 d-flex align-items-end">
-              <button 
+              <button
                 className="btn btn-outline-secondary w-100"
-                onClick={() => setFilterStatus('All')}
+                onClick={resetFilters}
               >
                 <i className="bi bi-funnel me-1"></i> Reset Filters
               </button>
@@ -116,7 +140,7 @@ const GoodsReceipt = () => {
           </div>
         </div>
       </div>
-      
+
       <div className="card border-0 shadow-sm">
         <div className="card-body p-0">
           <div className="table-responsive">
@@ -132,43 +156,87 @@ const GoodsReceipt = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredReceipts.map((receipt) => (
-                  <tr key={receipt.id}>
-                    <td className="fw-medium">{receipt.id}</td>
-                    <td>{receipt.item}</td>
-                    <td>{receipt.qty}</td>
-                    <td>{receipt.fromDispatch}</td>
-                    <td>
-                      <span className={`badge ${getStatusClass(receipt.status)} text-white`}>
-                        {receipt.status}
-                      </span>
-                    </td>
-                    <td>
-                      {receipt.status === 'Pending' && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-success"
-                          onClick={() => handleVerifyReceipt(receipt.id)}
-                          title="Verify Receipt"
-                        >
-                          Verify Receipt
-                        </button>
-                      )}
+                {currentEntries.length > 0 ? (
+                  currentEntries.map((receipt) => (
+                    <tr key={receipt.id}>
+                      <td className="fw-medium">{receipt.id}</td>
+                      <td>{receipt.item}</td>
+                      <td>{receipt.qty}</td>
+                      <td>{receipt.fromDispatch}</td>
+                      <td>
+                        <span className={`badge ${getStatusClass(receipt.status)} text-white`}>
+                          {receipt.status}
+                        </span>
+                      </td>
+                      <td>
+                        {receipt.status === 'Pending' && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-success"
+                            onClick={() => handleVerifyReceipt(receipt.id)}
+                            title="Verify Receipt"
+                          >
+                            Verify Receipt
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="text-center py-4 text-muted">
+                      No records found matching the selected filters.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
-          
-          {filteredReceipts.length === 0 && (
-            <div className="text-center py-4 text-muted">
-              No records found matching the selected filters.
-            </div>
-          )}
         </div>
       </div>
+      {/* ✅ PAGINATION UI — Same as your other components */}
+      <div className="d-flex justify-content-end mt-3">
+        <nav>
+          <ul className="pagination mb-3">
+            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+            </li>
 
+            {[...Array(totalPages)].map((_, i) => {
+              const page = i + 1;
+              return (
+                <li
+                  key={page}
+                  className={`page-item ${currentPage === page ? 'active' : ''}`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => handlePageChange(page)}
+                  >
+                    {page}
+                  </button>
+                </li>
+              );
+            })}
+
+            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                Next
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
       {/* Receipt Detail Modal */}
       <Modal show={showDetailModal} onHide={handleCloseDetailModal} size="md" centered>
         <Modal.Header closeButton>
@@ -190,7 +258,7 @@ const GoodsReceipt = () => {
                 <strong>From Dispatch:</strong> <span className="text-muted">{selectedReceipt.fromDispatch}</span>
               </div>
               <div className="col-12 mb-3">
-                <strong>Status:</strong> 
+                <strong>Status:</strong>
                 <span className={`badge ${getStatusClass(selectedReceipt.status)} text-white ms-2`}>
                   {selectedReceipt.status}
                 </span>

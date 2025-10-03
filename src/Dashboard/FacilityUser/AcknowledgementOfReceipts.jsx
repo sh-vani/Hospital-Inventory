@@ -8,14 +8,18 @@ const AcknowledgementOfReceipts = () => {
   const [loading, setLoading] = useState(true);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
-  
+
+  // ✅ Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const entriesPerPage = 10;
+
   // Simulate fetching data
   useEffect(() => {
     // In a real app, this would come from an API
     const mockData = [
       {
         id: 'RCPT-001',
-        reqId: 'REQ-001', // Added Req ID
+        reqId: 'REQ-001',
         itemName: 'Paracetamol 500mg',
         batch: 'B789',
         lot: 'L456',
@@ -31,7 +35,7 @@ const AcknowledgementOfReceipts = () => {
       },
       {
         id: 'RCPT-002',
-        reqId: 'REQ-002', // Added Req ID
+        reqId: 'REQ-002',
         itemName: 'Amoxicillin 500mg',
         batch: 'B234',
         lot: 'L789',
@@ -47,7 +51,7 @@ const AcknowledgementOfReceipts = () => {
       },
       {
         id: 'RCPT-003',
-        reqId: 'REQ-003', // Added Req ID
+        reqId: 'REQ-003',
         itemName: 'Surgical Gloves',
         batch: 'B567',
         lot: 'L123',
@@ -62,7 +66,7 @@ const AcknowledgementOfReceipts = () => {
         attachment: null
       }
     ];
-    
+
     // Simulate API delay
     setTimeout(() => {
       setReceipts(mockData);
@@ -78,7 +82,7 @@ const AcknowledgementOfReceipts = () => {
 
   // Get status badge class
   const getStatusBadgeClass = (status) => {
-    switch(status) {
+    switch (status) {
       case 'Confirmed':
         return 'bg-success';
       case 'Pending':
@@ -93,6 +97,17 @@ const AcknowledgementOfReceipts = () => {
     if (!dateString) return '-';
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  // ✅ Pagination logic
+  const totalPages = Math.ceil(receipts.length / entriesPerPage);
+  const indexOfLastEntry = currentPage * entriesPerPage;
+  const currentEntries = receipts.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
   };
 
   return (
@@ -125,57 +140,113 @@ const AcknowledgementOfReceipts = () => {
               <p className="mt-2 text-muted">Loading receipts...</p>
             </div>
           ) : (
-            <div className="table-responsive">
-              <table className="table table-hover mb-0">
-                <thead className="table-light">
-                  <tr>
-                    <th>Receipt ID</th>
-                    <th>Req ID</th> {/* Added Req ID column */}
-                    <th>Item</th>
-                    <th>Qty</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {receipts.map((receipt) => (
-                    <tr key={receipt.id}>
-                      <td>{receipt.id}</td>
-                      <td>{receipt.reqId}</td> {/* Added Req ID cell */}
-                      <td>
-                        <div className="d-flex align-items-center">
-                          <div className="me-2">
-                            <FaBox className="text-muted" />
-                          </div>
-                          <div>
-                            <div>{receipt.itemName}</div>
-                            <small className="text-muted">Batch: {receipt.batch} | Lot: {receipt.lot}</small>
-                          </div>
-                        </div>
-                      </td>
-                      <td>{receipt.quantity} units</td>
-                      <td>
-                        <span className={`badge ${getStatusBadgeClass(receipt.status)}`}>
-                          {receipt.status}
-                        </span>
-                      </td>
-                      <td>{formatDate(receipt.receiptDate || receipt.dispatchDate)}</td>
-                      <td>
-                        <button 
-                          className="btn btn-sm btn-outline-primary"
-                          onClick={() => handleViewDetail(receipt)}
-                        >
-                          <FaEye /> <span className="d-none d-md-inline-block ms-1">View</span>
-                        </button>
-                      </td>
+            <>
+              <div className="table-responsive">
+                <table className="table table-hover mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Receipt ID</th>
+                      <th>Req ID</th>
+                      <th>Item</th>
+                      <th>Qty</th>
+                      <th>Status</th>
+                      <th>Date</th>
+                      <th>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {currentEntries.length > 0 ? (
+                      currentEntries.map((receipt) => (
+                        <tr key={receipt.id}>
+                          <td>{receipt.id}</td>
+                          <td>{receipt.reqId}</td>
+                          <td>
+                            <div className="d-flex align-items-center">
+                              <div className="me-2">
+                                <FaBox className="text-muted" />
+                              </div>
+                              <div>
+                                <div>{receipt.itemName}</div>
+                                <small className="text-muted">Batch: {receipt.batch} | Lot: {receipt.lot}</small>
+                              </div>
+                            </div>
+                          </td>
+                          <td>{receipt.quantity} units</td>
+                          <td>
+                            <span className={`badge ${getStatusBadgeClass(receipt.status)}`}>
+                              {receipt.status}
+                            </span>
+                          </td>
+                          <td>{formatDate(receipt.receiptDate || receipt.dispatchDate)}</td>
+                          <td>
+                            <button
+                              className="btn btn-sm btn-outline-primary"
+                              onClick={() => handleViewDetail(receipt)}
+                            >
+                              <FaEye /> <span className="d-none d-md-inline-block ms-1">View</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="7" className="text-center py-4 text-muted">
+                          No receipts found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+
+            </>
           )}
         </div>
+
+      </div>
+      {/* ✅ PAGINATION UI — Always shown when not loading */}
+      <div className="d-flex justify-content-end mt-3">
+        <nav>
+          <ul className="pagination mb-0">
+            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+            </li>
+
+            {[...Array(totalPages)].map((_, i) => {
+              const page = i + 1;
+              return (
+                <li
+                  key={page}
+                  className={`page-item ${currentPage === page ? 'active' : ''}`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => handlePageChange(page)}
+                  >
+                    {page}
+                  </button>
+                </li>
+              );
+            })}
+
+            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                Next
+              </button>
+            </li>
+          </ul>
+        </nav>
       </div>
 
       {/* Receipt Detail Modal */}
@@ -192,26 +263,26 @@ const AcknowledgementOfReceipts = () => {
                   <div className="col-12 mb-3">
                     <h4 className="mb-0">{selectedReceipt.itemName}</h4>
                     <div className="text-muted small">
-                      Receipt ID: {selectedReceipt.id} | Req ID: {selectedReceipt.reqId} {/* Added Req ID to modal header */}
+                      Receipt ID: {selectedReceipt.id} | Req ID: {selectedReceipt.reqId}
                     </div>
                   </div>
-                  
+
                   <div className="col-md-6 mb-3">
                     <strong>Batch/Lot:</strong>
                     <div>Batch: {selectedReceipt.batch}</div>
                     <div>Lot: {selectedReceipt.lot}</div>
                   </div>
-                  
+
                   <div className="col-md-6 mb-3">
                     <strong>Expiry Date:</strong>
                     <div>{formatDate(selectedReceipt.expiryDate)}</div>
                   </div>
-                  
+
                   <div className="col-md-6 mb-3">
                     <strong>Quantity:</strong>
                     <div>{selectedReceipt.quantity} units</div>
                   </div>
-                  
+
                   <div className="col-md-6 mb-3">
                     <strong>Status:</strong>
                     <div>
@@ -220,32 +291,32 @@ const AcknowledgementOfReceipts = () => {
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="col-md-6 mb-3">
                     <strong>Dispatch Date:</strong>
                     <div>{formatDate(selectedReceipt.dispatchDate)}</div>
                   </div>
-                  
+
                   <div className="col-md-6 mb-3">
                     <strong>Receipt Date:</strong>
                     <div>{formatDate(selectedReceipt.receiptDate)}</div>
                   </div>
-                  
+
                   <div className="col-md-6 mb-3">
                     <strong>Warehouse:</strong>
                     <div>{selectedReceipt.warehouse}</div>
                   </div>
-                  
+
                   <div className="col-md-6 mb-3">
                     <strong>Condition:</strong>
                     <div>{selectedReceipt.condition || '-'}</div>
                   </div>
-                  
+
                   <div className="col-12 mb-3">
                     <strong>Notes:</strong>
                     <div>{selectedReceipt.notes || '-'}</div>
                   </div>
-                  
+
                   {selectedReceipt.attachment && (
                     <div className="col-12 mb-3">
                       <strong>Attachment:</strong>
@@ -290,7 +361,7 @@ const AcknowledgementOfReceipts = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Important Notes Card */}
             <div className="col-12 col-md-6">
               <div className="card h-100 border-0" style={{ backgroundColor: '#fff8e1' }}>

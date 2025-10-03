@@ -1,10 +1,9 @@
 // src/App.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // ✅ Added useEffect
 
 function FacilityRequisitions() {
   // Admin's facility (hardcoded for this example)
   const adminFacility = 'Kumasi Branch Hospital';
-  
   // Updated initial requisitions data with flat structure
   const initialRequisitions = [
     {
@@ -141,14 +140,27 @@ function FacilityRequisitions() {
       remarksLog: [
         { user: 'Facility Admin', remark: 'Duplicate request', timestamp: '21-Sep-2025 12:15' }
       ]
-    }
+    },
+    // Add more mock data to test pagination (optional)
+    ...Array.from({ length: 5 }, (_, i) => ({
+      id: `REQ-2025-${108 + i}`,
+      facility: 'Kumasi Branch Hospital',
+      user: `User ${i + 1}`,
+      department: 'Dept',
+      item: `Item ${i + 1}`,
+      qty: 5,
+      facilityStock: i % 2 === 0 ? 10 : 0,
+      priority: 'Normal',
+      status: 'Pending',
+      raisedOn: '20-Sep-2025',
+      statusTimeline: [{ status: 'Raised by User', timestamp: '20-Sep-2025 10:00' }],
+      remarksLog: []
+    }))
   ];
-
   // Extract unique values for dropdown filters
   const users = [...new Set(initialRequisitions.map(req => req.user))];
   const items = [...new Set(initialRequisitions.map(req => req.item))];
   const departments = [...new Set(initialRequisitions.map(req => req.department))];
-
   // State management
   const [activeTab, setActiveTab] = useState('all');
   const [requisitions, setRequisitions] = useState(initialRequisitions);
@@ -163,7 +175,6 @@ function FacilityRequisitions() {
   const [raiseRemarks, setRaiseRemarks] = useState('');
   const [raiseRequiredQty, setRaiseRequiredQty] = useState('');
   const [rejectReason, setRejectReason] = useState('');
-  
   // Filter states
   const [userFilter, setUserFilter] = useState('');
   const [itemFilter, setItemFilter] = useState('');
@@ -171,29 +182,45 @@ function FacilityRequisitions() {
   const [priorityFilter, setPriorityFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // ✅ Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const entriesPerPage = 10;
+
   // Filter requisitions based on admin's facility, active tab, and other filters
   const filteredRequisitions = requisitions.filter(req => {
     // Only show requisitions from admin's facility
     if (req.facility !== adminFacility) return false;
-    
     // Tab filter
     if (activeTab !== 'all' && req.status.toLowerCase() !== activeTab) return false;
-    
     // Dropdown filters
     if (userFilter && req.user !== userFilter) return false;
     if (itemFilter && req.item !== itemFilter) return false;
     if (departmentFilter && req.department !== departmentFilter) return false;
     if (priorityFilter && req.priority !== priorityFilter) return false;
-    
     // Search filter
     if (searchTerm && !(
       req.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.user.toLowerCase().includes(searchTerm.toLowerCase())
     )) return false;
-    
     return true;
   });
+
+  // ✅ Pagination logic
+  const totalPages = Math.ceil(filteredRequisitions.length / entriesPerPage);
+  const indexOfLastEntry = currentPage * entriesPerPage;
+  const currentEntries = filteredRequisitions.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // ✅ Reset to page 1 when filters or tab change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, userFilter, itemFilter, departmentFilter, priorityFilter, searchTerm]);
 
   // Handle deliver action
   const handleDeliver = (req) => {
@@ -202,7 +229,6 @@ function FacilityRequisitions() {
     setDeliverRemarks('');
     setShowDeliverModal(true);
   };
-
   // Handle raise to warehouse action
   const handleRaiseToWarehouse = (req) => {
     setSelectedRequisition(req);
@@ -211,34 +237,29 @@ function FacilityRequisitions() {
     setRaiseRequiredQty(req.qty.toString());
     setShowRaiseModal(true);
   };
-
   // Handle reject action
   const handleReject = (req) => {
     setSelectedRequisition(req);
     setRejectReason('');
     setShowRejectModal(true);
   };
-
   // Handle view detail action
   const handleViewDetail = (req) => {
     setSelectedRequisition(req);
     setShowViewModal(true);
   };
-
   // Submit deliver action
   const submitDeliver = () => {
     if (!deliverQty || parseInt(deliverQty) <= 0 || parseInt(deliverQty) > selectedRequisition.facilityStock) {
       alert('Please enter a valid deliver quantity');
       return;
     }
-    
     const updatedRequisitions = requisitions.map(req => {
       if (req.id === selectedRequisition.id) {
         const newStatusTimeline = [
           ...req.statusTimeline,
           { status: 'Delivered', timestamp: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }
         ];
-        
         const newRemarksLog = [
           ...req.remarksLog,
           { 
@@ -247,7 +268,6 @@ function FacilityRequisitions() {
             timestamp: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
           }
         ];
-        
         return { 
           ...req, 
           status: 'Delivered',
@@ -257,28 +277,24 @@ function FacilityRequisitions() {
       }
       return req;
     });
-    
     setRequisitions(updatedRequisitions);
     setShowDeliverModal(false);
     setSelectedRequisition(null);
     setDeliverQty('');
     setDeliverRemarks('');
   };
-
   // Submit raise to warehouse action
   const submitRaiseToWarehouse = () => {
     if (!raiseRequiredQty || parseInt(raiseRequiredQty) <= 0) {
       alert('Please enter a valid required quantity');
       return;
     }
-    
     const updatedRequisitions = requisitions.map(req => {
       if (req.id === selectedRequisition.id) {
         const newStatusTimeline = [
           ...req.statusTimeline,
           { status: 'Raised to Warehouse', timestamp: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }
         ];
-        
         const newRemarksLog = [
           ...req.remarksLog,
           { 
@@ -287,7 +303,6 @@ function FacilityRequisitions() {
             timestamp: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
           }
         ];
-        
         return { 
           ...req, 
           status: 'Processing',
@@ -298,7 +313,6 @@ function FacilityRequisitions() {
       }
       return req;
     });
-    
     setRequisitions(updatedRequisitions);
     setShowRaiseModal(false);
     setSelectedRequisition(null);
@@ -306,21 +320,18 @@ function FacilityRequisitions() {
     setRaiseRemarks('');
     setRaiseRequiredQty('');
   };
-
   // Submit reject action
   const submitReject = () => {
     if (!rejectReason.trim()) {
       alert('Please provide a reason for rejection');
       return;
     }
-    
     const updatedRequisitions = requisitions.map(req => {
       if (req.id === selectedRequisition.id) {
         const newStatusTimeline = [
           ...req.statusTimeline,
           { status: 'Rejected', timestamp: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }
         ];
-        
         const newRemarksLog = [
           ...req.remarksLog,
           { 
@@ -329,7 +340,6 @@ function FacilityRequisitions() {
             timestamp: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
           }
         ];
-        
         return { 
           ...req, 
           status: 'Rejected',
@@ -339,13 +349,11 @@ function FacilityRequisitions() {
       }
       return req;
     });
-    
     setRequisitions(updatedRequisitions);
     setShowRejectModal(false);
     setSelectedRequisition(null);
     setRejectReason('');
   };
-
   // Mark requisition as completed
   const markAsCompleted = (reqId) => {
     const updatedRequisitions = requisitions.map(req => {
@@ -354,7 +362,6 @@ function FacilityRequisitions() {
           ...req.statusTimeline,
           { status: 'Completed', timestamp: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }
         ];
-        
         return { 
           ...req, 
           status: 'Completed',
@@ -363,10 +370,8 @@ function FacilityRequisitions() {
       }
       return req;
     });
-    
     setRequisitions(updatedRequisitions);
   };
-
   // Close modals
   const closeDeliverModal = () => {
     setShowDeliverModal(false);
@@ -374,7 +379,6 @@ function FacilityRequisitions() {
     setDeliverQty('');
     setDeliverRemarks('');
   };
-
   const closeRaiseModal = () => {
     setShowRaiseModal(false);
     setSelectedRequisition(null);
@@ -382,18 +386,15 @@ function FacilityRequisitions() {
     setRaiseRemarks('');
     setRaiseRequiredQty('');
   };
-
   const closeRejectModal = () => {
     setShowRejectModal(false);
     setSelectedRequisition(null);
     setRejectReason('');
   };
-
   const closeViewModal = () => {
     setShowViewModal(false);
     setSelectedRequisition(null);
   };
-
   // Reset all filters
   const resetFilters = () => {
     setUserFilter('');
@@ -412,7 +413,6 @@ function FacilityRequisitions() {
           <p className="text-muted mb-0">Manage and process all requisitions raised by users in your facility.</p>
         </div>
       </div>
-
       {/* Filters */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">
@@ -487,7 +487,6 @@ function FacilityRequisitions() {
           </div>
         </div>
       </div>
-
       {/* Tabs */}
       <ul className="nav nav-tabs mb-4">
         <li className="nav-item">
@@ -539,7 +538,6 @@ function FacilityRequisitions() {
           </button>
         </li>
       </ul>
-
       {/* Requisitions Table */}
       <div className="card border-0 shadow-sm">
         <div className="table-responsive">
@@ -559,14 +557,14 @@ function FacilityRequisitions() {
               </tr>
             </thead>
             <tbody>
-              {filteredRequisitions.length === 0 ? (
+              {currentEntries.length === 0 ? (
                 <tr>
                   <td colSpan="10" className="text-center py-4 text-muted">
                     No requisitions found for {adminFacility} with the current filters.
                   </td>
                 </tr>
               ) : (
-                filteredRequisitions.map((req) => (
+                currentEntries.map((req) => (
                   <tr key={req.id}>
                     <td className="fw-medium">{req.id}</td>
                     <td>{req.user}</td>
@@ -654,8 +652,54 @@ function FacilityRequisitions() {
             </tbody>
           </table>
         </div>
-      </div>
 
+        
+      </div>
+      {/* ✅ PAGINATION UI — Same as your earlier components */}
+        <div className="d-flex justify-content-end mt-3">
+          <nav>
+            <ul className="pagination mb-3">
+              <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                <button
+                  className="page-link"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+              </li>
+
+              {[...Array(totalPages)].map((_, i) => {
+                const page = i + 1;
+                return (
+                  <li
+                    key={page}
+                    className={`page-item ${currentPage === page ? 'active' : ''}`}
+                  >
+                    <button
+                      className="page-link"
+                      onClick={() => handlePageChange(page)}
+                    >
+                      {page}
+                    </button>
+                  </li>
+                );
+              })}
+
+              <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+                <button
+                  className="page-link"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                >
+                  Next
+                </button>
+              </li>
+            </ul>
+          </nav>
+        </div>
+
+      {/* Modals (unchanged) */}
       {/* Deliver Modal */}
       {showDeliverModal && selectedRequisition && (
         <div 
@@ -743,7 +787,6 @@ function FacilityRequisitions() {
           </div>
         </div>
       )}
-
       {/* Raise to Warehouse Modal */}
       {showRaiseModal && selectedRequisition && (
         <div 
@@ -839,7 +882,6 @@ function FacilityRequisitions() {
           </div>
         </div>
       )}
-
       {/* Reject Modal */}
       {showRejectModal && selectedRequisition && (
         <div 
@@ -909,7 +951,6 @@ function FacilityRequisitions() {
           </div>
         </div>
       )}
-
       {/* View Detail Modal */}
       {showViewModal && selectedRequisition && (
         <div 
@@ -969,12 +1010,10 @@ function FacilityRequisitions() {
                     </div>
                   </div>
                 </div>
-                
                 <div className="row mb-3">
                   <div className="col-5 fw-bold text-muted">Facility Stock at Request Time:</div>
                   <div className="col-7">{selectedRequisition.facilityStock}</div>
                 </div>
-                
                 <div className="row mb-3">
                   <div className="col-5 fw-bold text-muted">Current Status:</div>
                   <div className="col-7">
@@ -993,9 +1032,7 @@ function FacilityRequisitions() {
                     </span>
                   </div>
                 </div>
-                
                 <hr className="my-4" />
-                
                 <h6 className="fw-bold mb-3">Status Timeline</h6>
                 <div className="mb-4">
                   {selectedRequisition.statusTimeline.map((event, index) => (
@@ -1005,7 +1042,6 @@ function FacilityRequisitions() {
                     </div>
                   ))}
                 </div>
-                
                 <h6 className="fw-bold mb-3">Remarks Log</h6>
                 <div>
                   {selectedRequisition.remarksLog.length === 0 ? (
@@ -1039,5 +1075,4 @@ function FacilityRequisitions() {
     </div>
   );
 }
-
 export default FacilityRequisitions;

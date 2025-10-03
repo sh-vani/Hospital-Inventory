@@ -224,10 +224,7 @@ const WarehouseRequisitions = () => {
       const payload = {
         remarks: rejectionReason,
         userId: userId, // <-- user_Id at root level
-        items: rejectingRequisition.items.map(item => ({
-          item_id: item.item_id,
-          approved_quantity: 0 // Setting to 0 for rejection
-        }))
+
       };
       
       // Fixed: Await the response and check for success

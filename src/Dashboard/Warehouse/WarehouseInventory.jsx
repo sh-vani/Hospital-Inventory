@@ -389,12 +389,13 @@ const WarehouseInventory = () => {
           ...formData,
           id: response.data.id || formData.id,
           batches: [],
-          lastIn: '',
+          lastIn: '',  
           lastOut: '',
           movementHistory: []
         };
         
         setInventoryItems([...inventoryItems, newItem]);
+        console.log('Added item:', newItem); // Debug: देखें नया item कैसा दिखता है
         setShowAddModal(false);
       } else {
         alert('Failed to add item. Please try again.');

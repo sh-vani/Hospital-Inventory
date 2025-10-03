@@ -43,6 +43,10 @@ const FacilityAssets = () => {
     status: 'Available'
   });
 
+  // ✅ Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const entriesPerPage = 10;
+
   // Handle input change
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -105,7 +109,7 @@ const FacilityAssets = () => {
 
   // Get status class for badge
   const getStatusClass = (status) => {
-    switch(status) {
+    switch (status) {
       case 'Active':
       case 'In Use':
         return 'bg-success';
@@ -117,6 +121,17 @@ const FacilityAssets = () => {
         return 'bg-danger';
       default:
         return 'bg-secondary';
+    }
+  };
+
+  // ✅ Pagination logic
+  const totalPages = Math.ceil(assets.length / entriesPerPage);
+  const indexOfLastEntry = currentPage * entriesPerPage;
+  const currentEntries = assets.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
     }
   };
 
@@ -146,32 +161,83 @@ const FacilityAssets = () => {
                 </tr>
               </thead>
               <tbody>
-                {assets.map((asset) => (
-                  <tr key={asset.id}>
-                    <td className="fw-medium">{asset.id}</td>
-                    <td>{asset.name}</td>
-                    <td>{asset.assignedTo}</td>
-                    <td>
-                      <span className={`badge ${getStatusClass(asset.status)} text-white`}>
-                        {asset.status}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-primary d-flex align-items-center"
-                        title="View Details"
-                        onClick={() => handleViewAsset(asset)}
-                      >
-                        <i className="bi bi-eye"></i>
-                      </button>
+                {currentEntries.length > 0 ? (
+                  currentEntries.map((asset) => (
+                    <tr key={asset.id}>
+                      <td className="fw-medium">{asset.id}</td>
+                      <td>{asset.name}</td>
+                      <td>{asset.assignedTo}</td>
+                      <td>
+                        <span className={`badge ${getStatusClass(asset.status)} text-white`}>
+                          {asset.status}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-primary d-flex align-items-center"
+                          title="View Details"
+                          onClick={() => handleViewAsset(asset)}
+                        >
+                          <i className="bi bi-eye"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" className="text-center py-4 text-muted">
+                      No assets found.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
         </div>
+      </div>
+      {/* ✅ PAGINATION UI — Same as your other components */}
+      <div className="d-flex justify-content-end mt-3">
+        <nav>
+          <ul className="pagination mb-3">
+            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+            </li>
+
+            {[...Array(totalPages)].map((_, i) => {
+              const page = i + 1;
+              return (
+                <li
+                  key={page}
+                  className={`page-item ${currentPage === page ? 'active' : ''}`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => handlePageChange(page)}
+                  >
+                    {page}
+                  </button>
+                </li>
+              );
+            })}
+
+            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                Next
+              </button>
+            </li>
+          </ul>
+        </nav>
       </div>
 
       {/* Add New Asset Modal */}
@@ -269,7 +335,7 @@ const FacilityAssets = () => {
                 <strong>Assigned To:</strong> <span className="text-muted">{selectedAsset.assignedTo}</span>
               </div>
               <div className="col-12 mb-3">
-                <strong>Status:</strong> 
+                <strong>Status:</strong>
                 <span className={`badge ${getStatusClass(selectedAsset.status)} text-white ms-2`}>
                   {selectedAsset.status}
                 </span>
