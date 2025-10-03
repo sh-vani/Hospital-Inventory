@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTrash, FaSearch, FaFilter } from 'react-icons/fa';
-import { toast } from 'react-toastify';
+// import { toast } from 'react-toastify';
 import axiosInstance from '../Api/axiosInstance'; // your axios instance
 
 const FacilityDepartmentsCategories = () => {

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  FaSearch, FaFileCsv, FaFilePdf, FaFilter, 
-  FaBox, FaExclamationTriangle 
+  FaSearch, FaFileCsv, FaFilePdf, FaBox, FaExclamationTriangle 
 } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import axios from 'axios';
@@ -18,78 +17,83 @@ const FacilityUserInventory = () => {
   const baseUrl = BaseUrl;
   
   useEffect(() => {
-    const userString = localStorage.getItem('user');
-    
-    if (userString) {
+    const userStr = localStorage.getItem('user') || 
+                    localStorage.getItem('userData') || 
+                    localStorage.getItem('authUser');
+
+    if (userStr) {
       try {
-        const user = JSON.parse(userString);
-        console.log('User data from localStorage:', user);
+        const user = JSON.parse(userStr);
         if (user && user.facility_id) {
-          console.log('Facility ID found in user data:', user.facility_id);
           setFacilityId(user.facility_id);
-        } else {
-          setError('Facility ID not found in user data. Please check your login status.');
-          setLoading(false);
+          return;
         }
       } catch (e) {
-        setError(`Error parsing user data from localStorage: ${e.message}`);
-        setLoading(false);
+        console.error('Failed to parse user', e);
       }
-    } else {
-      setError('User not found in localStorage. Please check your login status.');
-      setLoading(false);
     }
+    setError('Facility ID not found. Please log in as a facility user.');
+    setLoading(false);
   }, []);
-  
+
   useEffect(() => {
+    if (!facilityId) return;
+
     const fetchInventoryData = async () => {
-      if (!facilityId) return;
-      
       setLoading(true);
       setError(null);
-      
+
       try {
         const response = await axios.get(`${baseUrl}/inventory/${facilityId}`);
-        
-        if (response.data.success) {
-          const d = response.data.data || {};
-          const expiryRaw = d.updated_at || d.expiry_date || new Date().toISOString();
-          const transformedData = [{
-            id: d.id,
-            itemName: d.item_name || d.name || 'Unknown Item',
-            category: d.category || "Medicines",
-            batch: d.item_code || "B001",
-            lot: `L-${d.id || '0'}`,
-            expiryDate: expiryRaw.split ? expiryRaw.split('T')[0] : expiryRaw,
-            availableQty: d.quantity || 0,
-            remarks: d.remarks || "-"
-          }];
-          
+
+        if (response.data?.success) {
+          let rawData = response.data.data;
+
+          // ✅ Handle both single object and array
+          const items = Array.isArray(rawData) 
+            ? rawData 
+            : (rawData && typeof rawData === 'object' ? [rawData] : []);
+
+          const transformedData = items.map(item => ({
+            id: item.id,
+            itemName: item.item_name || 'Unnamed Item',
+            category: item.category || 'Medicines',
+            batch: item.item_code || 'B001',
+            lot: `L-${item.id}`,
+            expiryDate: item.updated_at ? item.updated_at.split('T')[0] : 'N/A',
+            availableQty: item.quantity || 0,
+            remarks: item.description || '-'
+          }));
+
           setInventoryData(transformedData);
           setFilteredData(transformedData);
         } else {
-          throw new Error('API returned unsuccessful response');
+          setInventoryData([]);
+          setFilteredData([]);
         }
       } catch (err) {
-        setError(err.message || 'Failed to fetch inventory data');
-        console.error('Error fetching inventory data:', err);
+        setError('Failed to fetch inventory data.');
+        console.error('Error:', err);
+        setInventoryData([]);
+        setFilteredData([]);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchInventoryData();
   }, [facilityId, baseUrl]);
 
   useEffect(() => {
-    if (searchTerm === '') {
+    if (!searchTerm.trim()) {
       setFilteredData(inventoryData);
     } else {
-      const filtered = inventoryData.filter(item => 
-        item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.batch.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.lot.toLowerCase().includes(searchTerm.toLowerCase())
+      const term = searchTerm.toLowerCase();
+      const filtered = inventoryData.filter(item =>
+        item.itemName.toLowerCase().includes(term) ||
+        item.category.toLowerCase().includes(term) ||
+        item.batch.toLowerCase().includes(term) ||
+        item.lot.toLowerCase().includes(term)
       );
       setFilteredData(filtered);
     }
@@ -99,11 +103,13 @@ const FacilityUserInventory = () => {
   const handleExportPDF = () => alert('Exporting data to PDF');
 
   const getExpiryStatus = (expiryDate, qty) => {
+    if (qty === 0) return { text: "Out of Stock", class: "bg-danger" };
+    if (expiryDate === 'N/A') return { text: "No Expiry", class: "bg-secondary" };
+
     const today = new Date();
     const expiry = new Date(expiryDate);
     const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
 
-    if (qty === 0) return { text: "Out of Stock", class: "bg-danger" };
     if (diffDays < 0) return { text: "Expired", class: "bg-danger" };
     if (diffDays <= 30) return { text: "Expiring Soon", class: "bg-warning text-dark" };
     if (diffDays <= 90) return { text: "Near Expiry", class: "bg-info text-dark" };
@@ -121,7 +127,6 @@ const FacilityUserInventory = () => {
         </div>
       )}
 
-      {/* Search & Export */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body d-flex flex-wrap justify-content-between gap-2">
           <div className="input-group" style={{ maxWidth: '300px' }}>
@@ -145,7 +150,6 @@ const FacilityUserInventory = () => {
         </div>
       </div>
 
-      {/* Inventory Table */}
       <div className="card border-0 shadow-sm">
         <div className="card-body p-0">
           {loading ? (
@@ -176,12 +180,16 @@ const FacilityUserInventory = () => {
                           <td>{item.itemName}</td>
                           <td>{item.category}</td>
                           <td>{item.batch} / {item.lot}</td>
-                          <td>{new Date(item.expiryDate).toLocaleDateString()}</td>
+                          <td>
+                            {item.expiryDate === 'N/A' 
+                              ? 'N/A' 
+                              : new Date(item.expiryDate).toLocaleDateString()}
+                          </td>
                           <td>{item.availableQty}</td>
                           <td>
-                            <span className={`badge ${status.class}`}>
-                                {status.text}
-                              </span>
+                            <span className={`badge ${status.class} rounded-pill px-2 py-1`}>
+                              {status.text}
+                            </span>
                           </td>
                           <td>{item.remarks}</td>
                         </tr>

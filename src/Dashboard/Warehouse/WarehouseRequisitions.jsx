@@ -211,7 +211,7 @@ const WarehouseRequisitions = () => {
       setLoading(false);
     }
   };
-const user_Id = JSON.parse(localStorage.getItem("user"))?.id;
+
   const handleReject = async () => {
     if (!rejectingRequisition || !rejectionReason.trim()) {
       alert('Please provide a reason for rejection.');
@@ -223,7 +223,7 @@ const user_Id = JSON.parse(localStorage.getItem("user"))?.id;
       // Fixed: user_Id should be at the root of the payload, not inside items
       const payload = {
         remarks: rejectionReason,
-        user_Id: user_Id, // <-- user_Id at root level
+        userId: userId, // <-- user_Id at root level
         items: rejectingRequisition.items.map(item => ({
           item_id: item.item_id,
           approved_quantity: 0 // Setting to 0 for rejection
