@@ -159,6 +159,11 @@ useEffect(() => {
         path: "/facility/facilityinventory"
       },
       {
+        name: "My Request",
+        icon: faBuilding,
+        path: "/facility/myrequest",
+      },
+      {
         name: "Requisitions",
         icon: faClipboardList,
         path: "/facility/requisitions",
