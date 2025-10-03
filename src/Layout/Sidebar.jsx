@@ -109,6 +109,7 @@ useEffect(() => {
         name: "Dashboard",
         icon: faChartBar,
         path: "/warehouse/dashboard",
+        
       },
       {
         name: "Inventory",
