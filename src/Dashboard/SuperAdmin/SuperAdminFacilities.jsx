@@ -359,9 +359,9 @@ const SuperAdminFacilities = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {facilities.map((facility) => (
+                  {facilities.map((facility,index) => (
                     <tr key={facility.id}>
-                      <td>{facility.id}</td>
+                      <td>{index+1}</td>
                       <td>
                         <div className="d-flex align-items-center">
                           {getFacilityIcon(facility.type)}

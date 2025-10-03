@@ -385,9 +385,9 @@ const SuperAdminAssets = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((asset) => (
+                    {filtered.map((asset,index) => (
                       <tr key={asset.id}>
-                        <td className="fw-bold">{asset.id}</td>
+                        <td className="fw-bold">{index+1}</td>
                         <td>{asset.name}</td>
                         <td>{asset.type}</td>
                         <td>{asset.serial_number}</td>
