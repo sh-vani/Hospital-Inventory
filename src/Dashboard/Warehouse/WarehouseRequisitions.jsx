@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaSearch, FaEye, FaFilePdf } from 'react-icons/fa';
+import { FaSearch } from 'react-icons/fa';
 import axios from 'axios';
 import BaseUrl from '../../Api/BaseUrl';
 import axiosInstance from '../../Api/axiosInstance';
 
 const WarehouseRequisitions = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [showViewModal, setShowViewModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showPartialApproveModal, setShowPartialApproveModal] = useState(false);
@@ -35,56 +34,33 @@ const WarehouseRequisitions = () => {
     try {
       const response = await axios.get(`${BaseUrl}/requisitions?page=${page}`);
       if (response.data.success) {
-        // Fixed: Properly extract the data from the response
+        // ✅ Use real items from API — no mock data
         const requisitionsData = response.data.data.map(req => ({
           ...req,
-          // Added mock items data since it's missing in the API response
-          items: [
-            {
-              item_id: 1,
-              item_name: "Medical Supplies",
-              quantity: 10,
-              unit: "units",
-              approved_quantity: 0
-            }
-          ]
+          // Ensure items exist; if not, fallback to empty array
+          items: Array.isArray(req.items) ? req.items : []
         }));
-        
+
         setRequisitions(requisitionsData);
-        // Fixed: Set pagination properly
         setPagination({
           currentPage: page,
-          totalPages: Math.ceil(response.data.data.length / 10) || 1,
-          totalItems: response.data.data.length,
+          totalPages: Math.ceil(response.data.total / 10) || 1, // ✅ Use actual total from API
+          totalItems: response.data.total || response.data.data.length,
           itemsPerPage: 10
         });
       } else {
         setError('Failed to fetch requisitions');
       }
     } catch (err) {
-      setError('Error fetching requisitions: ' + err.message);
+      setError('Error fetching requisitions: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
   };
 
-  // Load requisitions on component mount
   useEffect(() => {
     fetchRequisitions();
   }, []);
-
-  const PriorityBadge = ({ priority }) => {
-    const priorityColors = {
-      high: 'bg-danger',
-      normal: 'bg-warning',
-      low: 'bg-success'
-    };
-    return (
-      <span className={`badge ${priorityColors[priority] || 'bg-secondary'} text-dark`}>
-        {priority.charAt(0).toUpperCase() + priority.slice(1)}
-      </span>
-    );
-  };
 
   const StatusBadge = ({ status }) => {
     const statusColors = {
@@ -95,8 +71,8 @@ const WarehouseRequisitions = () => {
       'partially approved': 'bg-info'
     };
     return (
-      <span className={`badge ${statusColors[status.toLowerCase()] || 'bg-secondary'} text-dark`}>
-        {status}
+      <span className={`badge ${statusColors[status?.toLowerCase()] || 'bg-secondary'} text-dark`}>
+        {status || 'Unknown'}
       </span>
     );
   };
@@ -104,7 +80,7 @@ const WarehouseRequisitions = () => {
   const openApproveModal = (req, item) => {
     setCurrentRequisition(req);
     setCurrentItem(item);
-    setApproveQty(item.quantity);
+    setApproveQty(item.quantity?.toString() || '0');
     setRemarks('');
     setShowApproveModal(true);
   };
@@ -112,7 +88,7 @@ const WarehouseRequisitions = () => {
   const openPartialApproveModal = (req, item) => {
     setCurrentRequisition(req);
     setCurrentItem(item);
-    setPartialApproveQty(item.quantity);
+    setPartialApproveQty(item.quantity?.toString() || '0');
     setPartialRemarks('');
     setShowPartialApproveModal(true);
   };
@@ -123,7 +99,8 @@ const WarehouseRequisitions = () => {
     setShowRejectModal(true);
   };
 
-  const userId= JSON.parse(localStorage.getItem("user"))?.id;
+  const userId = JSON.parse(localStorage.getItem("user"))?.id;
+
   const handleApproveSubmit = async () => {
     if (!currentRequisition || !currentItem) return;
 
@@ -133,46 +110,44 @@ const WarehouseRequisitions = () => {
         items: [
           {
             item_id: currentItem.item_id,
-            approved_quantity: parseInt(approveQty)
+            approved_quantity: parseInt(approveQty) || 0
           }
         ],
         remarks: remarks || 'Approved without remarks',
-        userId: userId // <-- User ID is now included in the payload
+        userId: userId
       };
 
       const response = await axiosInstance.patch(`/requisitions/${currentRequisition.id}/approve`, payload);
 
       if (response.data.success) {
-        // Update the local state
         setRequisitions(requisitions.map(req => {
           if (req.id === currentRequisition.id) {
             const updatedItems = req.items.map(item =>
               item.item_id === currentItem.item_id
-                ? { ...item, approved_quantity: parseInt(approveQty) }
+                ? { ...item, approved_quantity: parseInt(approveQty) || 0 }
                 : item
             );
-            return { ...req, status: 'Approved', items: updatedItems };
+            return { ...req, status: 'approved', items: updatedItems };
           }
           return req;
         }));
-
         setShowApproveModal(false);
       } else {
-        setError('Failed to approve requisition');
+        setError(response.data.message || 'Failed to approve requisition');
       }
     } catch (err) {
-      setError('Error approving requisition: ' + err.message);
+      setError('Error approving requisition: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
   };
 
   const handlePartialApproveSubmit = async () => {
-    if (!currentRequisition || !currentItem || !partialApproveQty || partialApproveQty <= 0) {
+    if (!currentRequisition || !currentItem || !partialApproveQty || parseInt(partialApproveQty) <= 0) {
       alert('Please enter a valid quantity');
       return;
     }
-    
+
     setLoading(true);
     try {
       const payload = {
@@ -184,77 +159,72 @@ const WarehouseRequisitions = () => {
         ],
         remarks: partialRemarks || 'Partially approved without remarks'
       };
-      
+
       const response = await axios.patch(`${BaseUrl}/requisitions/${currentRequisition.id}/approve`, payload);
-      
+
       if (response.data.success) {
-        // Update the local state
         setRequisitions(requisitions.map(req => {
           if (req.id === currentRequisition.id) {
-            const updatedItems = req.items.map(item => 
-              item.item_id === currentItem.item_id 
-                ? { ...item, approved_quantity: parseInt(partialApproveQty) } 
+            const updatedItems = req.items.map(item =>
+              item.item_id === currentItem.item_id
+                ? { ...item, approved_quantity: parseInt(partialApproveQty) }
                 : item
             );
-            return { ...req, status: 'Partially Approved', items: updatedItems };
+            return { ...req, status: 'partially approved', items: updatedItems };
           }
           return req;
         }));
-        
         setShowPartialApproveModal(false);
       } else {
-        setError('Failed to partially approve requisition');
+        setError(response.data.message || 'Failed to partially approve requisition');
       }
     } catch (err) {
-      setError('Error partially approving requisition: ' + err.message);
+      setError('Error partially approving requisition: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
   };
-const user_Id = JSON.parse(localStorage.getItem("user"))?.id;
+
+  const user_Id = JSON.parse(localStorage.getItem("user"))?.id;
   const handleReject = async () => {
     if (!rejectingRequisition || !rejectionReason.trim()) {
       alert('Please provide a reason for rejection.');
       return;
     }
-    
+
     setLoading(true);
     try {
-      // Fixed: user_Id should be at the root of the payload, not inside items
       const payload = {
         remarks: rejectionReason,
-        user_Id: user_Id, // <-- user_Id at root level
+        user_Id: user_Id,
         items: rejectingRequisition.items.map(item => ({
           item_id: item.item_id,
-          approved_quantity: 0 // Setting to 0 for rejection
+          approved_quantity: 0
         }))
       };
-      
-      // Fixed: Await the response and check for success
+
       const response = await axios.put(`${BaseUrl}/requisitions/${rejectingRequisition.id}/reject`, payload);
-      
+
       if (response.data.success) {
-        // Update the local state
         setRequisitions(requisitions.map(req =>
           req.id === rejectingRequisition.id
-            ? { ...req, status: 'Rejected', rejectionReason }
+            ? { ...req, status: 'rejected' }
             : req
         ));
-        
         setShowRejectModal(false);
       } else {
-        setError('Failed to reject requisition');
+        setError(response.data.message || 'Failed to reject requisition');
       }
     } catch (err) {
-      setError('Error rejecting requisition: ' + err.message);
+      setError('Error rejecting requisition: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
   };
 
   const filteredRequisitions = requisitions.filter(req =>
-    req.id.toString().includes(searchTerm.toLowerCase()) ||
-    req.facility_name.toLowerCase().includes(searchTerm.toLowerCase())
+    req.id?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
+    req.facility_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handlePageChange = (page) => {
@@ -307,11 +277,11 @@ const user_Id = JSON.parse(localStorage.getItem("user"))?.id;
               <div className={`card-body bg-${status === 'Pending' ? 'warning' : status === 'Approved' ? 'success' : status === 'Rejected' ? 'danger' : 'info'} bg-opacity-10 p-4`}>
                 <div className="d-flex align-items-center">
                   <div className={`bg-${status === 'Pending' ? 'warning' : status === 'Approved' ? 'success' : status === 'Rejected' ? 'danger' : 'info'} bg-opacity-25 rounded-circle p-3 me-3`}>
-                    <FaEye size={24} className={`text-${status === 'Pending' ? 'warning' : status === 'Approved' ? 'success' : status === 'Rejected' ? 'danger' : 'info'}`} />
+                    <FaSearch size={24} className={`text-${status === 'Pending' ? 'warning' : status === 'Approved' ? 'success' : status === 'Rejected' ? 'danger' : 'info'}`} />
                   </div>
                   <div>
                     <h5 className={`card-title text-${status === 'Pending' ? 'warning' : status === 'Approved' ? 'success' : status === 'Rejected' ? 'danger' : 'info'} fw-bold mb-0`}>
-                      {requisitions.filter(r => r.status.toLowerCase() === status.toLowerCase()).length}
+                      {requisitions.filter(r => r.status?.toLowerCase() === status.toLowerCase()).length}
                     </h5>
                     <p className="card-text text-muted">{status} Requests</p>
                   </div>
@@ -338,26 +308,67 @@ const user_Id = JSON.parse(localStorage.getItem("user"))?.id;
                 </tr>
               </thead>
               <tbody>
-                {filteredRequisitions.map((req, index) => (
-                  req.items && req.items.map((item, idx) => (
-                    <tr key={`${index}-${idx}`}>
-                      <td>#{req.id}</td>
-                      <td>{req.facility_name}</td>
-                      <td>{item.item_name}</td>
-                      <td>{item.quantity} {item.unit}</td>
-                      <td><StatusBadge status={req.status} /></td>
-                      <td className="d-flex gap-1">
-                        {req.status === 'pending' && (
-                          <>
-                            <button className="btn btn-sm btn-success" onClick={() => openApproveModal(req, item)} disabled={loading}>Approve</button>
-                            {/* <button className="btn btn-sm btn-warning" onClick={() => openPartialApproveModal(req, item)} disabled={loading}>Partial Approve</button> */}
-                            <button className="btn btn-sm btn-danger" onClick={() => openRejectModal(req)} disabled={loading}>Reject</button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                ))}
+                {filteredRequisitions.length > 0 ? (
+                  filteredRequisitions.map((req, index) =>
+                    req.items && req.items.length > 0 ? (
+                      req.items.map((item, idx) => (
+                        <tr key={`${req.id}-${item.item_id || idx}`}>
+                          <td>{req.id}</td>
+                          <td>{req.facility_name || 'N/A'}</td>
+                          <td>{item.item_name || 'N/A'}</td>
+                          <td>{item.quantity || 0} {item.unit || ''}</td>
+                          <td><StatusBadge status={req.status} /></td>
+                          <td className="d-flex gap-1">
+                            {/* ✅ Show actions ONLY if status is 'pending' */}
+                            {req.status?.toLowerCase() === 'pending' && (
+                              <>
+                                <button
+                                  className="btn btn-sm btn-success"
+                                  onClick={() => openApproveModal(req, item)}
+                                  disabled={loading}
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-warning"
+                                  onClick={() => openPartialApproveModal(req, item)}
+                                  disabled={loading}
+                                >
+                                  Partial Approve
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-danger"
+                                  onClick={() => openRejectModal(req)}
+                                  disabled={loading}
+                                >
+                                  Reject
+                                </button>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr key={req.id}>
+                        <td>{req.id}</td>
+                        <td>{req.facility_name || 'N/A'}</td>
+                        <td colSpan="2" className="text-muted">No items</td>
+                        <td><StatusBadge status={req.status} /></td>
+                        <td className="d-flex gap-1">
+                          {req.status?.toLowerCase() === 'pending' && (
+                            <span className="text-muted">No actions</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  )
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="text-center py-4 text-muted">
+                      {loading ? 'Loading...' : 'No requisitions found'}
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -367,19 +378,21 @@ const user_Id = JSON.parse(localStorage.getItem("user"))?.id;
       {/* Pagination */}
       <div className="d-flex justify-content-between align-items-center mt-3">
         <div>
-          Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of {pagination.totalItems} entries
+          Showing {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} to{' '}
+          {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of{' '}
+          {pagination.totalItems} entries
         </div>
         <div className="btn-group" role="group">
-          <button 
-            type="button" 
+          <button
+            type="button"
             className="btn btn-outline-primary"
             onClick={() => handlePageChange(pagination.currentPage - 1)}
             disabled={pagination.currentPage === 1 || loading}
           >
             Previous
           </button>
-          <button 
-            type="button" 
+          <button
+            type="button"
             className="btn btn-outline-primary"
             onClick={() => handlePageChange(pagination.currentPage + 1)}
             disabled={pagination.currentPage === pagination.totalPages || loading}
