@@ -11,11 +11,14 @@ import {
   Spinner,
 } from "react-bootstrap";
 import axios from "axios";
-import axiosInstance from "../Api/axiosInstance";
+import baseUrl from "../Api/BaseUrl" ;
+
+
 
 const FacilityDashboard = () => {
   const [inventoryData, setInventoryData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Modal States
   const [selectedItem, setSelectedItem] = useState(null);
@@ -26,41 +29,58 @@ const FacilityDashboard = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 10;
 
-  // ✅ Get facility_id from localStorage
-  const facilityId = JSON.parse(localStorage.getItem("user"))?.facility_id;
+  // ✅ Get facility_id from localStorage (as per your requirement)
+  const user = JSON.parse(localStorage.getItem("user"));
+  const facilityId = user?.facility_id;
 
   useEffect(() => {
-    const fetchInventory = async () => {
+    if (!facilityId) return;
+
+    const fetchInventoryData = async () => {
+      setLoading(true);
+      setError(null);
+
       try {
-        const response = await axiosInstance.get(`/inventory`);
-        const items = response.data?.data || [];
+        // ✅ New API call: GET /inventory/facilities/:facilityId
+        const response = await axios.get(`${baseUrl}/inventory/facilities/${facilityId}`);
 
-        const filteredItems = items.filter(
-          (item) => item.facility_id === facilityId
-        );
+        if (response.data?.success !== false) {
+          let rawData = response.data || [];
 
-        const formattedItems = filteredItems.map((item) => ({
-          id: item.id,
-          code: item.item_code,
-          name: item.item_name,
-          qty: item.quantity,
-          reserved: 0,
-          lastReceipt: new Date(item.updated_at).toLocaleDateString(),
-          category: item.category,
-          description: item.description,
-          unit: item.unit,
-        }));
+          // Ensure it's an array
+          const items = Array.isArray(rawData)
+            ? rawData
+            : (rawData && typeof rawData === 'object' ? [rawData] : []);
 
-        setInventoryData(formattedItems);
-      } catch (error) {
-        console.error("Error fetching inventory:", error);
+          // ✅ Transform data according to your UI needs
+          const transformedData = items.map(item => ({
+            id: item.id,
+            code: item.item_code || 'N/A',
+            name: item.item_name || 'Unnamed Item',
+            qty: item.quantity || 0,
+            reserved: 0, // You can adjust this if backend provides it
+            lastReceipt: item.updated_at ? new Date(item.updated_at).toLocaleDateString() : 'N/A',
+            category: item.category || 'Uncategorized',
+            description: item.description || '-',
+            unit: item.unit || 'Unit',
+            facility_name: item.facility_name || 'Unknown Facility',
+          }));
+
+          setInventoryData(transformedData);
+        } else {
+          setInventoryData([]);
+        }
+      } catch (err) {
+        setError('Failed to fetch inventory data.');
+        console.error('Error fetching inventory:', err);
+        setInventoryData([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchInventory();
-  }, [facilityId]);
+    fetchInventoryData();
+  }, [facilityId]); // Re-fetch when facilityId changes
 
   const handleView = (item) => {
     setSelectedItem(item);
@@ -72,11 +92,33 @@ const FacilityDashboard = () => {
     setShowEditModal(true);
   };
 
-  const handleSaveEdit = () => {
-    setInventoryData((prev) =>
-      prev.map((item) => (item.id === selectedItem.id ? selectedItem : item))
-    );
-    setShowEditModal(false);
+  // ✅ Save Edit - Now with REAL API CALL (PUT)
+  const handleSaveEdit = async () => {
+    if (!selectedItem) return;
+
+    try {
+      // ✅ Send updated data to backend
+      const updatedData = {
+        quantity: selectedItem.qty,
+        reserved: selectedItem.reserved,
+        // Add more fields if needed by backend
+      };
+
+      await axios.put(`${baseUrl}/inventory/${selectedItem.id}`, updatedData);
+
+      // ✅ Update local state after successful save
+      setInventoryData((prev) =>
+        prev.map((item) =>
+          item.id === selectedItem.id ? { ...item, ...updatedData } : item
+        )
+      );
+
+      setShowEditModal(false);
+      alert("Item updated successfully!");
+    } catch (error) {
+      console.error("Error updating inventory:", error);
+      alert("Failed to update item. Please try again.");
+    }
   };
 
   // ✅ Pagination logic
@@ -168,7 +210,7 @@ const FacilityDashboard = () => {
         </Col>
       </Row>
 
-      {/* ✅ PAGINATION — Same as your earlier components */}
+      {/* PAGINATION */}
       <div className="d-flex justify-content-end mt-3">
         <nav>
           <ul className="pagination mb-0">
@@ -213,41 +255,22 @@ const FacilityDashboard = () => {
       </div>
 
       {/* View Modal */}
-      <Modal
-        show={showViewModal}
-        onHide={() => setShowViewModal(false)}
-        centered
-      >
+      <Modal show={showViewModal} onHide={() => setShowViewModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Item Details</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {selectedItem && (
             <div>
-              <p>
-                <strong>Item Code:</strong> {selectedItem.code}
-              </p>
-              <p>
-                <strong>Name:</strong> {selectedItem.name}
-              </p>
-              <p>
-                <strong>Available Qty:</strong> {selectedItem.qty}
-              </p>
-              <p>
-                <strong>Reserved:</strong> {selectedItem.reserved}
-              </p>
-              <p>
-                <strong>Last Receipt:</strong> {selectedItem.lastReceipt}
-              </p>
-              <p>
-                <strong>Category:</strong> {selectedItem.category}
-              </p>
-              <p>
-                <strong>Description:</strong> {selectedItem.description}
-              </p>
-              <p>
-                <strong>Unit:</strong> {selectedItem.unit}
-              </p>
+              <p><strong>Item Code:</strong> {selectedItem.code}</p>
+              <p><strong>Name:</strong> {selectedItem.name}</p>
+              <p><strong>Available Qty:</strong> {selectedItem.qty}</p>
+              <p><strong>Reserved:</strong> {selectedItem.reserved}</p>
+              <p><strong>Last Receipt:</strong> {selectedItem.lastReceipt}</p>
+              <p><strong>Category:</strong> {selectedItem.category}</p>
+              <p><strong>Description:</strong> {selectedItem.description}</p>
+              <p><strong>Unit:</strong> {selectedItem.unit}</p>
+              <p><strong>Facility:</strong> {selectedItem.facility_name}</p>
             </div>
           )}
         </Modal.Body>
@@ -259,11 +282,7 @@ const FacilityDashboard = () => {
       </Modal>
 
       {/* Edit Modal */}
-      <Modal
-        show={showEditModal}
-        onHide={() => setShowEditModal(false)}
-        centered
-      >
+      <Modal show={showEditModal} onHide={() => setShowEditModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Edit Item</Modal.Title>
         </Modal.Header>
@@ -276,7 +295,7 @@ const FacilityDashboard = () => {
                   type="number"
                   value={selectedItem.qty}
                   onChange={(e) =>
-                    setSelectedItem({ ...selectedItem, qty: e.target.value })
+                    setSelectedItem({ ...selectedItem, qty: parseInt(e.target.value) || 0 })
                   }
                 />
               </Form.Group>
@@ -286,7 +305,7 @@ const FacilityDashboard = () => {
                   type="number"
                   value={selectedItem.reserved}
                   onChange={(e) =>
-                    setSelectedItem({ ...selectedItem, reserved: e.target.value })
+                    setSelectedItem({ ...selectedItem, reserved: parseInt(e.target.value) || 0 })
                   }
                 />
               </Form.Group>

@@ -287,9 +287,9 @@ const WarehouseDispatches = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredDispatches.map((dispatch) => (
+                    {filteredDispatches.map((dispatch,i) => (
                       <tr key={dispatch.id}>
-                        <td><span className="fw-bold">#{dispatch.id}</span></td>
+                        <td><span className="fw-bold">#{i+1}</span></td>
                         <td>{dispatch.tracking_number}</td>
                         <td>{dispatch.facility_id}</td>
                         <td>{dispatch.requisition_id}</td>

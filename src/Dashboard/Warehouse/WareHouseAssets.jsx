@@ -233,9 +233,9 @@ const WarehouseAssets = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredAssets.map((asset) => (
+                    {filteredAssets.map((asset,i) => (
                       <tr key={asset.id}>
-                        <td><span className="fw-bold">{asset.id}</span></td>
+                        <td><span className="fw-bold">{i+1}</span></td>
                         <td>{asset.name}</td>
                         <td>{asset.type}</td>
                         <td>{asset.department}</td>
