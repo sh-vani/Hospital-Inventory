@@ -11,9 +11,7 @@ import {
   Spinner,
 } from "react-bootstrap";
 import axios from "axios";
-import baseUrl from "../Api/BaseUrl" ;
-
-
+import BaseUrl from "../Api/BaseUrl";
 
 const FacilityDashboard = () => {
   const [inventoryData, setInventoryData] = useState([]);
@@ -25,14 +23,40 @@ const FacilityDashboard = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // ✅ Pagination state
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 10;
 
-  // ✅ Get facility_id from localStorage (as per your requirement)
-  const user = JSON.parse(localStorage.getItem("user"));
-  const facilityId = user?.facility_id;
+  // ✅ Get facility ID from localStorage (no default fallback)
+  const [facilityId, setFacilityId] = useState(null);
 
+  useEffect(() => {
+    const userStr =
+      localStorage.getItem("user") ||
+      localStorage.getItem("userData") ||
+      localStorage.getItem("authUser");
+
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user && user.facility_id) {
+          setFacilityId(user.facility_id);
+        } else {
+          setError("Facility ID not found in user data.");
+          setLoading(false);
+        }
+      } catch (e) {
+        console.error("Error parsing user data:", e);
+        setError("Invalid user data in localStorage.");
+        setLoading(false);
+      }
+    } else {
+      setError("User not found. Please log in as a facility user.");
+      setLoading(false);
+    }
+  }, []);
+
+  // ✅ Fetch inventory data using new API endpoint
   useEffect(() => {
     if (!facilityId) return;
 
@@ -41,38 +65,38 @@ const FacilityDashboard = () => {
       setError(null);
 
       try {
-        // ✅ New API call: GET /inventory/facilities/:facilityId
-        const response = await axios.get(`${baseUrl}/inventory/facilities/${facilityId}`);
+        const response = await axios.get(
+          `${BaseUrl}/inventory/fasilities/${facilityId}`
+        );
 
-        if (response.data?.success !== false) {
-          let rawData = response.data || [];
+        if (response.data?.success) {
+          const rawData = Array.isArray(response.data.data)
+            ? response.data.data
+            : [response.data.data];
 
-          // Ensure it's an array
-          const items = Array.isArray(rawData)
-            ? rawData
-            : (rawData && typeof rawData === 'object' ? [rawData] : []);
-
-          // ✅ Transform data according to your UI needs
-          const transformedData = items.map(item => ({
+          const transformedData = rawData.map((item) => ({
             id: item.id,
-            code: item.item_code || 'N/A',
-            name: item.item_name || 'Unnamed Item',
+            code: item.item_code || "N/A",
+            name: item.item_name || "Unnamed Item",
             qty: item.quantity || 0,
-            reserved: 0, // You can adjust this if backend provides it
-            lastReceipt: item.updated_at ? new Date(item.updated_at).toLocaleDateString() : 'N/A',
-            category: item.category || 'Uncategorized',
-            description: item.description || '-',
-            unit: item.unit || 'Unit',
-            facility_name: item.facility_name || 'Unknown Facility',
+            reserved: item.reserved || 0,
+            lastReceipt: item.updated_at
+              ? new Date(item.updated_at).toLocaleDateString()
+              : "N/A",
+            category: item.category || "Uncategorized",
+            description: item.description || "-",
+            unit: item.unit || "Unit",
+            facility_name: item.facility_name || "Unknown Facility",
           }));
 
           setInventoryData(transformedData);
         } else {
           setInventoryData([]);
+          setError("No data found for this facility.");
         }
       } catch (err) {
-        setError('Failed to fetch inventory data.');
-        console.error('Error fetching inventory:', err);
+        console.error("Error fetching facility inventory:", err);
+        setError("Failed to fetch inventory data.");
         setInventoryData([]);
       } finally {
         setLoading(false);
@@ -80,33 +104,32 @@ const FacilityDashboard = () => {
     };
 
     fetchInventoryData();
-  }, [facilityId]); // Re-fetch when facilityId changes
+  }, [facilityId]);
 
+  // ✅ View item details
   const handleView = (item) => {
     setSelectedItem(item);
     setShowViewModal(true);
   };
 
+  // ✅ Edit item details
   const handleEdit = (item) => {
     setSelectedItem(item);
     setShowEditModal(true);
   };
 
-  // ✅ Save Edit - Now with REAL API CALL (PUT)
+  // ✅ Save updated item (PUT API)
   const handleSaveEdit = async () => {
     if (!selectedItem) return;
-
     try {
-      // ✅ Send updated data to backend
       const updatedData = {
         quantity: selectedItem.qty,
         reserved: selectedItem.reserved,
-        // Add more fields if needed by backend
       };
 
-      await axios.put(`${baseUrl}/inventory/${selectedItem.id}`, updatedData);
+      await axios.put(`${BaseUrl}/inventory/${selectedItem.id}`, updatedData);
 
-      // ✅ Update local state after successful save
+      // Update state after save
       setInventoryData((prev) =>
         prev.map((item) =>
           item.id === selectedItem.id ? { ...item, ...updatedData } : item
@@ -116,7 +139,7 @@ const FacilityDashboard = () => {
       setShowEditModal(false);
       alert("Item updated successfully!");
     } catch (error) {
-      console.error("Error updating inventory:", error);
+      console.error("Error updating item:", error);
       alert("Failed to update item. Please try again.");
     }
   };
@@ -124,12 +147,13 @@ const FacilityDashboard = () => {
   // ✅ Pagination logic
   const totalPages = Math.ceil(inventoryData.length / entriesPerPage);
   const indexOfLastEntry = currentPage * entriesPerPage;
-  const currentEntries = inventoryData.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
+  const currentEntries = inventoryData.slice(
+    indexOfLastEntry - entriesPerPage,
+    indexOfLastEntry
+  );
 
   const handlePageChange = (page) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
   return (
@@ -157,9 +181,11 @@ const FacilityDashboard = () => {
                   <Spinner animation="border" variant="primary" />
                   <p className="mt-2">Loading inventory...</p>
                 </div>
+              ) : error ? (
+                <p className="text-center text-danger py-4">{error}</p>
               ) : inventoryData.length === 0 ? (
                 <p className="text-center text-muted py-5">
-                  No inventory data available for this facility.
+                  No inventory data available.
                 </p>
               ) : (
                 <>
@@ -210,26 +236,26 @@ const FacilityDashboard = () => {
         </Col>
       </Row>
 
-      {/* PAGINATION */}
+      {/* Pagination */}
       <div className="d-flex justify-content-end mt-3">
         <nav>
           <ul className="pagination mb-0">
-            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
               <button
                 className="page-link"
                 onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
               >
                 Previous
               </button>
             </li>
-
             {[...Array(totalPages)].map((_, i) => {
               const page = i + 1;
               return (
                 <li
                   key={page}
-                  className={`page-item ${currentPage === page ? 'active' : ''}`}
+                  className={`page-item ${
+                    currentPage === page ? "active" : ""
+                  }`}
                 >
                   <button
                     className="page-link"
@@ -240,12 +266,14 @@ const FacilityDashboard = () => {
                 </li>
               );
             })}
-
-            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+            <li
+              className={`page-item ${
+                currentPage === totalPages || totalPages === 0 ? "disabled" : ""
+              }`}
+            >
               <button
                 className="page-link"
                 onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages || totalPages === 0}
               >
                 Next
               </button>
@@ -261,7 +289,7 @@ const FacilityDashboard = () => {
         </Modal.Header>
         <Modal.Body>
           {selectedItem && (
-            <div>
+            <>
               <p><strong>Item Code:</strong> {selectedItem.code}</p>
               <p><strong>Name:</strong> {selectedItem.name}</p>
               <p><strong>Available Qty:</strong> {selectedItem.qty}</p>
@@ -271,7 +299,7 @@ const FacilityDashboard = () => {
               <p><strong>Description:</strong> {selectedItem.description}</p>
               <p><strong>Unit:</strong> {selectedItem.unit}</p>
               <p><strong>Facility:</strong> {selectedItem.facility_name}</p>
-            </div>
+            </>
           )}
         </Modal.Body>
         <Modal.Footer>
@@ -295,7 +323,10 @@ const FacilityDashboard = () => {
                   type="number"
                   value={selectedItem.qty}
                   onChange={(e) =>
-                    setSelectedItem({ ...selectedItem, qty: parseInt(e.target.value) || 0 })
+                    setSelectedItem({
+                      ...selectedItem,
+                      qty: parseInt(e.target.value) || 0,
+                    })
                   }
                 />
               </Form.Group>
@@ -305,7 +336,10 @@ const FacilityDashboard = () => {
                   type="number"
                   value={selectedItem.reserved}
                   onChange={(e) =>
-                    setSelectedItem({ ...selectedItem, reserved: parseInt(e.target.value) || 0 })
+                    setSelectedItem({
+                      ...selectedItem,
+                      reserved: parseInt(e.target.value) || 0,
+                    })
                   }
                 />
               </Form.Group>
