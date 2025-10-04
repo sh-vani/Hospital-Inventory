@@ -69,27 +69,16 @@ const SuperAdminUsers = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-  
-      // ✅ Use environment-based base URL
-  
       const response = await axiosInstance.get(`${BaseUrl}/users`);
       
       if (response.data.success) {
-        // 🔍 Fix: Choose the correct data structure
         let usersData = response.data.data;
-  
-        // If the API returns { data: { users: [...] } }, handle it
         if (usersData && Array.isArray(usersData.users)) {
           usersData = usersData.users;
         }
-  
-        // Ensure it's an array
         const safeUsers = Array.isArray(usersData) ? usersData : [];
-  
         setUsers(safeUsers);
-        console.log('Fetched users:', safeUsers);
-  
-        // Calculate stats
+
         const totalUsers = safeUsers.length;
         const facilityUsers = safeUsers.filter(u => u.role === 'facility_user').length;
         const warehouseAdmins = safeUsers.filter(u => u.role === 'warehouse_admin').length;
@@ -125,7 +114,6 @@ const SuperAdminUsers = () => {
         const facilitiesData = response.data.data;
         setFacilities(facilitiesData);
         
-        // Set default facility_id to the first facility if available
         if (facilitiesData.length > 0 && !newUser.facility_id) {
           setNewUser(prev => ({ ...prev, facility_id: facilitiesData[0].id }));
           setEditUser(prev => ({ ...prev, facility_id: facilitiesData[0].id }));
@@ -140,13 +128,11 @@ const SuperAdminUsers = () => {
     }
   };
 
-  // Load data on component mount
   useEffect(() => {
     fetchUsers();
     fetchFacilities();
   }, []);
 
-  // Status Badge only (RoleBadge removed)
   const StatusBadge = ({ status }) => {
     const map = {
       'active': 'bg-success',
@@ -156,7 +142,6 @@ const SuperAdminUsers = () => {
     return <span className={`badge ${map[status] || 'bg-secondary'}`}>{status}</span>;
   };
 
-  // Openers
   const openAddModal = () => {
     setNewUser({
       name: '',
@@ -195,7 +180,6 @@ const SuperAdminUsers = () => {
     setShowStatusModal(true);
   };
 
-  // Form handlers
   const handleAddUserChange = (e) => {
     const { name, value } = e.target;
     setNewUser(prev => ({ ...prev, [name]: value }));
@@ -206,7 +190,6 @@ const SuperAdminUsers = () => {
     setEditUser(prev => ({ ...prev, [name]: value }));
   };
 
-  // Actions with API calls
   const handleAddUser = async () => {
     if (newUser.password !== newUser.confirmPassword) {
       setError('Passwords do not match');
@@ -219,16 +202,20 @@ const SuperAdminUsers = () => {
 
     try {
       const { confirmPassword, ...userData } = newUser;
-      
-      // Make sure facility_id is included
-      if (!userData.facility_id && facilities.length > 0) {
-        userData.facility_id = facilities[0].id;
+
+      // Only include facility_id for facility-related roles
+      if (userData.role === 'facility_user' || userData.role === 'facility_admin') {
+        if (!userData.facility_id && facilities.length > 0) {
+          userData.facility_id = facilities[0].id;
+        }
+      } else {
+        // Remove facility_id for non-facility roles
+        delete userData.facility_id;
       }
       
       const response = await axiosInstance.post(`${BaseUrl}/users`, userData);
       
       if (response.data.success) {
-        // Refresh users list
         await fetchUsers();
         setShowAddModal(false);
         setError(null);
@@ -238,7 +225,7 @@ const SuperAdminUsers = () => {
       }
     } catch (err) {
       console.error('Failed to add user:', err);
-      if (err.response && err.response.data && err.response.data.message) {
+      if (err.response?.data?.message) {
         setError(err.response.data.message);
       } else {
         setError('Failed to add user');
@@ -248,10 +235,23 @@ const SuperAdminUsers = () => {
 
   const handleEditUser = async () => {
     try {
-      const response = await axiosInstance.put(`${BaseUrl}/users/${currentUser.id}`, editUser);
+      const payload = {
+        name: editUser.name,
+        email: editUser.email,
+        phone: editUser.phone,
+        role: editUser.role,
+        department: editUser.department,
+        status: editUser.status
+      };
+
+      // Only include facility_id if role is facility-related
+      if (editUser.role === 'facility_user' || editUser.role === 'facility_admin') {
+        payload.facility_id = editUser.facility_id;
+      }
+
+      const response = await axiosInstance.put(`${BaseUrl}/users/${currentUser.id}`, payload);
       
       if (response.data.success) {
-        // Refresh users list
         await fetchUsers();
         setShowEditModal(false);
         alert('User updated successfully!');
@@ -271,7 +271,6 @@ const SuperAdminUsers = () => {
       });
       
       if (response.data.success) {
-        // Refresh users list
         await fetchUsers();
         setShowStatusModal(false);
         alert(`User ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully!`);
@@ -293,7 +292,7 @@ const SuperAdminUsers = () => {
 
         if (response.data.success) {
           alert("User deleted successfully!");
-          await fetchUsers(); // Refresh the user list
+          await fetchUsers();
         } else {
           setError('Failed to delete user');
         }
@@ -304,14 +303,11 @@ const SuperAdminUsers = () => {
     }
   };
 
-  // Search filter
   const filtered = Array.isArray(users)
   ? users.filter(u => {
       const q = searchTerm.trim().toLowerCase();
       if (!q) return true;
-
       const facility = facilities.find(f => f.id === u.facility_id);
-
       return (
         u.id?.toString().toLowerCase().includes(q) ||
         u.name?.toLowerCase().includes(q) ||
@@ -594,11 +590,20 @@ const SuperAdminUsers = () => {
                           <option>Loading facilities...</option>
                         </div>
                       ) : (
-                        <select className="form-select" name="facility_id" value={newUser.facility_id} onChange={handleAddUserChange}>
+                        <select 
+                          className="form-select" 
+                          name="facility_id" 
+                          value={newUser.facility_id} 
+                          onChange={handleAddUserChange}
+                          disabled={newUser.role === 'super_admin' || newUser.role === 'warehouse_admin'}
+                        >
                           {facilities.map((facility) => (
                             <option key={facility.id} value={facility.id}>{facility.name}</option>
                           ))}
                         </select>
+                      )}
+                      {(newUser.role === 'super_admin' || newUser.role === 'warehouse_admin') && (
+                        <small className="text-muted">Facility not applicable for this role.</small>
                       )}
                     </div>
                     <div className="col-12 col-md-6">
@@ -758,11 +763,20 @@ const SuperAdminUsers = () => {
                           <option>Loading facilities...</option>
                         </div>
                       ) : (
-                        <select className="form-select" name="facility_id" value={editUser.facility_id} onChange={handleEditUserChange}>
+                        <select 
+                          className="form-select" 
+                          name="facility_id" 
+                          value={editUser.facility_id} 
+                          onChange={handleEditUserChange}
+                          disabled={editUser.role === 'super_admin' || editUser.role === 'warehouse_admin'}
+                        >
                           {facilities.map((facility) => (
                             <option key={facility.id} value={facility.id}>{facility.name}</option>
                           ))}
                         </select>
+                      )}
+                      {(editUser.role === 'super_admin' || editUser.role === 'warehouse_admin') && (
+                        <small className="text-muted">Facility not applicable for this role.</small>
                       )}
                     </div>
                
@@ -835,6 +849,4 @@ const SuperAdminUsers = () => {
   );
 };
 
-export default SuperAdminUsers;
-
-
+export default SuperAdminUsers;   

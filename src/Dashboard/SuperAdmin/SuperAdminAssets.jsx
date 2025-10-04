@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   FaSearch, FaEye, FaEdit, FaUserPlus, FaUserMinus, FaPlus
 } from 'react-icons/fa';
 import axiosInstance from '../../Api/axiosInstance';
-import Swal from 'sweetalert2'; // ✅ Import SweetAlert2
+import Swal from 'sweetalert2';
 
 const SuperAdminAssets = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -44,6 +44,8 @@ const SuperAdminAssets = () => {
   const [loading, setLoading] = useState(true);
   const [facilitiesLoading, setFacilitiesLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Pagination state
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -51,14 +53,18 @@ const SuperAdminAssets = () => {
     itemsPerPage: 10
   });
 
-  // Fetch assets from API
+  // Filter states
+  const [filterType, setFilterType] = useState('');
+  const [filterStatus, setFilterStatus] = useState('active');
+
+  // Fetch assets from API with filters
   const fetchAssets = async (page = 1, type = '', status = 'active') => {
     setLoading(true);
     setError(null);
     try {
       const params = {
         page,
-        limit: 10
+        limit: pagination.itemsPerPage
       };
       
       if (type) params.type = type;
@@ -129,7 +135,7 @@ const SuperAdminAssets = () => {
           warranty_expiry: '',
           department: ''
         });
-        fetchAssets(pagination.currentPage);
+        fetchAssets(pagination.currentPage, filterType, filterStatus);
         Swal.fire('Success!', 'Asset created successfully!', 'success');
       } else {
         Swal.fire('Error!', 'Failed to create asset: ' + (response.data.message || 'Unknown error'), 'error');
@@ -159,7 +165,7 @@ const SuperAdminAssets = () => {
       
       if (response.data.success) {
         setShowEditModal(false);
-        fetchAssets(pagination.currentPage);
+        fetchAssets(pagination.currentPage, filterType, filterStatus);
         Swal.fire('Success!', 'Asset updated successfully!', 'success');
       } else {
         Swal.fire('Error!', 'Failed to update asset: ' + (response.data.message || 'Unknown error'), 'error');
@@ -180,7 +186,7 @@ const SuperAdminAssets = () => {
       
       if (response.data.success) {
         setShowAssignModal(false);
-        fetchAssets(pagination.currentPage);
+        fetchAssets(pagination.currentPage, filterType, filterStatus);
         Swal.fire('Success!', 'Asset assigned to facility successfully!', 'success');
       } else {
         Swal.fire('Error!', 'Failed to assign asset: ' + (response.data.message || 'Unknown error'), 'error');
@@ -195,6 +201,17 @@ const SuperAdminAssets = () => {
     fetchAssets();
     fetchFacilities();
   }, []);
+
+  // Auto-fetch when filters change
+  useEffect(() => {
+    fetchAssets(1, filterType, filterStatus);
+  }, [filterType, filterStatus]);
+
+  // Handle pagination change
+  const handlePageChange = (page) => {
+    setPagination(prev => ({ ...prev, currentPage: page }));
+    fetchAssets(page, filterType, filterStatus);
+  };
 
   // Badges
   const StatusBadge = ({ status }) => {
@@ -253,20 +270,22 @@ const SuperAdminAssets = () => {
     setAssignForm({ facility_id: e.target.value });
   };
 
-  // Search
-  const filtered = assets.filter(a => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      a.id.toString().toLowerCase().includes(q) ||
-      a.name.toLowerCase().includes(q) ||
-      a.type.toLowerCase().includes(q) ||
-      a.department.toLowerCase().includes(q) ||
-      a.serial_number.toLowerCase().includes(q) ||
-      (a.assigned_to_name && a.assigned_to_name.toLowerCase().includes(q)) ||
-      a.status.toLowerCase().includes(q)
-    );
-  });
+  // Search and filter logic
+  const filtered = useMemo(() => {
+    return assets.filter(a => {
+      const q = searchTerm.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        a.id.toString().toLowerCase().includes(q) ||
+        a.name.toLowerCase().includes(q) ||
+        a.type.toLowerCase().includes(q) ||
+        a.department.toLowerCase().includes(q) ||
+        a.serial_number.toLowerCase().includes(q) ||
+        (a.assigned_to_name && a.assigned_to_name.toLowerCase().includes(q)) ||
+        a.status.toLowerCase().includes(q)
+      );
+    });
+  }, [assets, searchTerm]);
 
   // Stats calculation
   const totalAssets = assets.length;
@@ -274,29 +293,56 @@ const SuperAdminAssets = () => {
   const maintenanceAssets = assets.filter(a => a.status === 'maintenance').length;
   const needAttentionAssets = assets.filter(a => a.status === 'active' && !a.assigned_to).length;
 
+  // Get unique asset types for filter dropdown
+  const assetTypes = useMemo(() => {
+    return [...new Set(assets.map(a => a.type))].sort();
+  }, [assets]);
+
   return (
     <div className="container-fluid py-3">
       {/* Toolbar */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-stretch align-items-md-center gap-2 mb-4">
         <h2 className="fw-bold mb-0">Assets Management</h2>
         <div className="d-flex flex-column flex-sm-row align-items-stretch gap-2 w-90 w-md-auto">
-          <div className="input-group">
-            <input
-              type="text"
-              className="form-control form-control-sm"
-              style={{ height: "40px" }}
-              placeholder="Search assets..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              aria-label="Search assets"
-            />
-            <button className="btn btn-outline-secondary btn-sm" style={{ height: "40px" }} type="button">
-              <FaSearch />
-            </button>
-          </div>
+         
           <button className="btn btn-primary btn-sm" style={{ height: "40px", whiteSpace: "nowrap" }} onClick={() => setShowCreateModal(true)}>
             <FaPlus className="me-1" /> Add Asset
           </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="card border-0 shadow-sm mb-4">
+        <div className="card-body">
+          <div className="row g-3">
+            <div className="col-md-6">
+              <label className="form-label">Filter by Type</label>
+              <select 
+                className="form-select" 
+                value={filterType} 
+                onChange={(e) => setFilterType(e.target.value)}
+              >
+                <option value="">All Types</option>
+                {assetTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+            <div className="col-md-6">
+              <label className="form-label">Filter by Status</label>
+              <select 
+                className="form-select" 
+                value={filterStatus} 
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="retired">Retired</option>
+                <option value="">All Statuses</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -364,7 +410,7 @@ const SuperAdminAssets = () => {
         ) : error ? (
           <div className="card-body text-center p-5">
             <div className="alert alert-danger">{error}</div>
-            <button className="btn btn-primary" onClick={() => fetchAssets()}>Retry</button>
+            <button className="btn btn-primary" onClick={() => fetchAssets(pagination.currentPage, filterType, filterStatus)}>Retry</button>
           </div>
         ) : (
           <>
@@ -482,6 +528,81 @@ const SuperAdminAssets = () => {
           </>
         )}
       </div>
+
+      {/* Pagination */}
+      {!loading && !error && filtered.length > 0 && (
+        <nav className="d-flex justify-content-center mt-4">
+          <ul className="pagination">
+            <li className={`page-item ${pagination.currentPage === 1 ? 'disabled' : ''}`}>
+              <button 
+                className="page-link" 
+                onClick={() => handlePageChange(pagination.currentPage - 1)}
+                disabled={pagination.currentPage === 1}
+              >
+                Previous
+              </button>
+            </li>
+            
+            {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+              let page;
+              if (pagination.totalPages <= 5) {
+                page = i + 1;
+              } else {
+                if (pagination.currentPage <= 3) {
+                  page = i + 1;
+                } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                  page = pagination.totalPages - 4 + i;
+                } else {
+                  page = pagination.currentPage - 2 + i;
+                }
+              }
+              return page;
+            }).map(page => (
+              <li 
+                key={page} 
+                className={`page-item ${pagination.currentPage === page ? 'active' : ''}`}
+              >
+                <button 
+                  className="page-link" 
+                  onClick={() => handlePageChange(page)}
+                >
+                  {page}
+                </button>
+              </li>
+            ))}
+            
+            {pagination.totalPages > 5 && (
+              <>
+                {pagination.currentPage < pagination.totalPages - 2 && (
+                  <li className="page-item disabled">
+                    <span className="page-link">...</span>
+                  </li>
+                )}
+                {pagination.currentPage < pagination.totalPages - 1 && (
+                  <li className="page-item">
+                    <button 
+                      className="page-link" 
+                      onClick={() => handlePageChange(pagination.totalPages)}
+                    >
+                      {pagination.totalPages}
+                    </button>
+                  </li>
+                )}
+              </>
+            )}
+            
+            <li className={`page-item ${pagination.currentPage === pagination.totalPages ? 'disabled' : ''}`}>
+              <button 
+                className="page-link" 
+                onClick={() => handlePageChange(pagination.currentPage + 1)}
+                disabled={pagination.currentPage === pagination.totalPages}
+              >
+                Next
+              </button>
+            </li>
+          </ul>
+        </nav>
+      )}
 
       {/* View Modal */}
       {showViewModal && currentAsset && (

@@ -7,6 +7,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import axios from 'axios';
 import BaseUrl from '../../Api/BaseUrl';
 import axiosInstance from '../../Api/axiosInstance';
+import Swal from 'sweetalert2'; // ✅ Import SweetAlert2
 
 const FacilityUserMyRequests = () => {
   // State for modals
@@ -218,8 +219,22 @@ const FacilityUserMyRequests = () => {
             // Show user-friendly error message for 429 errors
             if (thirdErr.response && thirdErr.response.status === 429) {
               setError('Too many requests. Please wait a moment and try again.');
+              // ✅ Show SweetAlert for 429 errors
+              Swal.fire({
+                icon: 'warning',
+                title: 'Too Many Requests',
+                text: 'Please wait a moment and try again.',
+                confirmButtonText: 'OK'
+              });
             } else {
               setError(thirdErr.message || 'Failed to fetch requisitions data');
+              // ✅ Show SweetAlert for general errors
+              Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: thirdErr.message || 'Failed to fetch requisitions data',
+                confirmButtonText: 'OK'
+              });
             }
             console.error('Error fetching requisitions data:', thirdErr);
           }
@@ -423,6 +438,8 @@ const FacilityUserMyRequests = () => {
             </>
           )}
         </div>
+
+      </div>
         {/* ✅ PAGINATION UI — Always shown when not loading */}
         <div className="d-flex justify-content-end mt-3">
           <nav>
@@ -466,8 +483,6 @@ const FacilityUserMyRequests = () => {
             </ul>
           </nav>
         </div>
-      </div>
-
       {/* Status Timeline Modal */}
       <div className={`modal fade ${showStatusTimelineModal ? 'show' : ''}`} style={{ display: showStatusTimelineModal ? 'block' : 'none' }} tabIndex="-1">
         <div className="modal-dialog modal-dialog-centered">

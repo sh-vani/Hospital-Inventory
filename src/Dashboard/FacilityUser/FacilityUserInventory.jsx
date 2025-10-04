@@ -18,8 +18,10 @@ const FacilityUserInventory = () => {
 
   const baseUrl = BaseUrl;
 
+  // ✅ Get facility ID from localStorage
   useEffect(() => {
-    const userStr = localStorage.getItem('user') ||
+    const userStr =
+      localStorage.getItem('user') ||
       localStorage.getItem('userData') ||
       localStorage.getItem('authUser');
 
@@ -31,13 +33,15 @@ const FacilityUserInventory = () => {
           return;
         }
       } catch (e) {
-        console.error('Failed to parse user', e);
+        console.error('Failed to parse user data', e);
       }
     }
+
     setError('Facility ID not found. Please log in as a facility user.');
     setLoading(false);
   }, []);
 
+  // ✅ Fetch facility inventory using API
   useEffect(() => {
     if (!facilityId) return;
 
@@ -46,24 +50,25 @@ const FacilityUserInventory = () => {
       setError(null);
 
       try {
-        const response = await axios.get(`${baseUrl}/inventory/${facilityId}`);
+        // Updated endpoint
+        const response = await axios.get(`${baseUrl}/inventory/fasilities/${facilityId}`);
 
         if (response.data?.success) {
-          let rawData = response.data.data;
+          const rawData = Array.isArray(response.data.data)
+            ? response.data.data
+            : [response.data.data];
 
-          const items = Array.isArray(rawData)
-            ? rawData
-            : (rawData && typeof rawData === 'object' ? [rawData] : []);
-
-          const transformedData = items.map(item => ({
+          const transformedData = rawData.map((item) => ({
             id: item.id,
             itemName: item.item_name || 'Unnamed Item',
-            category: item.category || 'Medicines',
+            category: item.category || 'General',
             batch: item.item_code || 'B001',
             lot: `L-${item.id}`,
-            expiryDate: item.updated_at ? item.updated_at.split('T')[0] : 'N/A',
+            expiryDate: item.expiry_date
+              ? item.expiry_date.split('T')[0]
+              : 'N/A',
             availableQty: item.quantity || 0,
-            remarks: item.description || '-'
+            remarks: item.description || '-',
           }));
 
           setInventoryData(transformedData);
@@ -73,8 +78,8 @@ const FacilityUserInventory = () => {
           setFilteredData([]);
         }
       } catch (err) {
-        setError('Failed to fetch inventory data.');
-        console.error('Error:', err);
+        console.error('Error fetching inventory:', err);
+        setError('Failed to fetch facility inventory.');
         setInventoryData([]);
         setFilteredData([]);
       } finally {
@@ -85,26 +90,31 @@ const FacilityUserInventory = () => {
     fetchInventoryData();
   }, [facilityId, baseUrl]);
 
+  // ✅ Search filter
   useEffect(() => {
     if (!searchTerm.trim()) {
       setFilteredData(inventoryData);
     } else {
       const term = searchTerm.toLowerCase();
-      const filtered = inventoryData.filter(item =>
-        item.itemName.toLowerCase().includes(term) ||
-        item.category.toLowerCase().includes(term) ||
-        item.batch.toLowerCase().includes(term) ||
-        item.lot.toLowerCase().includes(term)
+      const filtered = inventoryData.filter(
+        (item) =>
+          item.itemName.toLowerCase().includes(term) ||
+          item.category.toLowerCase().includes(term) ||
+          item.batch.toLowerCase().includes(term) ||
+          item.lot.toLowerCase().includes(term)
       );
       setFilteredData(filtered);
     }
-    setCurrentPage(1); // Reset to first page on search
+    setCurrentPage(1);
   }, [searchTerm, inventoryData]);
 
-  // Pagination
+  // ✅ Pagination logic
   const totalPages = Math.ceil(filteredData.length / entriesPerPage);
   const indexOfLastEntry = currentPage * entriesPerPage;
-  const currentEntries = filteredData.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
+  const currentEntries = filteredData.slice(
+    indexOfLastEntry - entriesPerPage,
+    indexOfLastEntry
+  );
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
@@ -112,21 +122,23 @@ const FacilityUserInventory = () => {
     }
   };
 
-  const handleExportCSV = () => alert('Exporting data to CSV');
-  const handleExportPDF = () => alert('Exporting data to PDF');
+  // ✅ Dummy export actions
+  const handleExportCSV = () => alert('Exporting data to CSV...');
+  const handleExportPDF = () => alert('Exporting data to PDF...');
 
+  // ✅ Expiry status logic
   const getExpiryStatus = (expiryDate, qty) => {
-    if (qty === 0) return { text: "Out of Stock", class: "bg-danger" };
-    if (expiryDate === 'N/A') return { text: "No Expiry", class: "bg-secondary" };
+    if (qty === 0) return { text: 'Out of Stock', class: 'bg-danger' };
+    if (expiryDate === 'N/A') return { text: 'No Expiry', class: 'bg-secondary' };
 
     const today = new Date();
     const expiry = new Date(expiryDate);
     const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 0) return { text: "Expired", class: "bg-danger" };
-    if (diffDays <= 30) return { text: "Expiring Soon", class: "bg-warning text-dark" };
-    if (diffDays <= 90) return { text: "Near Expiry", class: "bg-info text-dark" };
-    return { text: "In Stock", class: "bg-success" };
+    if (diffDays < 0) return { text: 'Expired', class: 'bg-danger' };
+    if (diffDays <= 30) return { text: 'Expiring Soon', class: 'bg-warning text-dark' };
+    if (diffDays <= 90) return { text: 'Near Expiry', class: 'bg-info text-dark' };
+    return { text: 'In Stock', class: 'bg-success' };
   };
 
   return (
@@ -143,7 +155,9 @@ const FacilityUserInventory = () => {
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body d-flex flex-wrap justify-content-between gap-2">
           <div className="input-group" style={{ maxWidth: '300px' }}>
-            <span className="input-group-text"><FaSearch /></span>
+            <span className="input-group-text">
+              <FaSearch />
+            </span>
             <input
               type="text"
               className="form-control"
@@ -171,61 +185,59 @@ const FacilityUserInventory = () => {
               <p className="mt-2 text-muted">Loading inventory data...</p>
             </div>
           ) : (
-            <>
-              <div className="table-responsive">
-                <table className="table table-hover mb-0">
-                  <thead className="table-light">
+            <div className="table-responsive">
+              <table className="table table-hover mb-0">
+                <thead className="table-light">
+                  <tr>
+                    <th>Item Name</th>
+                    <th>Category</th>
+                    <th>Batch / Lot</th>
+                    <th>Expiry Date</th>
+                    <th>Available Qty</th>
+                    <th>Status</th>
+                    <th>Remarks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentEntries.length > 0 ? (
+                    currentEntries.map((item) => {
+                      const status = getExpiryStatus(item.expiryDate, item.availableQty);
+                      return (
+                        <tr key={item.id}>
+                          <td>{item.itemName}</td>
+                          <td>{item.category}</td>
+                          <td>{item.batch} / {item.lot}</td>
+                          <td>
+                            {item.expiryDate === 'N/A'
+                              ? 'N/A'
+                              : new Date(item.expiryDate).toLocaleDateString()}
+                          </td>
+                          <td>{item.availableQty}</td>
+                          <td>
+                            <span className={`badge ${status.class} rounded-pill px-2 py-1`}>
+                              {status.text}
+                            </span>
+                          </td>
+                          <td>{item.remarks}</td>
+                        </tr>
+                      );
+                    })
+                  ) : (
                     <tr>
-                      <th>Item Name</th>
-                      <th>Category</th>
-                      <th>Batch / Lot</th>
-                      <th>Expiry Date</th>
-                      <th>Available Qty</th>
-                      <th>Status</th>
-                      <th>Remarks</th>
+                      <td colSpan="7" className="text-center py-4 text-muted">
+                        <FaBox size={20} className="me-2" />
+                        No inventory items found.
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {currentEntries.length > 0 ? (
-                      currentEntries.map((item) => {
-                        const status = getExpiryStatus(item.expiryDate, item.availableQty);
-                        return (
-                          <tr key={item.id}>
-                            <td>{item.itemName}</td>
-                            <td>{item.category}</td>
-                            <td>{item.batch} / {item.lot}</td>
-                            <td>
-                              {item.expiryDate === 'N/A'
-                                ? 'N/A'
-                                : new Date(item.expiryDate).toLocaleDateString()}
-                            </td>
-                            <td>{item.availableQty}</td>
-                            <td>
-                              <span className={`badge ${status.class} rounded-pill px-2 py-1`}>
-                                {status.text}
-                              </span>
-                            </td>
-                            <td>{item.remarks}</td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan="7" className="text-center py-4 text-muted">
-                          <FaBox size={20} className="me-2" />
-                          No inventory items found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </>
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
 
-      {/* ✅ Pagination always shown when not loading (even for 1 page or empty) */}
+      {/* ✅ Pagination */}
       <div className="d-flex justify-content-end mt-3">
         <nav>
           <ul className="pagination mb-0">
@@ -239,7 +251,6 @@ const FacilityUserInventory = () => {
               </button>
             </li>
 
-            {/* Show page numbers only if there's at least one entry */}
             {filteredData.length > 0 ? (
               [...Array(totalPages)].map((_, i) => {
                 const page = i + 1;
@@ -248,10 +259,7 @@ const FacilityUserInventory = () => {
                     key={page}
                     className={`page-item ${currentPage === page ? 'active' : ''}`}
                   >
-                    <button
-                      className="page-link"
-                      onClick={() => handlePageChange(page)}
-                    >
+                    <button className="page-link" onClick={() => handlePageChange(page)}>
                       {page}
                     </button>
                   </li>
@@ -263,7 +271,11 @@ const FacilityUserInventory = () => {
               </li>
             )}
 
-            <li className={`page-item ${currentPage === totalPages || filteredData.length === 0 ? 'disabled' : ''}`}>
+            <li
+              className={`page-item ${
+                currentPage === totalPages || filteredData.length === 0 ? 'disabled' : ''
+              }`}
+            >
               <button
                 className="page-link"
                 onClick={() => handlePageChange(currentPage + 1)}
