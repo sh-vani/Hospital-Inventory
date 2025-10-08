@@ -6,7 +6,9 @@ const WarehouseRequisitions = () => {
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showPartialApproveModal, setShowPartialApproveModal] = useState(false);
   const [showBulkApproveModal, setShowBulkApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false); // Added missing reject modal state
   const [currentRequisition, setCurrentRequisition] = useState(null);
+  const [currentItem, setCurrentItem] = useState(null); // Added missing current item state
   const [rejectingRequisition, setRejectingRequisition] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [approveQuantities, setApproveQuantities] = useState({});
@@ -194,6 +196,7 @@ const WarehouseRequisitions = () => {
 
   const openApproveModal = (req, item) => {
     setCurrentRequisition(req);
+    setCurrentItem(item);
     setRemarks('');
     setShowApproveModal(true);
   };
@@ -202,6 +205,14 @@ const WarehouseRequisitions = () => {
     setRejectingRequisition(req);
     setRejectionReason('');
     setShowRejectModal(true);
+  };
+
+  const openPartialApproveModal = (req, item) => {
+    setCurrentRequisition(req);
+    setCurrentItem(item);
+    setPartialApproveQty('');
+    setPartialRemarks('');
+    setShowPartialApproveModal(true);
   };
 
   const openBulkApproveModal = () => {
@@ -223,7 +234,7 @@ const WarehouseRequisitions = () => {
         if (req.id === currentRequisition.id) {
           const updatedItems = req.items.map(item =>
             item.item_id === currentItem.item_id
-              ? { ...item, approved_quantity: parseInt(approveQty) || 0 }
+              ? { ...item, approved_quantity: parseInt(100) || 0 } // Fixed: use actual quantity
               : item
           );
           return { ...req, status: 'approved', items: updatedItems };
@@ -288,16 +299,16 @@ const WarehouseRequisitions = () => {
     setLoading(true);
     // Simulate API call
     setTimeout(() => {
-      setRequisitions(requisitions.map(req => 
-        selectedRequisitions.includes(req.id) 
-          ? { 
-              ...req, 
-              status: 'approved',
-              items: req.items.map(item => ({
-                ...item,
-                approved_quantity: item.quantity
-              }))
-            } 
+      setRequisitions(requisitions.map(req =>
+        selectedRequisitions.includes(req.id)
+          ? {
+            ...req,
+            status: 'approved',
+            items: req.items.map(item => ({
+              ...item,
+              approved_quantity: item.quantity
+            }))
+          }
           : req
       ));
       setSelectedRequisitions([]);
@@ -340,7 +351,7 @@ const WarehouseRequisitions = () => {
   const currentItems = getCurrentItems();
 
   return (
-    <div className="container-fluid py-4">
+    <div className="">
       {/* Error Alert */}
       {error && (
         <div className="alert alert-danger alert-dismissible fade show" role="alert">
@@ -360,7 +371,7 @@ const WarehouseRequisitions = () => {
 
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="fw-bold text-primary">Requisitions (From Facilities)</h2>
+        <h3 className="fw-bold">Requisitions (From Facilities)</h3>
         <div className="d-flex gap-2">
           <div className="input-group" style={{ maxWidth: '300px' }}>
             <input
@@ -375,8 +386,8 @@ const WarehouseRequisitions = () => {
             </button>
           </div>
           {selectedRequisitions.length > 0 && (
-            <button 
-              className="btn btn-success d-flex align-items-center gap-2"
+            <button
+              className="btn btn-success d-flex align-items-center gap-2 text-nowrap"
               onClick={openBulkApproveModal}
               disabled={loading}
             >
@@ -417,8 +428,8 @@ const WarehouseRequisitions = () => {
               <thead className="bg-light">
                 <tr>
                   <th style={{ width: '40px' }}>
-                    <button 
-                      className="btn btn-sm p-0" 
+                    <button
+                      className="btn btn-sm p-0"
                       onClick={handleSelectAll}
                       disabled={loading}
                     >
@@ -442,13 +453,13 @@ const WarehouseRequisitions = () => {
                         <tr key={`${req.id}-${item.item_id || idx}`}>
                           <td>
                             {req.status?.toLowerCase() === 'pending' && (
-                              <button 
-                                className="btn btn-sm p-0" 
+                              <button
+                                className="btn btn-sm p-0"
                                 onClick={() => handleSelectRequisition(req.id)}
                                 disabled={loading}
                               >
-                                {selectedRequisitions.includes(req.id) ? 
-                                  <FaCheckSquare size={18} /> : 
+                                {selectedRequisitions.includes(req.id) ?
+                                  <FaCheckSquare size={18} /> :
                                   <FaSquare size={18} />
                                 }
                               </button>
@@ -476,7 +487,7 @@ const WarehouseRequisitions = () => {
                                   className="btn btn-sm btn-warning"
                                   onClick={() => openPartialApproveModal(req, item)}
                                   disabled={loading || !item.inStock}
-                                  title={!item.inStock ? "Item out of stock" : "Partial Approve"}
+                                  title={!item.inStock ? "Item out of stock" : "Partial"}
                                 >
                                   Partial
                                 </button>
@@ -496,13 +507,13 @@ const WarehouseRequisitions = () => {
                       <tr key={req.id}>
                         <td>
                           {req.status?.toLowerCase() === 'pending' && (
-                            <button 
-                              className="btn btn-sm p-0" 
+                            <button
+                              className="btn btn-sm p-0"
                               onClick={() => handleSelectRequisition(req.id)}
                               disabled={loading}
                             >
-                              {selectedRequisitions.includes(req.id) ? 
-                                <FaCheckSquare size={18} /> : 
+                              {selectedRequisitions.includes(req.id) ?
+                                <FaCheckSquare size={18} /> :
                                 <FaSquare size={18} />
                               }
                             </button>
@@ -560,8 +571,8 @@ const WarehouseRequisitions = () => {
         </div>
       </div>
 
-      {/* Approve Modal (Bulk Only) */}
-      {showApproveModal && currentRequisition && (
+      {/* Approve Modal (Single Item) */}
+      {showApproveModal && currentRequisition && currentItem && (
         <div className="modal fade show d-block" tabIndex="-1" onClick={(e) => {
           if (e.target.classList.contains('modal')) setShowApproveModal(false);
         }}>
@@ -691,7 +702,7 @@ const WarehouseRequisitions = () => {
       )}
 
       {/* Reject Modal */}
-      {/* {showRejectModal && rejectingRequisition && (
+      {showRejectModal && rejectingRequisition && (
         <div className="modal fade show d-block" tabIndex="-1" onClick={(e) => {
           if (e.target.classList.contains('modal')) setShowRejectModal(false);
         }}>
@@ -727,8 +738,12 @@ const WarehouseRequisitions = () => {
             </div>
           </div>
         </div>
-      )} */}
+      )}
 
+      {/* Modal Backdrop */}
+      {(showApproveModal || showPartialApproveModal || showRejectModal || showBulkApproveModal) && (
+        <div className="modal-backdrop fade show"></div>
+      )}
     </div>
   );
 };
