@@ -322,11 +322,11 @@ const FacilityUserMyRequests = () => {
   };
 
   return (
-    <div className="container-fluid py-4 px-3 px-md-4">
+    <div className="">
       {/* Header Section - Fixed background color */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 bg-white p-3 rounded">
         <div className="mb-3 mb-md-0">
-          <h1 className="h3 mb-1">My Requests</h1>
+          <h3 className="fw-bold mb-1">My Requests</h3>
           <p className="text-muted mb-0">Track and manage your requisition requests</p>
         </div>
         <div className="d-flex align-items-center">

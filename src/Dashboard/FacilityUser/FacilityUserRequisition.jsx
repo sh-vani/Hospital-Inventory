@@ -522,7 +522,7 @@ const FacilityUserRequisition = () => {
     <div className="">
       <div className="card shadow-sm border-0 mb-4">
         <div className="card-header bg-white py-3">
-          <h4 className="mb-0">Create Requisition</h4>
+          <h3 className="fw-bold mb-0">Create Requisition</h3>
           <p className="mb-0 text-muted">Submit requisition to Facility Admin</p>
         </div>
 

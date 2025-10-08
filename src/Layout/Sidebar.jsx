@@ -203,11 +203,11 @@ useEffect(() => {
         icon: faUsers,
         path: "/facility/users",
       },
-      {
-        name: "Settings",
-        icon: faGear,
-        path: "/facility/settings",
-      },
+      // {
+      //   name: "Settings",
+      //   icon: faGear,
+      //   path: "/facility/settings",
+      // },
     ],
 
     "facility_user": [

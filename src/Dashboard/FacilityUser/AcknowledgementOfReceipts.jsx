@@ -111,11 +111,11 @@ const AcknowledgementOfReceipts = () => {
   };
 
   return (
-    <div className="container-fluid py-4 px-3 px-md-4">
+    <div className="">
       {/* Header Section - Responsive */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
         <div className="mb-3 mb-md-0">
-          <h2 className="mb-1">Acknowledgement of Receipts</h2>
+          <h3 className="fw-bold mb-1">Acknowledgement of Receipts</h3>
           <p className="text-muted mb-0">Confirm receipt of items dispatched from warehouse</p>
         </div>
         <div className="d-flex align-items-center">
@@ -167,7 +167,7 @@ const AcknowledgementOfReceipts = () => {
                               </div>
                               <div>
                                 <div>{receipt.itemName}</div>
-                                <small className="text-muted">Batch: {receipt.batch} | Lot: {receipt.lot}</small>
+                                {/* <small className="text-muted">Batch: {receipt.batch} | Lot: {receipt.lot}</small> */}
                               </div>
                             </div>
                           </td>

@@ -142,8 +142,8 @@ const FacilityUserInventory = () => {
   };
 
   return (
-    <div className="container-fluid py-4 px-3 px-md-4">
-      <h2 className="mb-4">Facility Inventory</h2>
+    <div className="">
+      <h3 className="fw-bold mb-4">Facility Inventory</h3>
 
       {error && (
         <div className="alert alert-danger d-flex align-items-center" role="alert">
