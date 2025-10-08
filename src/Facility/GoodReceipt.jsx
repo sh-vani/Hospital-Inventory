@@ -4,33 +4,37 @@ import 'bootstrap-icons/font/bootstrap-icons.css';
 import { Modal, Form, Row, Col, Button, Alert } from 'react-bootstrap';
 
 const GoodsReceipt = () => {
-  // Simplified receipts data matching requirements
+  // Updated receipts data with requested quantity
   const [receipts, setReceipts] = useState([
     {
       id: 'GRN-2023-001',
       item: 'Paracetamol 500mg',
-      qty: 100,
+      requestedQty: 100,
+      receivedQty: 100,
       fromDispatch: 'Central Warehouse',
       status: 'Pending'
     },
     {
       id: 'GRN-2023-002',
       item: 'Surgical Gloves (L)',
-      qty: 200,
+      requestedQty: 200,
+      receivedQty: 200,
       fromDispatch: 'Central Warehouse',
       status: 'Pending'
     },
     {
       id: 'GRN-2023-003',
       item: 'Ibuprofen 400mg',
-      qty: 80,
+      requestedQty: 80,
+      receivedQty: 80,
       fromDispatch: 'Regional Warehouse',
       status: 'Verified'
     },
     {
       id: 'GRN-2023-004',
       item: 'Face Masks (N95)',
-      qty: 100,
+      requestedQty: 100,
+      receivedQty: 100,
       fromDispatch: 'Central Warehouse',
       status: 'Pending'
     }
@@ -38,10 +42,14 @@ const GoodsReceipt = () => {
 
   // Filter states
   const [filterStatus, setFilterStatus] = useState('All');
-
+  
+  // Bulk selection
+  const [selectedReceipts, setSelectedReceipts] = useState([]);
+  
   // State management
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [verificationData, setVerificationData] = useState({});
 
   // ✅ Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,6 +70,10 @@ const GoodsReceipt = () => {
   // Open receipt detail modal
   const handleViewReceipt = (receipt) => {
     setSelectedReceipt(receipt);
+    // Initialize verification data with current received quantity
+    setVerificationData({
+      [receipt.id]: receipt.receivedQty
+    });
     setShowDetailModal(true);
   };
 
@@ -69,13 +81,48 @@ const GoodsReceipt = () => {
   const handleCloseDetailModal = () => {
     setShowDetailModal(false);
     setSelectedReceipt(null);
+    setVerificationData({});
   };
 
-  // Handle verify action
-  const handleVerifyReceipt = (receiptId) => {
+  // Handle individual verify action
+  const handleVerifyReceipt = (receiptId, receivedQty) => {
     setReceipts(receipts.map(receipt =>
-      receipt.id === receiptId ? { ...receipt, status: 'Verified' } : receipt
+      receipt.id === receiptId 
+        ? { ...receipt, receivedQty: parseInt(receivedQty) || 0, status: 'Verified' } 
+        : receipt
     ));
+    handleCloseDetailModal();
+  };
+
+  // Handle bulk verification
+  const handleBulkVerify = () => {
+    if (selectedReceipts.length === 0) return;
+    
+    setReceipts(receipts.map(receipt =>
+      selectedReceipts.includes(receipt.id)
+        ? { ...receipt, status: 'Verified' }
+        : receipt
+    ));
+    
+    setSelectedReceipts([]);
+  };
+
+  // Toggle selection for bulk actions
+  const toggleSelection = (id) => {
+    setSelectedReceipts(prev =>
+      prev.includes(id)
+        ? prev.filter(item => item !== id)
+        : [...prev, id]
+    );
+  };
+
+  // Select all visible receipts
+  const toggleSelectAll = () => {
+    if (selectedReceipts.length === currentEntries.length) {
+      setSelectedReceipts([]);
+    } else {
+      setSelectedReceipts(currentEntries.map(r => r.id));
+    }
   };
 
   // Filter receipts based on selected status
@@ -91,6 +138,8 @@ const GoodsReceipt = () => {
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
+      // Clear selections when changing pages
+      setSelectedReceipts([]);
     }
   };
 
@@ -98,16 +147,39 @@ const GoodsReceipt = () => {
   const resetFilters = () => {
     setFilterStatus('All');
     setCurrentPage(1);
+    setSelectedReceipts([]);
+  };
+
+  // Handle received quantity change in modal
+  const handleReceivedQtyChange = (id, value) => {
+    setVerificationData(prev => ({
+      ...prev,
+      [id]: value
+    }));
   };
 
   return (
-    <div className="container-fluid p-4" style={{ backgroundColor: '#ffff', minHeight: '100vh' }}>
+    <div className="">
       {/* Header */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
         <div>
-          <h1 className="mb-0">Good Receipt</h1>
+          <h3 className="mb-0">Goods Receipt</h3>
           <p className="text-muted mb-0">Acknowledge dispatched items from warehouse</p>
         </div>
+        {selectedReceipts.length > 0 && (
+          <div className="alert alert-info d-flex align-items-center mb-0">
+            <i className="bi bi-info-circle me-2"></i>
+            <span>{selectedReceipts.length} items selected</span>
+            <Button 
+              variant="success" 
+              size="sm" 
+              className="ms-3"
+              onClick={handleBulkVerify}
+            >
+              Verify Selected
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -121,7 +193,8 @@ const GoodsReceipt = () => {
                 value={filterStatus}
                 onChange={(e) => {
                   setFilterStatus(e.target.value);
-                  setCurrentPage(1); // Reset to page 1 on filter change
+                  setCurrentPage(1);
+                  setSelectedReceipts([]); // Clear selections on filter change
                 }}
               >
                 <option value="All">All Status</option>
@@ -147,9 +220,21 @@ const GoodsReceipt = () => {
             <table className="table table-hover mb-0">
               <thead className="table-light">
                 <tr>
+                  <th scope="col" style={{ width: '5%' }}>
+                    <div className="form-check">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        checked={currentEntries.length > 0 && selectedReceipts.length === currentEntries.length}
+                        onChange={toggleSelectAll}
+                        disabled={currentEntries.length === 0}
+                      />
+                    </div>
+                  </th>
                   <th scope="col">GRN ID</th>
                   <th scope="col">Item</th>
-                  <th scope="col">Qty</th>
+                  <th scope="col">Requested Qty</th>
+                  <th scope="col">Received Qty</th>
                   <th scope="col">From Dispatch</th>
                   <th scope="col">Status</th>
                   <th scope="col">Actions</th>
@@ -159,9 +244,21 @@ const GoodsReceipt = () => {
                 {currentEntries.length > 0 ? (
                   currentEntries.map((receipt) => (
                     <tr key={receipt.id}>
+                      <td>
+                        <div className="form-check">
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            checked={selectedReceipts.includes(receipt.id)}
+                            onChange={() => toggleSelection(receipt.id)}
+                            disabled={receipt.status !== 'Pending'}
+                          />
+                        </div>
+                      </td>
                       <td className="fw-medium">{receipt.id}</td>
                       <td>{receipt.item}</td>
-                      <td>{receipt.qty}</td>
+                      <td>{receipt.requestedQty}</td>
+                      <td>{receipt.receivedQty}</td>
                       <td>{receipt.fromDispatch}</td>
                       <td>
                         <span className={`badge ${getStatusClass(receipt.status)} text-white`}>
@@ -169,14 +266,22 @@ const GoodsReceipt = () => {
                         </span>
                       </td>
                       <td>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-primary me-2"
+                          onClick={() => handleViewReceipt(receipt)}
+                          title="View Details"
+                        >
+                          <i className="bi bi-eye"></i>
+                        </button>
                         {receipt.status === 'Pending' && (
                           <button
                             type="button"
                             className="btn btn-sm btn-success"
-                            onClick={() => handleVerifyReceipt(receipt.id)}
+                            onClick={() => handleVerifyReceipt(receipt.id, receipt.receivedQty)}
                             title="Verify Receipt"
                           >
-                            Verify Receipt
+                            Verify
                           </button>
                         )}
                       </td>
@@ -184,7 +289,7 @@ const GoodsReceipt = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="6" className="text-center py-4 text-muted">
+                    <td colSpan="8" className="text-center py-4 text-muted">
                       No records found matching the selected filters.
                     </td>
                   </tr>
@@ -194,7 +299,8 @@ const GoodsReceipt = () => {
           </div>
         </div>
       </div>
-      {/* ✅ PAGINATION UI — Same as your other components */}
+      
+      {/* ✅ PAGINATION UI */}
       <div className="d-flex justify-content-end mt-3">
         <nav>
           <ul className="pagination mb-3">
@@ -237,38 +343,91 @@ const GoodsReceipt = () => {
           </ul>
         </nav>
       </div>
+      
       {/* Receipt Detail Modal */}
       <Modal show={showDetailModal} onHide={handleCloseDetailModal} size="md" centered>
         <Modal.Header closeButton>
-          <Modal.Title>Receipt Details</Modal.Title>
+          <Modal.Title>Verify Receipt</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {selectedReceipt && (
-            <div className="row">
-              <div className="col-12 mb-3">
-                <strong>GRN ID:</strong> <span className="text-muted">{selectedReceipt.id}</span>
-              </div>
-              <div className="col-12 mb-3">
-                <strong>Item:</strong> <span className="text-muted">{selectedReceipt.item}</span>
-              </div>
-              <div className="col-12 mb-3">
-                <strong>Qty:</strong> <span className="text-muted">{selectedReceipt.qty}</span>
-              </div>
-              <div className="col-12 mb-3">
-                <strong>From Dispatch:</strong> <span className="text-muted">{selectedReceipt.fromDispatch}</span>
-              </div>
-              <div className="col-12 mb-3">
-                <strong>Status:</strong>
-                <span className={`badge ${getStatusClass(selectedReceipt.status)} text-white ms-2`}>
-                  {selectedReceipt.status}
-                </span>
-              </div>
-            </div>
+            <Form>
+              <Row className="mb-3">
+                <Col>
+                  <Form.Label>GRN ID</Form.Label>
+                  <Form.Control 
+                    plaintext 
+                    readOnly 
+                    value={selectedReceipt.id} 
+                  />
+                </Col>
+              </Row>
+              <Row className="mb-3">
+                <Col>
+                  <Form.Label>Item</Form.Label>
+                  <Form.Control 
+                    plaintext 
+                    readOnly 
+                    value={selectedReceipt.item} 
+                  />
+                </Col>
+              </Row>
+              <Row className="mb-3">
+                <Col>
+                  <Form.Label>Requested Quantity</Form.Label>
+                  <Form.Control 
+                    plaintext 
+                    readOnly 
+                    value={selectedReceipt.requestedQty} 
+                  />
+                </Col>
+              </Row>
+              <Row className="mb-3">
+                <Col>
+                  <Form.Label>Received Quantity</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="0"
+                    value={verificationData[selectedReceipt.id] || selectedReceipt.receivedQty}
+                    onChange={(e) => handleReceivedQtyChange(selectedReceipt.id, e.target.value)}
+                  />
+                </Col>
+              </Row>
+              <Row className="mb-3">
+                <Col>
+                  <Form.Label>From Dispatch</Form.Label>
+                  <Form.Control 
+                    plaintext 
+                    readOnly 
+                    value={selectedReceipt.fromDispatch} 
+                  />
+                </Col>
+              </Row>
+              <Row className="mb-3">
+                <Col>
+                  <Form.Label>Status</Form.Label>
+                  <div>
+                    <span className={`badge ${getStatusClass(selectedReceipt.status)} text-white`}>
+                      {selectedReceipt.status}
+                    </span>
+                  </div>
+                </Col>
+              </Row>
+            </Form>
           )}
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handleCloseDetailModal}>
-            Close
+            Cancel
+          </Button>
+          <Button 
+            variant="success" 
+            onClick={() => handleVerifyReceipt(
+              selectedReceipt.id, 
+              verificationData[selectedReceipt.id] || selectedReceipt.receivedQty
+            )}
+          >
+            Verify Receipt
           </Button>
         </Modal.Footer>
       </Modal>

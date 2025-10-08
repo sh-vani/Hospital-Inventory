@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { FaPlus, FaEye, FaTrash } from 'react-icons/fa';
+import React, { useState, useEffect, useMemo } from 'react';
+import { FaPlus, FaEye, FaTrash, FaTimes } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import BaseUrl from '../../Api/BaseUrl';
 import axiosInstance from '../../Api/axiosInstance';
-// import Swal from 'sweetalert2';
+import Swal from 'sweetalert2';
 
 const FacilityUserRequisition = () => {
   // Form states
@@ -13,29 +13,32 @@ const FacilityUserRequisition = () => {
   const [showRequisitionModal, setShowRequisitionModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [priorityFilter, setPriorityFilter] = useState('All');
-  // Modal for item details
-  const [showItemDetailModal, setShowItemDetailModal] = useState(false);
-  const [selectedItemDetail, setSelectedItemDetail] = useState(null);
+  
   // Modal states
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedRequisition, setSelectedRequisition] = useState(null);
   const [requisitionHistory, setRequisitionHistory] = useState([]);
-
-  // Requisition form fields
+  
+  // Individual requisition fields
   const [selectedItem, setSelectedItem] = useState('');
   const [quantity, setQuantity] = useState('');
   const [priority, setPriority] = useState('Normal');
   const [remarks, setRemarks] = useState('');
-
-  // Real facility items from API
+  
+  // Bulk requisition fields
+  const [bulkItems, setBulkItems] = useState([{ item: '', quantity: '', priority: 'Normal' }]);
+  const [bulkRemarks, setBulkRemarks] = useState('');
+  
+  // Facility items
   const [facilityItems, setFacilityItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(true);
-
-  // ✅ Pagination state
+  
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 10;
 
@@ -50,67 +53,112 @@ const FacilityUserRequisition = () => {
     }
   };
 
-  // ✅ Retry function with exponential backoff for 429 errors
-  const fetchWithRetry = async (axiosCall, maxRetries = 3, initialDelay = 1000) => {
-    let retryCount = 0;
-    let delay = initialDelay;
-
-    while (retryCount <= maxRetries) {
-      try {
-        const response = await axiosCall();
-        return response;
-      } catch (error) {
-        if (error.response && error.response.status === 429 && retryCount < maxRetries) {
-          retryCount++;
-          console.log(`Rate limited. Retrying in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          delay *= 2;
-        } else {
-          throw error;
-        }
-      }
-    }
-
-    throw new Error('Max retries reached');
+  // Helper: Check if item is near expiry (within next 30 days)
+  const isNearExpiry = (expiryDate, daysThreshold = 30) => {
+    if (!expiryDate) return false;
+    const today = new Date();
+    const expiry = new Date(expiryDate);
+    const diffTime = expiry - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 && diffDays <= daysThreshold;
   };
 
-  // Fetch facility items with retry mechanism
+  // Auto-create requisitions for triggered items
+  const createAutoRequisitions = async (items, user) => {
+    const triggeredItems = [];
+
+    items.forEach(item => {
+      // Out of Stock
+      if (item.quantity === 0) {
+        triggeredItems.push({
+          item_id: item.id,
+          quantity: item.reorder_level > 0 ? item.reorder_level : 10,
+          priority: 'High',
+          reason: 'Out of Stock'
+        });
+      }
+      // Low Stock
+      else if (item.quantity > 0 && item.quantity <= (item.reorder_level || 0)) {
+        const needed = (item.reorder_level || 10) - item.quantity;
+        if (needed > 0) {
+          triggeredItems.push({
+            item_id: item.id,
+            quantity: needed,
+            priority: 'High',
+            reason: 'Low Stock'
+          });
+        }
+      }
+      // Near Expiry
+      else if (isNearExpiry(item.expiry_date, 30)) {
+        triggeredItems.push({
+          item_id: item.id,
+          quantity: item.quantity,
+          priority: 'Urgent',
+          reason: 'Near Expiry'
+        });
+      }
+    });
+
+    if (triggeredItems.length === 0) return;
+
+    try {
+      const payload = {
+        user_id: user.id,
+        facility_id: user.facility_id,
+        remarks: `Auto-generated: ${triggeredItems.map(i => i.reason).join(', ')}`,
+        items: triggeredItems.map(i => ({
+          item_id: i.item_id,
+          quantity: i.quantity,
+          priority: i.priority.toLowerCase()
+        }))
+      };
+
+      const response = await axiosInstance.post(`${BaseUrl}/requisitions/bulk`, payload);
+      
+      if (response.data.success) {
+        Swal.fire({
+          icon: 'info',
+          title: 'Auto-Requisition Created',
+          text: `${triggeredItems.length} item(s) automatically requisitioned due to stock/expiry alerts.`,
+          timer: 4000,
+          showConfirmButton: false
+        });
+        fetchRequisitionHistory(user.id);
+      }
+    } catch (error) {
+      console.error('Auto-requisition failed:', error);
+    }
+  };
+
+  // Fetch facility items
   const fetchFacilityItems = async (facilityId) => {
     try {
       setLoadingItems(true);
-      const response = await fetchWithRetry(() =>
-        axiosInstance.get(`${BaseUrl}/inventory/${facilityId}`)
-      );
+      const response = await axiosInstance.get(`${BaseUrl}/inventory/${facilityId}`);
+      let items = [];
       if (response.data.success) {
-        let items = [];
         if (Array.isArray(response.data.data)) {
           items = response.data.data;
         } else if (response.data.data && typeof response.data.data === 'object') {
           items = [response.data.data];
         }
-        setFacilityItems(items);
-      } else {
-        setFacilityItems([]);
+      }
+      setFacilityItems(items);
+
+      // 🔥 AUTO-TRIGGER REQUISITIONS AFTER FETCHING ITEMS
+      const user = getUserFromStorage();
+      if (user && items.length > 0) {
+        createAutoRequisitions(items, user);
       }
     } catch (error) {
       console.error('Failed to fetch facility items:', error);
       setFacilityItems([]);
-
-      if (error.response?.status === 429) {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Too Many Requests',
-          text: 'Please wait a moment and try again.',
-          timer: 3000,
-          showConfirmButton: false
-        });
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Fetch Failed',
-          text: 'Failed to fetch facility items. Please try again later.'
-        });
-      }
+      Swal.fire({
+        icon: 'error',
+        title: 'Fetch Failed',
+        text: 'Failed to fetch facility items. Please try again later.'
+      });
     } finally {
       setLoadingItems(false);
     }
@@ -130,7 +178,7 @@ const FacilityUserRequisition = () => {
             remarks: req.remarks || '',
             items: Array.isArray(req.items) ? req.items : []
           }))
-          .sort((a, b) => b.id - a.id); // Sort by ID descending
+          .sort((a, b) => b.id - a.id);
         setRequisitionHistory(formatted);
       } else {
         setRequisitionHistory([]);
@@ -163,7 +211,8 @@ const FacilityUserRequisition = () => {
     }
   }, []);
 
-  const handleSubmit = async (e) => {
+  // Handle individual submission
+  const handleIndividualSubmit = async (e) => {
     e.preventDefault();
 
     if (!selectedItem || !quantity || quantity <= 0) {
@@ -195,7 +244,7 @@ const FacilityUserRequisition = () => {
           {
             item_id: parseInt(selectedItem),
             quantity: parseInt(quantity),
-            priority: priority.toLowerCase() // ✅ Send lowercase to backend
+            priority: priority.toLowerCase()
           }
         ]
       };
@@ -205,14 +254,8 @@ const FacilityUserRequisition = () => {
       if (response.data.success) {
         setSuccess(true);
         fetchRequisitionHistory(user.id);
-
-        // Reset form
-        setSelectedItem('');
-        setQuantity('');
-        setPriority('Normal');
-        setRemarks('');
+        resetIndividualForm();
         setShowRequisitionModal(false);
-
         Swal.fire({
           icon: 'success',
           title: 'Submitted!',
@@ -241,7 +284,113 @@ const FacilityUserRequisition = () => {
     }
   };
 
-  // Cancel requisition with SweetAlert confirmation
+  // Handle bulk submission
+  const handleBulkSubmit = async (e) => {
+    e.preventDefault();
+
+    const validItems = bulkItems.filter(item => 
+      item.item && item.quantity && parseInt(item.quantity) > 0
+    );
+    
+    if (validItems.length === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Incomplete Form',
+        text: 'Please add at least one valid item with quantity.'
+      });
+      return;
+    }
+
+    const user = getUserFromStorage();
+    if (!user || !user.facility_id || !user.id) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Session Error',
+        text: 'User data incomplete. Please log in again.'
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = {
+        user_id: user.id,
+        facility_id: user.facility_id,
+        remarks: bulkRemarks.trim() || '',
+        items: validItems.map(item => ({
+          item_id: parseInt(item.item),
+          quantity: parseInt(item.quantity),
+          priority: item.priority.toLowerCase()
+        }))
+      };
+
+      const response = await axiosInstance.post(`${BaseUrl}/requisitions/bulk`, payload);
+
+      if (response.data.success) {
+        setSuccess(true);
+        fetchRequisitionHistory(user.id);
+        resetBulkForm();
+        setShowRequisitionModal(false);
+        Swal.fire({
+          icon: 'success',
+          title: 'Submitted!',
+          text: 'Your bulk requisition has been submitted to Facility Admin.',
+          timer: 3000,
+          showConfirmButton: false
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Submission Failed',
+          text: 'Failed to submit requisition: ' + (response.data.message || 'Unknown error')
+        });
+      }
+    } catch (error) {
+      console.error('Submission error:', error);
+      const msg = error.response?.data?.message || 'Network error. Please try again.';
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: msg
+      });
+    } finally {
+      setLoading(false);
+      setTimeout(() => setSuccess(false), 3000);
+    }
+  };
+
+  // Reset forms
+  const resetIndividualForm = () => {
+    setSelectedItem('');
+    setQuantity('');
+    setPriority('Normal');
+    setRemarks('');
+  };
+
+  const resetBulkForm = () => {
+    setBulkItems([{ item: '', quantity: '', priority: 'Normal' }]);
+    setBulkRemarks('');
+  };
+
+  // Bulk form handlers
+  const addBulkItemRow = () => {
+    setBulkItems([...bulkItems, { item: '', quantity: '', priority: 'Normal' }]);
+  };
+
+  const removeBulkItemRow = (index) => {
+    if (bulkItems.length === 1) return;
+    const newItems = [...bulkItems];
+    newItems.splice(index, 1);
+    setBulkItems(newItems);
+  };
+
+  const updateBulkItem = (index, field, value) => {
+    const newItems = [...bulkItems];
+    newItems[index][field] = value;
+    setBulkItems(newItems);
+  };
+
+  // Cancel requisition
   const handleCancelRequisition = async (id) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
@@ -300,6 +449,11 @@ const FacilityUserRequisition = () => {
   // Add item button
   const handleAddItem = () => {
     setShowRequisitionModal(true);
+    if (requisitionType === 'individual') {
+      resetIndividualForm();
+    } else {
+      resetBulkForm();
+    }
   };
 
   // Status badge
@@ -312,12 +466,6 @@ const FacilityUserRequisition = () => {
       case 'Dispatched': return 'bg-primary';
       default: return 'bg-secondary';
     }
-  };
-
-  // View item detail
-  const handleViewItemDetail = (item) => {
-    setSelectedItemDetail(item);
-    setShowItemDetailModal(true);
   };
 
   // Priority badge
@@ -343,7 +491,7 @@ const FacilityUserRequisition = () => {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  // ✅ Pagination logic
+  // Pagination logic
   const totalPages = Math.ceil(filteredRequisitions.length / entriesPerPage);
   const indexOfLastEntry = currentPage * entriesPerPage;
   const currentEntries = filteredRequisitions.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
@@ -359,15 +507,75 @@ const FacilityUserRequisition = () => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, priorityFilter]);
 
+  // Memoized helper for item warnings (for UI)
+  const getItemWarnings = useMemo(() => {
+    return (item) => {
+      const warnings = [];
+      if (item.quantity === 0) warnings.push('OUT OF STOCK');
+      else if (item.quantity > 0 && item.quantity <= (item.reorder_level || 0)) warnings.push('LOW STOCK');
+      if (isNearExpiry(item.expiry_date, 30)) warnings.push('NEAR EXPIRY');
+      return warnings;
+    };
+  }, []);
+
   return (
-    <div className="container py-4">
-      <div className="card shadow">
-        <div className="card-header text-black">
+    <div className="">
+      <div className="card shadow-sm border-0 mb-4">
+        <div className="card-header bg-white py-3">
           <h4 className="mb-0">Create Requisition</h4>
-          <p className="mb-0">Submit requisition to Facility Admin</p>
+          <p className="mb-0 text-muted">Submit requisition to Facility Admin</p>
         </div>
 
         <div className="card-body">
+          <div className="row align-items-center mb-4">
+            <div className="col-md-6">
+              <div className="bg-light p-3 rounded">
+                <div className="text-muted small">Department: <strong>{department}</strong></div>
+                <div className="mt-1">User: <strong>{username}</strong></div>
+              </div>
+            </div>
+
+            <div className="col-md-6">
+              <div className="card bg-light border-0">
+                <div className="card-body">
+                  <h6 className="mb-3">Requisition Type</h6>
+                  <div className="d-flex gap-3">
+                    <div className="form-check">
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name="requisitionType"
+                        id="individual"
+                        value="individual"
+                        checked={requisitionType === 'individual'}
+                        onChange={() => setRequisitionType('individual')}
+                      />
+                      <label className="form-check-label" htmlFor="individual">
+                        <div className="fw-bold">Individual</div>
+                        <small className="text-muted">For daily usage items</small>
+                      </label>
+                    </div>
+                    <div className="form-check">
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name="requisitionType"
+                        id="bulk"
+                        value="bulk"
+                        checked={requisitionType === 'bulk'}
+                        onChange={() => setRequisitionType('bulk')}
+                      />
+                      <label className="form-check-label" htmlFor="bulk">
+                        <div className="fw-bold">Bulk</div>
+                        <small className="text-muted">For large quantity orders</small>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Success alert */}
           {success && (
             <div className="alert alert-success alert-dismissible fade show" role="alert">
@@ -376,48 +584,10 @@ const FacilityUserRequisition = () => {
             </div>
           )}
 
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
-              <div className="text-muted small">Department: {department}</div>
-              <div>User: {username}</div>
-            </div>
-
-            {/* Requisition Type */}
-            <div className="mb-3">
-              <label className="form-label">Requisition Type</label>
-              <div>
-                <div className="form-check form-check-inline">
-                  <input
-                    className="form-check-input"
-                    type="radio"
-                    name="requisitionType"
-                    id="individual"
-                    value="individual"
-                    checked={requisitionType === 'individual'}
-                    onChange={() => setRequisitionType('individual')}
-                  />
-                  <label className="form-check-label" htmlFor="individual">Individual</label>
-                </div>
-                <div className="form-check form-check-inline">
-                  <input
-                    className="form-check-input"
-                    type="radio"
-                    name="requisitionType"
-                    id="bulk"
-                    value="bulk"
-                    checked={requisitionType === 'bulk'}
-                    onChange={() => setRequisitionType('bulk')}
-                  />
-                  <label className="form-check-label" htmlFor="bulk">Bulk</label>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Requisition History with Filters */}
-          <div className="mt-5">
+          {/* Requisition History */}
+          <div className="mt-4">
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h5>Requisition History</h5>
+              <h5 className="text-primary">Requisition History</h5>
               <button
                 type="button"
                 className="btn btn-primary"
@@ -483,7 +653,7 @@ const FacilityUserRequisition = () => {
 
             {/* Table */}
             <div className="table-responsive">
-              <table className="table table-hover">
+              <table className="table table-hover align-middle">
                 <thead className="table-light">
                   <tr>
                     <th>Req ID</th>
@@ -496,9 +666,9 @@ const FacilityUserRequisition = () => {
                 </thead>
                 <tbody>
                   {currentEntries.length > 0 ? (
-                    currentEntries.map((req, index) => (
+                    currentEntries.map((req) => (
                       <tr key={req.id}>
-                        <td>{req.id}</td>
+                        <td>#{req.id}</td>
                         <td>{req.item_name || 'N/A'}</td>
                         <td>
                           <span className={`badge ${getStatusBadgeClass(req.status)}`}>
@@ -510,7 +680,9 @@ const FacilityUserRequisition = () => {
                             {req.priority}
                           </span>
                         </td>
-                        <td>{req.remarks || '-'}</td>
+                        <td className="text-truncate" style={{ maxWidth: '200px' }}>
+                          {req.remarks || '-'}
+                        </td>
                         <td>
                           <button
                             className="btn btn-sm btn-outline-primary me-2"
@@ -534,10 +706,10 @@ const FacilityUserRequisition = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="6" className="text-center py-4">
+                      <td colSpan="6" className="text-center py-5">
                         <div className="text-muted">
                           <FaEye size={24} className="mb-2" />
-                          <p>No requisitions found.</p>
+                          <p className="mb-0">No requisitions found.</p>
                         </div>
                       </td>
                     </tr>
@@ -546,61 +718,92 @@ const FacilityUserRequisition = () => {
               </table>
             </div>
 
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="d-flex justify-content-end mt-3">
+                <nav>
+                  <ul className="pagination mb-0">
+                    <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                      <button
+                        className="page-link"
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </button>
+                    </li>
 
+                    {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                      let page;
+                      if (totalPages <= 5) {
+                        page = i + 1;
+                      } else {
+                        if (currentPage <= 3) {
+                          page = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          page = totalPages - 4 + i;
+                        } else {
+                          page = currentPage - 2 + i;
+                        }
+                      }
+                      return (
+                        <li
+                          key={page}
+                          className={`page-item ${currentPage === page ? 'active' : ''}`}
+                        >
+                          <button
+                            className="page-link"
+                            onClick={() => handlePageChange(page)}
+                          >
+                            {page}
+                          </button>
+                        </li>
+                      );
+                    })}
+
+                    {totalPages > 5 && (
+                      <li className="page-item disabled">
+                        <span className="page-link">...</span>
+                      </li>
+                    )}
+
+                    {totalPages > 5 && (
+                      <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                        <button
+                          className="page-link"
+                          onClick={() => handlePageChange(totalPages)}
+                        >
+                          {totalPages}
+                        </button>
+                      </li>
+                    )}
+
+                    <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+                      <button
+                        className="page-link"
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages || totalPages === 0}
+                      >
+                        Next
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
+              </div>
+            )}
           </div>
         </div>
-      </div>
-      {/* ✅ PAGINATION UI — Always shown when not loading */}
-      <div className="d-flex justify-content-end mt-3">
-        <nav>
-          <ul className="pagination mb-0">
-            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-              <button
-                className="page-link"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </button>
-            </li>
-
-            {[...Array(totalPages)].map((_, i) => {
-              const page = i + 1;
-              return (
-                <li
-                  key={page}
-                  className={`page-item ${currentPage === page ? 'active' : ''}`}
-                >
-                  <button
-                    className="page-link"
-                    onClick={() => handlePageChange(page)}
-                  >
-                    {page}
-                  </button>
-                </li>
-              );
-            })}
-
-            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
-              <button
-                className="page-link"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages || totalPages === 0}
-              >
-                Next
-              </button>
-            </li>
-          </ul>
-        </nav>
       </div>
 
       {/* Create Requisition Modal */}
       <div className={`modal fade ${showRequisitionModal ? 'show' : ''}`}
         style={{ display: showRequisitionModal ? 'block' : 'none' }}>
-        <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-dialog modal-dialog-centered modal-lg">
           <div className="modal-content">
-            <div className="modal-header text-black">
-              <h5 className="modal-title">Create Requisition</h5>
+            <div className="modal-header bg-light">
+              <h5 className="modal-title">
+                {requisitionType === 'individual' ? 'Individual Requisition' : 'Bulk Requisition'}
+              </h5>
               <button
                 type="button"
                 className="btn-close"
@@ -611,92 +814,229 @@ const FacilityUserRequisition = () => {
               ></button>
             </div>
             <div className="modal-body">
-              <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                  <label className="form-label">Item <span className="text-danger">*</span></label>
-                  <select
-                    className="form-select"
-                    value={selectedItem}
-                    onChange={(e) => setSelectedItem(e.target.value)}
-                    required
-                  >
-                    <option value="">Select an item</option>
-                    {loadingItems ? (
-                      <option>Loading items...</option>
-                    ) : facilityItems.length > 0 ? (
-                      facilityItems.map(item => (
-                        <option key={item.id} value={item.id}>
-                          {item.item_name} ({item.quantity} {item.unit || 'units'})
-                        </option>
-                      ))
-                    ) : (
-                      <option>No items available in facility</option>
-                    )}
-                  </select>
-                </div>
+              {requisitionType === 'individual' ? (
+                <form onSubmit={handleIndividualSubmit}>
+                  <div className="row">
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Item <span className="text-danger">*</span></label>
+                      <select
+                        className="form-select"
+                        value={selectedItem}
+                        onChange={(e) => setSelectedItem(e.target.value)}
+                        required
+                      >
+                        <option value="">Select an item</option>
+                        {loadingItems ? (
+                          <option>Loading items...</option>
+                        ) : facilityItems.length > 0 ? (
+                          facilityItems.map(item => {
+                            const warnings = getItemWarnings(item);
+                            return (
+                              <option key={item.id} value={item.id}>
+                                {item.item_name} ({item.quantity} {item.unit || 'units'})
+                                {warnings.length > 0 && (
+                                  <span className="text-danger ms-2">⚠️ {warnings.join(', ')}</span>
+                                )}
+                              </option>
+                            );
+                          })
+                        ) : (
+                          <option>No items available in facility</option>
+                        )}
+                      </select>
+                    </div>
 
-                <div className="mb-3">
-                  <label className="form-label">Qty <span className="text-danger">*</span></label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    min="1"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    required
-                  />
-                </div>
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Qty <span className="text-danger">*</span></label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        min="1"
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
+                        required
+                      />
+                    </div>
 
-                {/* Priority dropdown — ONLY IN MODAL */}
-                <div className="mb-3">
-                  <label className="form-label">Priority</label>
-                  <select
-                    className="form-select"
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value)}
-                  >
-                    <option value="Normal">Normal</option>
-                    <option value="High">High</option>
-                    <option value="Urgent">Urgent</option>
-                  </select>
-                </div>
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label">Priority</label>
+                      <select
+                        className="form-select"
+                        value={priority}
+                        onChange={(e) => setPriority(e.target.value)}
+                      >
+                        <option value="Normal">Normal</option>
+                        <option value="High">High</option>
+                        <option value="Urgent">Urgent</option>
+                      </select>
+                    </div>
 
-                <div className="mb-3">
-                  <label className="form-label">Remarks</label>
-                  <textarea
-                    className="form-control"
-                    rows="3"
-                    value={remarks}
-                    onChange={(e) => setRemarks(e.target.value)}
-                    placeholder="Enter any additional notes..."
-                  ></textarea>
-                </div>
+                    <div className="col-12 mb-3">
+                      <label className="form-label">Remarks</label>
+                      <textarea
+                        className="form-control"
+                        rows="2"
+                        value={remarks}
+                        onChange={(e) => setRemarks(e.target.value)}
+                        placeholder="Enter any additional notes..."
+                      ></textarea>
+                    </div>
+                  </div>
 
-                <div className="d-flex justify-content-end gap-2">
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      setShowRequisitionModal(false);
-                      setPriority('Normal');
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn btn-primary"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Submitting...
-                      </>
-                    ) : 'Submit Requisition'}
-                  </button>
-                </div>
-              </form>
+                  <div className="d-flex justify-content-end gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        setShowRequisitionModal(false);
+                        setPriority('Normal');
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Submitting...
+                        </>
+                      ) : 'Submit Requisition'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleBulkSubmit}>
+                  <div className="mb-3">
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <h6 className="mb-0">Items</h6>
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary btn-sm"
+                        onClick={addBulkItemRow}
+                      >
+                        <FaPlus className="me-1" /> Add Item
+                      </button>
+                    </div>
+                    
+                    <div className="table-responsive">
+                      <table className="table table-borderless">
+                        <thead>
+                          <tr>
+                            <th>Item</th>
+                            <th>Qty</th>
+                            <th>Priority</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {bulkItems.map((item, index) => (
+                            <tr key={index}>
+                              <td>
+                                <select
+                                  className="form-select form-select-sm"
+                                  value={item.item}
+                                  onChange={(e) => updateBulkItem(index, 'item', e.target.value)}
+                                  required
+                                >
+                                  <option value="">Select item</option>
+                                  {loadingItems ? (
+                                    <option>Loading...</option>
+                                  ) : facilityItems.length > 0 ? (
+                                    facilityItems.map(facilityItem => {
+                                      const warnings = getItemWarnings(facilityItem);
+                                      return (
+                                        <option key={facilityItem.id} value={facilityItem.id}>
+                                          {facilityItem.item_name} ({facilityItem.quantity} {facilityItem.unit || 'units'})
+                                          {warnings.length > 0 && (
+                                            <span className="text-danger ms-2">⚠️ {warnings.join(', ')}</span>
+                                          )}
+                                        </option>
+                                      );
+                                    })
+                                  ) : (
+                                    <option>No items available</option>
+                                  )}
+                                </select>
+                              </td>
+                              <td>
+                                <input
+                                  type="number"
+                                  className="form-control form-control-sm"
+                                  min="1"
+                                  value={item.quantity}
+                                  onChange={(e) => updateBulkItem(index, 'quantity', e.target.value)}
+                                  required
+                                />
+                              </td>
+                              <td>
+                                <select
+                                  className="form-select form-select-sm"
+                                  value={item.priority}
+                                  onChange={(e) => updateBulkItem(index, 'priority', e.target.value)}
+                                >
+                                  <option value="Normal">Normal</option>
+                                  <option value="High">High</option>
+                                  <option value="Urgent">Urgent</option>
+                                </select>
+                              </td>
+                              <td>
+                                {bulkItems.length > 1 && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-danger"
+                                    onClick={() => removeBulkItemRow(index)}
+                                  >
+                                    <FaTimes />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label">Remarks</label>
+                    <textarea
+                      className="form-control"
+                      rows="2"
+                      value={bulkRemarks}
+                      onChange={(e) => setBulkRemarks(e.target.value)}
+                      placeholder="Enter any additional notes..."
+                    ></textarea>
+                  </div>
+
+                  <div className="d-flex justify-content-end gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        setShowRequisitionModal(false);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Submitting...
+                        </>
+                      ) : 'Submit Bulk Requisition'}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </div>
@@ -705,9 +1045,9 @@ const FacilityUserRequisition = () => {
       {/* Requisition Detail Modal */}
       <div className={`modal fade ${showDetailModal ? 'show' : ''}`}
         style={{ display: showDetailModal ? 'block' : 'none' }}>
-        <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-dialog modal-dialog-centered modal-lg">
           <div className="modal-content">
-            <div className="modal-header text-black">
+            <div className="modal-header bg-light">
               <h5 className="modal-title">Requisition Details</h5>
               <button
                 type="button"
@@ -718,42 +1058,48 @@ const FacilityUserRequisition = () => {
             <div className="modal-body">
               {selectedRequisition && (
                 <>
-                  <div className="row mb-3">
-                    <div className="col-6">
-                      <strong>Req ID:</strong>
-                      <div>{selectedRequisition.id}</div>
-                    </div>
-                    <div className="col-6">
-                      <strong>Status:</strong>
-                      <div>
-                        <span className={`badge ${getStatusBadgeClass(selectedRequisition.status)}`}>
-                          {selectedRequisition.status}
-                        </span>
+                  <div className="row mb-4">
+                    <div className="col-md-6">
+                      <div className="mb-3">
+                        <strong>Req ID:</strong>
+                        <div>#{selectedRequisition.id}</div>
+                      </div>
+                      <div className="mb-3">
+                        <strong>Department:</strong>
+                        <div>{department}</div>
                       </div>
                     </div>
-                    <div className="col-6">
-                      <strong>Priority:</strong>
-                      <div>
-                        <span className={`badge ${getPriorityBadgeClass(selectedRequisition.priority)}`}>
-                          {selectedRequisition.priority}
-                        </span>
+                    <div className="col-md-6">
+                      <div className="mb-3">
+                        <strong>Status:</strong>
+                        <div>
+                          <span className={`badge ${getStatusBadgeClass(selectedRequisition.status)}`}>
+                            {selectedRequisition.status}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="col-6">
-                      <strong>Department:</strong>
-                      <div>{department}</div>
+                      <div className="mb-3">
+                        <strong>Priority:</strong>
+                        <div>
+                          <span className={`badge ${getPriorityBadgeClass(selectedRequisition.priority)}`}>
+                            {selectedRequisition.priority}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                     <div className="col-12">
                       <strong>Remarks:</strong>
-                      <div>{selectedRequisition.remarks || '-'}</div>
+                      <div className="bg-light p-2 rounded mt-1">
+                        {selectedRequisition.remarks || '-'}
+                      </div>
                     </div>
                   </div>
 
                   <h6 className="mt-4 mb-3">Items in this Requisition</h6>
                   {selectedRequisition.items?.length > 0 ? (
                     <div className="table-responsive">
-                      <table className="table table-sm">
-                        <thead>
+                      <table className="table table-bordered">
+                        <thead className="table-light">
                           <tr>
                             <th>Item Name</th>
                             <th>Qty</th>
@@ -796,76 +1142,10 @@ const FacilityUserRequisition = () => {
         </div>
       </div>
 
-      {/* Item Detail Modal */}
-      <div className={`modal fade ${showItemDetailModal ? 'show' : ''}`}
-        style={{ display: showItemDetailModal ? 'block' : 'none' }}>
-        <div className="modal-dialog modal-dialog-centered">
-          <div className="modal-content">
-            <div className="modal-header text-black">
-              <h5 className="modal-title">Item Details</h5>
-              <button
-                type="button"
-                className="btn-close"
-                onClick={() => setShowItemDetailModal(false)}
-              ></button>
-            </div>
-            <div className="modal-body">
-              {selectedItemDetail && (
-                <div className="row">
-                  <div className="col-6 mb-3">
-                    <strong>ID:</strong>
-                    <div>{selectedItemDetail.id}</div>
-                  </div>
-                  <div className="col-6 mb-3">
-                    <strong>Code:</strong>
-                    <div>{selectedItemDetail.item_code || 'N/A'}</div>
-                  </div>
-                  <div className="col-12 mb-3">
-                    <strong>Name:</strong>
-                    <div>{selectedItemDetail.item_name}</div>
-                  </div>
-                  <div className="col-6 mb-3">
-                    <strong>Category:</strong>
-                    <div>{selectedItemDetail.category}</div>
-                  </div>
-                  <div className="col-6 mb-3">
-                    <strong>Unit:</strong>
-                    <div>{selectedItemDetail.unit || 'N/A'}</div>
-                  </div>
-                  <div className="col-6 mb-3">
-                    <strong>Available Qty:</strong>
-                    <div>{selectedItemDetail.quantity}</div>
-                  </div>
-                  <div className="col-6 mb-3">
-                    <strong>Reorder Level:</strong>
-                    <div>{selectedItemDetail.reorder_level || 'N/A'}</div>
-                  </div>
-                  <div className="col-12 mb-3">
-                    <strong>Description:</strong>
-                    <div>{selectedItemDetail.description || '-'}</div>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setShowItemDetailModal(false)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Modal Backdrops */}
       {showRequisitionModal && <div className="modal-backdrop fade show"></div>}
       {showDetailModal && <div className="modal-backdrop fade show"></div>}
-      {showItemDetailModal && <div className="modal-backdrop fade show"></div>}
     </div>
-
   );
 };
 

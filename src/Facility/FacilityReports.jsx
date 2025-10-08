@@ -14,68 +14,118 @@ import {
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const ReportsAnalytics = () => {
-  const [reportType, setReportType] = useState("User Requests vs Delivered");
+  const [reportType, setReportType] = useState("Requisition History");
   const [facility, setFacility] = useState("All Facilities");
 
-  // Sample Data for Reports
+  // Extended Sample Data for 4 Reports
   const reportData = {
-    "User Requests vs Delivered": [
-      { label: "Q1", requests: 120, delivered: 100 },
-      { label: "Q2", requests: 90, delivered: 80 },
-      { label: "Q3", requests: 140, delivered: 130 },
-      { label: "Q4", requests: 100, delivered: 95 },
+    "Requisition History": [
+      { label: "Jan", requested: 120, approved: 100 },
+      { label: "Feb", requested: 90, approved: 85 },
+      { label: "Mar", requested: 140, approved: 130 },
+      { label: "Apr", requested: 100, approved: 95 },
     ],
-    "Facility Stock Ledger": [
-      { label: "Warehouse A", stock: 75 },
-      { label: "Warehouse B", stock: 60 },
-      { label: "Distribution Center", stock: 85 },
-      { label: "Warehouse C", stock: 50 },
+    "Stock Level": [
+      { label: "Medicine A", stock: 75 },
+      { label: "Medicine B", stock: 60 },
+      { label: "PPE Kits", stock: 85 },
+      { label: "Syringes", stock: 50 },
+    ],
+    "Usage": [
+      { label: "Jan", used: 80 },
+      { label: "Feb", used: 75 },
+      { label: "Mar", used: 90 },
+      { label: "Apr", used: 85 },
+    ],
+    "Received Goods": [
+      { label: "Jan", received: 110 },
+      { label: "Feb", received: 95 },
+      { label: "Mar", received: 135 },
+      { label: "Apr", received: 100 },
     ],
   };
 
-  const chartData =
-    reportType === "User Requests vs Delivered"
-      ? {
-          labels: reportData[reportType].map((item) => item.label),
-          datasets: [
-            {
-              label: "Requests",
-              data: reportData[reportType].map((item) => item.requests),
-              backgroundColor: "#0d6efd",
-              borderRadius: 4,
-              borderSkipped: false,
-            },
-            {
-              label: "Delivered",
-              data: reportData[reportType].map((item) => item.delivered),
-              backgroundColor: "#6c757d",
-              borderRadius: 4,
-              borderSkipped: false,
-            },
-          ],
-        }
-      : {
-          labels: reportData[reportType].map((item) => item.label),
-          datasets: [
-            {
-              label: "Stock Value",
-              data: reportData[reportType].map((item) => item.stock),
-              backgroundColor: "#0d6efd",
-              borderRadius: 4,
-              borderSkipped: false,
-            },
-          ],
-        };
+  // Dynamic Chart Data based on selected report
+  let chartData;
+
+  switch (reportType) {
+    case "Requisition History":
+      chartData = {
+        labels: reportData[reportType].map((item) => item.label),
+        datasets: [
+          {
+            label: "Requested",
+            data: reportData[reportType].map((item) => item.requested),
+            backgroundColor: "#0d6efd",
+            borderRadius: 4,
+            borderSkipped: false,
+          },
+          {
+            label: "Approved",
+            data: reportData[reportType].map((item) => item.approved),
+            backgroundColor: "#198754",
+            borderRadius: 4,
+            borderSkipped: false,
+          },
+        ],
+      };
+      break;
+
+    case "Stock Level":
+      chartData = {
+        labels: reportData[reportType].map((item) => item.label),
+        datasets: [
+          {
+            label: "Current Stock",
+            data: reportData[reportType].map((item) => item.stock),
+            backgroundColor: "#ffc107",
+            borderRadius: 4,
+            borderSkipped: false,
+          },
+        ],
+      };
+      break;
+
+    case "Usage":
+      chartData = {
+        labels: reportData[reportType].map((item) => item.label),
+        datasets: [
+          {
+            label: "Units Consumed",
+            data: reportData[reportType].map((item) => item.used),
+            backgroundColor: "#dc3545",
+            borderRadius: 4,
+            borderSkipped: false,
+          },
+        ],
+      };
+      break;
+
+    case "Received Goods":
+      chartData = {
+        labels: reportData[reportType].map((item) => item.label),
+        datasets: [
+          {
+            label: "Goods Received",
+            data: reportData[reportType].map((item) => item.received),
+            backgroundColor: "#20c997",
+            borderRadius: 4,
+            borderSkipped: false,
+          },
+        ],
+      };
+      break;
+
+    default:
+      chartData = { labels: [], datasets: [] };
+  }
 
   return (
-    <div
-      className="container-fluid p-4"
-      style={{ backgroundColor: "#ffff", minHeight: "100vh" }}
-    >
-      {/* Page Header - Matches Requisitions Style */}
+    <div className="">
+      {/* Page Header */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
         <div>
-          <h1 className="mb-0">Reports</h1>
+          <h3 className="mb-0">Reports</h3>
           <p className="text-muted mb-0">View analytics and insights</p>
         </div>
       </div>
@@ -84,7 +134,7 @@ const ReportsAnalytics = () => {
         {/* Left Column - Report Filters */}
         <div className="col-md-4">
           <div className="card shadow-sm">
-            <div className="card-header bg-primary text-white">
+            <div className="card-header">
               <h5 className="mb-0">Generate Report</h5>
             </div>
             <div className="card-body">
@@ -99,8 +149,10 @@ const ReportsAnalytics = () => {
                     value={reportType}
                     onChange={(e) => setReportType(e.target.value)}
                   >
-                    <option>User Requests vs Delivered</option>
-                    <option>Facility Stock Ledger</option>
+                    <option>Requisition History</option>
+                    <option>Stock Level</option>
+                    <option>Usage</option>
+                    <option>Received Goods</option>
                   </select>
                 </div>
 
@@ -130,17 +182,16 @@ const ReportsAnalytics = () => {
           </div>
         </div>
 
-        {/* Right Column - Report Preview */}
+        {/* Right Column - Report Preview */} 
         <div className="col-md-8">
           <div className="card shadow-sm">
-            <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <div className="card-header   d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Report Preview</h5>
-              <button className="btn btn-light btn-sm">Export</button>
+              <button className="btn btn-secondary btn-sm">Export</button>
             </div>
             <div className="card-body">
               <h6 className="mb-4">{reportType}</h6>
 
-              {/* Chart.js Bar Chart */}
               <div style={{ height: "300px", position: "relative" }}>
                 <Bar
                   data={chartData}
@@ -159,7 +210,7 @@ const ReportsAnalytics = () => {
                       tooltip: {
                         callbacks: {
                           label: function (context) {
-                            return `Value: ${context.parsed.y}`;
+                            return `${context.dataset.label}: ${context.parsed.y}`;
                           },
                         },
                       },
@@ -192,4 +243,3 @@ const ReportsAnalytics = () => {
 };
 
 export default ReportsAnalytics;
-

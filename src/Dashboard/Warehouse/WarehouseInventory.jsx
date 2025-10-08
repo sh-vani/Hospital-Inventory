@@ -1,12 +1,277 @@
-import React, { useState, useEffect } from 'react';
-import { FaSearch, FaEdit, FaPlusCircle, FaEye, FaTrashAlt } from 'react-icons/fa';
+import React, { useState, useEffect, useRef } from 'react';
+import { FaSearch, FaEdit, FaHistory, FaPlus, FaExclamationTriangle, FaClock, FaTimes, FaArrowRight } from 'react-icons/fa';
+import axios from 'axios';
 import BaseUrl from '../../Api/BaseUrl';
 import axiosInstance from '../../Api/axiosInstance';
-import Swal from 'sweetalert2';
 
-const SuperAdminInventory = () => {
+const WarehouseInventory = () => {
+  // === DUMMY DATA ===
+  const dummyInventory = [
+    {
+      id: 1,
+      item_code: 'ITM001',
+      item_name: 'Paracetamol 500mg',
+      category: 'Medicine',
+      description: 'Pain relief medication',
+      unit: 'tablets',
+      quantity: 120,
+      reorder_level: 50,
+      item_cost: 2.50,
+      expiry_date: '2024-12-31',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-15T10:30:00Z'
+    },
+    {
+      id: 2,
+      item_code: 'ITM002',
+      item_name: 'Face Masks',
+      category: 'PPE',
+      description: 'Disposable face masks',
+      unit: 'pieces',
+      quantity: 25,
+      reorder_level: 100,
+      item_cost: 0.50,
+      expiry_date: '2025-06-30',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-10T14:20:00Z'
+    },
+    {
+      id: 3,
+      item_code: 'ITM003',
+      item_name: 'Hand Sanitizer',
+      category: 'Sanitizer',
+      description: 'Alcohol-based hand sanitizer',
+      unit: 'bottles',
+      quantity: 0,
+      reorder_level: 30,
+      item_cost: 3.75,
+      expiry_date: '2024-11-15',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-05T09:15:00Z'
+    },
+    {
+      id: 4,
+      item_code: 'ITM004',
+      item_name: 'Gloves',
+      category: 'PPE',
+      description: 'Disposable latex gloves',
+      unit: 'pairs',
+      quantity: 200,
+      reorder_level: 150,
+      item_cost: 1.25,
+      expiry_date: '2024-10-20',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-12T16:45:00Z'
+    },
+    {
+      id: 5,
+      item_code: 'ITM005',
+      item_name: 'Thermometer',
+      category: 'Equipment',
+      description: 'Digital thermometer',
+      unit: 'pieces',
+      quantity: 15,
+      reorder_level: 10,
+      item_cost: 12.99,
+      expiry_date: null,
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-08T11:30:00Z'
+    },
+    {
+      id: 6,
+      item_code: 'ITM006',
+      item_name: 'Ibuprofen 400mg',
+      category: 'Medicine',
+      description: 'Anti-inflammatory medication',
+      unit: 'tablets',
+      quantity: 75,
+      reorder_level: 80,
+      item_cost: 3.20,
+      expiry_date: '2024-11-05',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-14T13:20:00Z'
+    },
+    {
+      id: 7,
+      item_code: 'ITM007',
+      item_name: 'Surgical Gowns',
+      category: 'PPE',
+      description: 'Disposable surgical gowns',
+      unit: 'pieces',
+      quantity: 45,
+      reorder_level: 60,
+      item_cost: 5.50,
+      expiry_date: '2025-03-15',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-11T15:10:00Z'
+    },
+    {
+      id: 8,
+      item_code: 'ITM008',
+      item_name: 'Antiseptic Solution',
+      category: 'Sanitizer',
+      description: 'Chlorhexidine antiseptic solution',
+      unit: 'bottles',
+      quantity: 30,
+      reorder_level: 25,
+      item_cost: 4.75,
+      expiry_date: '2024-10-25',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-09T10:05:00Z'
+    },
+    {
+      id: 9,
+      item_code: 'ITM009',
+      item_name: 'Syringes',
+      category: 'Equipment',
+      description: 'Disposable syringes 5ml',
+      unit: 'pieces',
+      quantity: 0,
+      reorder_level: 100,
+      item_cost: 0.75,
+      expiry_date: '2025-01-20',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-07T14:30:00Z'
+    },
+    {
+      id: 10,
+      item_code: 'ITM010',
+      item_name: 'Oxygen Mask',
+      category: 'Equipment',
+      description: 'Adult oxygen mask',
+      unit: 'pieces',
+      quantity: 35,
+      reorder_level: 20,
+      item_cost: 8.25,
+      expiry_date: '2024-12-10',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-13T12:15:00Z'
+    },
+    {
+      id: 11,
+      item_code: 'ITM011',
+      item_name: 'Vitamin C Tablets',
+      category: 'Medicine',
+      description: 'Vitamin C 1000mg tablets',
+      unit: 'tablets',
+      quantity: 150,
+      reorder_level: 100,
+      item_cost: 5.99,
+      expiry_date: '2024-11-30',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-14T09:45:00Z'
+    },
+    {
+      id: 12,
+      item_code: 'ITM012',
+      item_name: 'Blood Pressure Monitor',
+      category: 'Equipment',
+      description: 'Digital blood pressure monitor',
+      unit: 'pieces',
+      quantity: 8,
+      reorder_level: 5,
+      item_cost: 45.99,
+      expiry_date: null,
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-12T11:20:00Z'
+    }
+  ];
+
+  const dummyPendingRequests = [
+    {
+      id: 1,
+      facility_name: 'City General Hospital',
+      item_count: 15,
+      request_date: '2023-10-15T08:30:00Z'
+    },
+    {
+      id: 2,
+      facility_name: 'Community Health Center',
+      item_count: 8,
+      request_date: '2023-10-14T14:15:00Z'
+    },
+    {
+      id: 3,
+      facility_name: 'District Medical Facility',
+      item_count: 22,
+      request_date: '2023-10-13T10:45:00Z'
+    },
+    {
+      id: 4,
+      facility_name: 'Regional Hospital',
+      item_count: 12,
+      request_date: '2023-10-12T16:30:00Z'
+    },
+    {
+      id: 5,
+      facility_name: 'Urgent Care Clinic',
+      item_count: 5,
+      request_date: '2023-10-11T09:20:00Z'
+    }
+  ];
+
+  const dummyMovements = [
+    {
+      id: 1,
+      date: '2023-10-15T10:30:00Z',
+      type: 'stock_in',
+      quantity: 50,
+      from_to: 'Supplier A',
+      reference: 'PO-2023-1050'
+    },
+    {
+      id: 2,
+      date: '2023-10-14T14:20:00Z',
+      type: 'dispatch',
+      quantity: -20,
+      from_to: 'City General Hospital',
+      reference: 'REQ-2023-0876'
+    },
+    {
+      id: 3,
+      date: '2023-10-13T09:15:00Z',
+      type: 'transfer',
+      quantity: -15,
+      from_to: 'Community Health Center',
+      reference: 'TRF-2023-0042'
+    },
+    {
+      id: 4,
+      date: '2023-10-12T11:30:00Z',
+      type: 'adjustment',
+      quantity: -5,
+      from_to: 'Inventory Adjustment',
+      reference: 'ADJ-2023-0015'
+    },
+    {
+      id: 5,
+      date: '2023-10-11T16:45:00Z',
+      type: 'stock_in',
+      quantity: 100,
+      from_to: 'Supplier B',
+      reference: 'PO-2023-1042'
+    }
+  ];
+
+  // Dummy facilities data
+  const dummyFacilities = [
+    { id: 1, name: 'Central Warehouse' },
+    { id: 2, name: 'City General Hospital' },
+    { id: 3, name: 'Community Health Center' },
+    { id: 4, name: 'District Medical Facility' },
+    { id: 5, name: 'Regional Hospital' },
+    { id: 6, name: 'Urgent Care Clinic' },
+    { id: 7, name: 'Specialized Care Center' },
+    { id: 8, name: 'Mobile Health Unit' }
+  ];
+
   // === STATE ===
   const [inventory, setInventory] = useState([]);
+  const [lowStockItems, setLowStockItems] = useState([]);
+  const [outOfStockItems, setOutOfStockItems] = useState([]);
+  const [nearExpiryItems, setNearExpiryItems] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,107 +282,106 @@ const SuperAdminInventory = () => {
   const [currentItem, setCurrentItem] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showRestockModal, setShowRestockModal] = useState(false);
   const [addForm, setAddForm] = useState({
     item_code: '',
     item_name: '',
     category: '',
     description: '',
     unit: '',
-    quantity: 0,
-    reorder_level: 0,
-    facility_id: 1
+    quantity: '',
+    reorder_level: '',
+    item_cost: '',
+    expiry_date: '',
+    facility_id: ''
   });
-  const [categories, setCategories] = useState([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [facilities, setFacilities] = useState([]);
-  const [facilitiesLoading, setFacilitiesLoading] = useState(true);
-  const [showRestockModal, setShowRestockModal] = useState(false);
-  const [showBatchModal, setShowBatchModal] = useState(false);
   const [movements, setMovements] = useState([]);
   const [movementsLoading, setMovementsLoading] = useState(false);
   
+  // Hover state for stats cards
+  const [hoveredCard, setHoveredCard] = useState(null);
+  
+  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // Ref for document click handlerh9
+  const hoverRef = useRef(null);
+
   // === FETCH INVENTORY DATA ===
   useEffect(() => {
-    const fetchInventory = async () => {
+    const fetchInventoryData = async () => {
       try {
         setLoading(true);
-        const response = await axiosInstance.get(`${BaseUrl}/inventory`);
-        if (response.data.success) {
-          setInventory(response.data.data);
-        } else {
-          setError('Failed to fetch inventory data');
-        }
+        
+        // Simulate API call with dummy data
+        setTimeout(() => {
+          const inventoryData = dummyInventory;
+          setInventory(inventoryData);
+          
+          // Categorize items
+          const lowStock = inventoryData.filter(item => 
+            item.quantity > 0 && item.quantity < item.reorder_level
+          );
+          const outOfStock = inventoryData.filter(item => item.quantity === 0);
+          const nearExpiry = inventoryData.filter(item => {
+            if (!item.expiry_date) return false;
+            const expiryDate = new Date(item.expiry_date);
+            const today = new Date();
+            const diffTime = expiryDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays <= 30; // Items expiring within 30 days
+          });
+          
+          setLowStockItems(lowStock);
+          setOutOfStockItems(outOfStock);
+          setNearExpiryItems(nearExpiry);
+          
+          // Set pending requests
+          setPendingRequests(dummyPendingRequests);
+          
+          // Set facilities
+          setFacilities(dummyFacilities);
+          
+          setLoading(false);
+        }, 1000); // Simulate network delay
+        
       } catch (err) {
-        setError('Error fetching inventory: ' + err.message);
-      } finally {
+        setError('Error fetching data: ' + err.message);
         setLoading(false);
       }
     };
-    fetchInventory();
+
+    fetchInventoryData();
   }, []);
 
-  // === FETCH CATEGORIES ===
+  // Handle clicks outside the hover tooltip
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setCategoriesLoading(true);
-        const response = await axiosInstance.get(`${BaseUrl}/inventory/categories`);
-        if (response.data.success && Array.isArray(response.data.data)) {
-          setCategories(response.data.data);
-          if (response.data.data.length > 0 && !addForm.category) {
-            setAddForm(prev => ({ ...prev, category: response.data.data[0] }));
-          }
-        } else {
-          setError('Failed to fetch categories');
-        }
-      } catch (err) {
-        setError('Error fetching categories: ' + err.message);
-      } finally {
-        setCategoriesLoading(false);
+    const handleClickOutside = (event) => {
+      if (hoverRef.current && !hoverRef.current.contains(event.target)) {
+        setHoveredCard(null);
       }
     };
-    fetchCategories();
-  }, []);
 
-  // === FETCH FACILITIES ===
-  useEffect(() => {
-    const fetchFacilities = async () => {
-      try {
-        setFacilitiesLoading(true);
-        const response = await axiosInstance.get(`${BaseUrl}/facilities`);
-        if (response.data.success && Array.isArray(response.data.data)) {
-          setFacilities(response.data.data);
-          if (response.data.data.length > 0 && !addForm.facility_id) {
-            setAddForm(prev => ({ ...prev, facility_id: response.data.data[0].id }));
-          }
-        } else {
-          setError('Failed to fetch facilities');
-        }
-      } catch (err) {
-        setError('Error fetching facilities: ' + err.message);
-      } finally {
-        setFacilitiesLoading(false);
-      }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
     };
-    fetchFacilities();
   }, []);
 
   // === FETCH MOVEMENT DATA ===
   const fetchMovements = async (itemId) => {
     try {
       setMovementsLoading(true);
-      const response = await axiosInstance.get(`${BaseUrl}/inventory/${itemId}/movements`);
-      if (response.data.success) {
-        setMovements(response.data.data.movements);
-      } else {
-        setError('Failed to fetch movement data');
-      }
+      
+      // Simulate API call with dummy data
+      setTimeout(() => {
+        setMovements(dummyMovements);
+        setMovementsLoading(false);
+      }, 500); // Simulate network delay
+      
     } catch (err) {
       setError('Error fetching movements: ' + err.message);
-    } finally {
       setMovementsLoading(false);
     }
   };
@@ -129,15 +393,16 @@ const SuperAdminInventory = () => {
     return (
       item.item_code.toLowerCase().includes(q) ||
       item.item_name.toLowerCase().includes(q) ||
-      item.category.toLowerCase().includes(q) ||
-      (item.facility_name && item.facility_name.toLowerCase().includes(q))
+      item.category.toLowerCase().includes(q)
     );
   });
 
+  // Pagination calculations
   const totalPages = Math.ceil(filteredInventory.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentInventory = filteredInventory.slice(startIndex, startIndex + itemsPerPage);
 
+  // Reset to first page when search term changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
@@ -150,6 +415,8 @@ const SuperAdminInventory = () => {
   
   const openEditModal = (item) => {
     setCurrentItem(item);
+    // Find the facility ID based on the facility name
+    const facility = facilities.find(f => f.name === item.facility_name);
     setEditForm({
       item_name: item.item_name,
       category: item.category,
@@ -157,7 +424,9 @@ const SuperAdminInventory = () => {
       unit: item.unit,
       quantity: item.quantity,
       reorder_level: item.reorder_level,
-      facility_id: item.facility_id
+      item_cost: item.item_cost,
+      expiry_date: item.expiry_date,
+      facility_id: facility ? facility.id : ''
     });
     setShowEditModal(true);
   };
@@ -168,129 +437,95 @@ const SuperAdminInventory = () => {
     await fetchMovements(item.id);
   };
 
+  const openAddModal = () => {
+    setAddForm({
+      item_code: '',
+      item_name: '',
+      category: '',
+      description: '',
+      unit: '',
+      quantity: '',
+      reorder_level: '',
+      item_cost: '',
+      expiry_date: '',
+      facility_id: ''
+    });
+    setShowAddModal(true);
+  };
+
   const closeModalOnBackdrop = (e) => {
     if (e.target === e.currentTarget) {
       setShowViewModal(false);
-      setShowAddModal(false);
-      setShowEditModal(false);
-      setShowHistoryModal(false);
     }
   };
 
   // === FORM HANDLERS ===
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setEditForm(prev => ({ ...prev, [name]: value }));
+    setEditForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleAddInputChange = (e) => {
     const { name, value } = e.target;
     setAddForm(prev => ({
       ...prev,
-      [name]: ['quantity', 'reorder_level', 'facility_id'].includes(name)
-        ? parseInt(value) || 0
-        : value
+      [name]: value
     }));
   };
 
-  // === ACTION HANDLERS WITH SWEETALERT ===
+  // === ACTION HANDLERS ===
   const handleSaveEdit = async () => {
     try {
-      const response = await axiosInstance.put(`${BaseUrl}/inventory/${currentItem.id}`, editForm);
-      if (response.data.success) {
+      // Simulate API call
+      setTimeout(() => {
+        // Find the selected facility name based on the facility_id
+        const selectedFacility = facilities.find(f => f.id === parseInt(editForm.facility_id));
+        
+        const updatedItem = {
+          ...currentItem,
+          ...editForm,
+          facility_name: selectedFacility ? selectedFacility.name : currentItem.facility_name
+        };
+        
         setInventory(prevInventory => 
           prevInventory.map(item => 
-            item.id === currentItem.id ? response.data.data : item
+            item.id === currentItem.id ? updatedItem : item
           )
         );
-        Swal.fire({
-          icon: 'success',
-          title: 'Updated!',
-          text: `Item ${currentItem.item_code} updated successfully.`,
-          timer: 2000,
-          showConfirmButton: false
-        });
+        
+        alert(`Item ${currentItem.item_code} updated successfully`);
         setShowEditModal(false);
-      } else {
-        Swal.fire('Update Failed', 'Failed to update item.', 'error');
-      }
+      }, 500); // Simulate network delay
+      
     } catch (err) {
-      Swal.fire('Error', 'Error updating item: ' + (err.response?.data?.message || err.message), 'error');
+      alert('Error updating item: ' + err.message);
     }
   };
 
   const handleAddItem = async () => {
-    const { item_code, item_name, unit, category, facility_id } = addForm;
-    if (!item_code || !item_name || !unit || !category || !facility_id) {
-      Swal.fire('Missing Fields', 'Please fill all required fields: Item Code, Item Name, Unit, Category, and Facility.', 'warning');
-      return;
-    }
-
     try {
-      const response = await axiosInstance.post(`${BaseUrl}/inventory`, addForm);
-      if (response.data.success) {
-        setInventory(prev => [...prev, response.data.data]);
-        Swal.fire({
-          icon: 'success',
-          title: 'Added!',
-          text: 'Item added successfully!',
-          timer: 1500,
-          showConfirmButton: false
-        });
+      // Simulate API call
+      setTimeout(() => {
+        // Find the selected facility name
+        const selectedFacility = facilities.find(f => f.id === parseInt(addForm.facility_id));
+        
+        const newItem = {
+          id: inventory.length + 1,
+          ...addForm,
+          facility_name: selectedFacility ? selectedFacility.name : 'Central Warehouse',
+          updated_at: new Date().toISOString()
+        };
+        
+        setInventory(prevInventory => [...prevInventory, newItem]);
+        alert(`Item ${addForm.item_code} added successfully`);
         setShowAddModal(false);
-        setAddForm({
-          item_code: '',
-          item_name: '',
-          category: categories.length > 0 ? categories[0] : '',
-          description: '',
-          unit: '',
-          quantity: 0,
-          reorder_level: 0,
-          facility_id: facilities.length > 0 ? facilities[0].id : 1
-        });
-      } else {
-        Swal.fire('Add Failed', response.data.message || 'Unknown error', 'error');
-      }
+      }, 500); // Simulate network delay
+      
     } catch (err) {
-      console.error('Add item error:', err);
-      const msg = err.response?.data?.message || err.message || 'Unknown error';
-      Swal.fire('Error', 'Error adding item: ' + msg, 'error');
-    }
-  };
-
-  const handleDeleteItem = async (item) => {
-    const result = await Swal.fire({
-      title: 'Are you sure?',
-      html: `You are about to delete:<br><strong>"${item.item_name}"</strong> (Code: ${item.item_code})`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, delete it!',
-      cancelButtonText: 'Cancel',
-      reverseButtons: true
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-      const response = await axiosInstance.delete(`${BaseUrl}/inventory/${item.id}`);
-      if (response.data.success) {
-        setInventory(prevInventory => 
-          prevInventory.filter(i => i.id !== item.id)
-        );
-        Swal.fire({
-          icon: 'success',
-          title: 'Deleted!',
-          text: `Item "${item.item_name}" has been deleted.`,
-          timer: 1500,
-          showConfirmButton: false
-        });
-      } else {
-        Swal.fire('Delete Failed', response.data.message || 'Unknown error', 'error');
-      }
-    } catch (err) {
-      console.error('Delete error:', err);
-      const msg = err.response?.data?.message || err.message || 'Unknown error';
-      Swal.fire('Error', 'Error deleting item: ' + msg, 'error');
+      alert('Error adding item: ' + err.message);
     }
   };
 
@@ -298,6 +533,16 @@ const SuperAdminInventory = () => {
   const calculateStatus = (item) => {
     if (item.quantity === 0) return 'out_of_stock';
     if (item.quantity < item.reorder_level) return 'low_stock';
+    
+    // Check if near expiry
+    if (item.expiry_date) {
+      const expiryDate = new Date(item.expiry_date);
+      const today = new Date();
+      const diffTime = expiryDate - today;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays <= 30) return 'near_expiry';
+    }
+    
     return 'in_stock';
   };
 
@@ -307,6 +552,8 @@ const SuperAdminInventory = () => {
         return <span className="badge bg-danger">Out of Stock</span>;
       case 'low_stock':
         return <span className="badge bg-warning text-dark">Low Stock</span>;
+      case 'near_expiry':
+        return <span className="badge bg-info">Near Expiry</span>;
       default:
         return <span className="badge bg-success">In Stock</span>;
     }
@@ -327,6 +574,23 @@ const SuperAdminInventory = () => {
     }
   };
 
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  // Calculate days until expiry
+  const daysUntilExpiry = (expiryDate) => {
+    if (!expiryDate) return null;
+    const expiry = new Date(expiryDate);
+    const today = new Date();
+    const diffTime = expiry - today;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  // Pagination controls
   const goToPage = (page) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
@@ -334,6 +598,7 @@ const SuperAdminInventory = () => {
   };
 
   const renderPagination = () => {
+    // Only hide pagination if there are NO items at all
     if (filteredInventory.length === 0) return null;
 
     const pageNumbers = [];
@@ -419,29 +684,217 @@ const SuperAdminInventory = () => {
     <div className="container-fluid py-3">
       {/* ===== Top Toolbar ===== */}
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-        <h2 className="fw-bold mb-0">Inventory</h2>
-        <div className="d-flex align-items-center gap-2">
-          <div style={{ maxWidth: '320px', width: '100%' }}>
-            <div className="input-group">
-              <input
-                type="text"
-                className="form-control"
-                style={{ height: "40px" }}
-                placeholder="Search by Item Code, Name, or Category..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <button className="btn btn-outline-secondary" style={{ height: "40px" }} type="button">
-                <FaSearch />
-              </button>
-            </div>
+        <h2 className="fw-bold mb-0">Inventory (Global View)</h2>
+        <div className="d-flex gap-2" style={{ maxWidth: '600px', width: '100%' }}>
+          <div className="input-group" style={{ maxWidth: '320px', width: '100%' }}>
+            <input
+              type="text"
+              className="form-control"
+              style={{ height: "40px" }}
+              placeholder="Search by Item Code, Name, or Category..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <button className="btn btn-outline-secondary" style={{ height: "40px" }} type="button">
+              <FaSearch />
+            </button>
           </div>
           <button 
-            className="btn btn-primary d-flex align-items-center gap-1 text-nowrap"
-            onClick={() => setShowAddModal(true)}
+            className="btn btn-primary d-flex align-items-center gap-1" 
+            style={{ height: "40px" }}
+            onClick={openAddModal}
           >
-            <FaPlusCircle /> Add Item
+            <FaPlus /> Add Item
           </button>
+        </div>
+      </div>
+
+      {/* ===== ALERTS SECTION ===== */}
+      <div className="row mb-4 g-3" ref={hoverRef}>
+        {/* Low Stock Alert */}
+        <div className="col-md-3">
+          <div 
+            className="card border-warning bg-warning bg-opacity-10 h-100"
+            onMouseEnter={() => setHoveredCard('lowStock')}
+            onClick={() => setHoveredCard('lowStock')}
+          >
+            <div className="card-body d-flex align-items-center">
+              <div className="me-3">
+                <FaExclamationTriangle className="text-warning fs-2" />
+              </div>
+              <div className="flex-grow-1">
+                <h6 className="mb-0">Low Stock Items</h6>
+                <span className="fw-bold fs-5">{lowStockItems.length}</span>
+                {hoveredCard === 'lowStock' && lowStockItems.length > 0 && (
+                  <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
+                    <h6 className="text-warning mb-2">Items Low in Stock</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Item Name</th>
+                            <th>Quantity</th>
+                            <th>Reorder Level</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lowStockItems.slice(0, 5).map(item => (
+                            <tr key={item.id}>
+                              <td>{item.item_name}</td>
+                              <td className="text-warning">{item.quantity}</td>
+                              <td>{item.reorder_level}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {lowStockItems.length > 5 && (
+                      <div className="text-center mt-2">
+                        <small className="text-muted">+{lowStockItems.length - 5} more items</small>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Out of Stock Alert */}
+        <div className="col-md-3">
+          <div 
+            className="card border-danger bg-danger bg-opacity-10 h-100"
+            onMouseEnter={() => setHoveredCard('outOfStock')}
+            onClick={() => setHoveredCard('outOfStock')}
+          >
+            <div className="card-body d-flex align-items-center">
+              <div className="me-3">
+                <FaTimes className="text-danger fs-2" />
+              </div>
+              <div className="flex-grow-1">
+                <h6 className="mb-0">Out of Stock</h6>
+                <span className="fw-bold fs-5">{outOfStockItems.length}</span>
+                {hoveredCard === 'outOfStock' && outOfStockItems.length > 0 && (
+                  <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
+                    <h6 className="text-danger mb-2">Out of Stock Items</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Item Code</th>
+                            <th>Item Name</th>
+                            <th>Category</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {outOfStockItems.map(item => (
+                            <tr key={item.id}>
+                              <td>{item.item_code}</td>
+                              <td>{item.item_name}</td>
+                              <td>{item.category}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Near Expiry Alert */}
+        <div className="col-md-3">
+          <div 
+            className="card border-info bg-info bg-opacity-10 h-100"
+            onMouseEnter={() => setHoveredCard('nearExpiry')}
+            onClick={() => setHoveredCard('nearExpiry')}
+          >
+            <div className="card-body d-flex align-items-center">
+              <div className="me-3">
+                <FaClock className="text-info fs-2" />
+              </div>
+              <div className="flex-grow-1">
+                <h6 className="mb-0">Near Expiry</h6>
+                <span className="fw-bold fs-5">{nearExpiryItems.length}</span>
+                {hoveredCard === 'nearExpiry' && nearExpiryItems.length > 0 && (
+                  <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
+                    <h6 className="text-info mb-2">Items Expiring Soon</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Item Name</th>
+                            <th>Expiry Date</th>
+                            <th>Days Left</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {nearExpiryItems.map(item => {
+                            const daysLeft = daysUntilExpiry(item.expiry_date);
+                            return (
+                              <tr key={item.id}>
+                                <td>{item.item_name}</td>
+                                <td>{formatDate(item.expiry_date)}</td>
+                                <td className={daysLeft <= 7 ? "text-danger fw-bold" : "text-warning"}>
+                                  {daysLeft}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Pending Requests Alert */}
+        <div className="col-md-3">
+          <div 
+            className="card border-primary bg-primary bg-opacity-10 h-100"
+            onMouseEnter={() => setHoveredCard('pendingRequests')}
+            onClick={() => setHoveredCard('pendingRequests')}
+          >
+            <div className="card-body d-flex align-items-center">
+              <div className="me-3">
+                <FaArrowRight className="text-primary fs-2" />
+              </div>
+              <div className="flex-grow-1">
+                <h6 className="mb-0">Pending Requests</h6>
+                <span className="fw-bold fs-5">{pendingRequests.length}</span>
+                {hoveredCard === 'pendingRequests' && pendingRequests.length > 0 && (
+                  <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
+                    <h6 className="text-primary mb-2">Pending Facility Requests</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Facility</th>
+                            <th>Items</th>
+                            <th>Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pendingRequests.map(request => (
+                            <tr key={request.id}>
+                              <td>{request.facility_name}</td>
+                              <td>{request.item_count}</td>
+                              <td>{new Date(request.request_date).toLocaleDateString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -463,6 +916,10 @@ const SuperAdminInventory = () => {
       {/* ===== TABLE ===== */}
       {!loading && !error && (
         <div className="card border-0 shadow-sm">
+          <div className="card-header bg-white border-0 py-3">
+            <h5 className="mb-0">Inventory Items</h5>
+          </div>
+          
           <div className="table-responsive">
             <table className="table table-hover mb-0 align-middle">
               <thead className="bg-light">
@@ -472,15 +929,19 @@ const SuperAdminInventory = () => {
                   <th>Category</th>
                   <th>Quantity</th>
                   <th>Reorder Level</th>
+                  <th>Item Cost</th>
+                  <th>Expiry Date</th>
                   <th>Facility</th>
-                  <th>Last Updated</th>
+                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {currentInventory.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="text-center py-4">No inventory items found.</td>
+                    <td colSpan="10" className="text-center py-4">
+                      {searchTerm ? "No items match your search criteria." : "No inventory items found."}
+                    </td>
                   </tr>
                 ) : (
                   currentInventory.map((item) => (
@@ -492,8 +953,16 @@ const SuperAdminInventory = () => {
                         {item.quantity.toLocaleString()}
                       </td>
                       <td>{item.reorder_level.toLocaleString()}</td>
-                      <td>{item.facility_name || '—'}</td>
-                      <td>{new Date(item.updated_at).toLocaleDateString()}</td>
+                      <td>${item.item_cost ? parseFloat(item.item_cost).toFixed(2) : '0.00'}</td>
+                      <td>
+                        {item.expiry_date ? (
+                          <span className={daysUntilExpiry(item.expiry_date) <= 30 ? "text-info fw-medium" : ""}>
+                            {formatDate(item.expiry_date)}
+                          </span>
+                        ) : 'N/A'}
+                      </td>
+                      <td>{item.facility_name || 'Central Warehouse'}</td>
+                      <td>{getStatusBadge(calculateStatus(item))}</td>
                       <td>
                         <div className="btn-group" role="group">
                           <button
@@ -503,19 +972,13 @@ const SuperAdminInventory = () => {
                           >
                             <FaEdit />
                           </button>
+                          
                           <button
                             className="btn btn-sm btn-outline-success"
                             title="View Details"
                             onClick={() => openViewModal(item)}
                           >
-                            <FaEye />
-                          </button>
-                          <button
-                            className="btn btn-sm btn-outline-danger"
-                            title="Delete Item"
-                            onClick={() => handleDeleteItem(item)}
-                          >
-                            <FaTrashAlt />
+                            View
                           </button>
                         </div>
                       </td>
@@ -525,141 +988,15 @@ const SuperAdminInventory = () => {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
           {renderPagination()}
-        </div>
-      )}
-
-      {/* ===== ADD ITEM MODAL ===== */}
-      {showAddModal && (
-        <div className="modal show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Add New Inventory Item</h5>
-                <button type="button" className="btn-close" onClick={() => setShowAddModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <form>
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Item Code <span className="text-danger">*</span></label>
-                      <input 
-                        className="form-control" 
-                        name="item_code"
-                        value={addForm.item_code}
-                        onChange={handleAddInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Category <span className="text-danger">*</span></label>
-                      {categoriesLoading ? (
-                        <div className="form-control" disabled>Loading...</div>
-                      ) : (
-                        <select
-                          className="form-select"
-                          name="category"
-                          value={addForm.category}
-                          onChange={handleAddInputChange}
-                          required
-                        >
-                          <option value="">Select Category</option>
-                          {categories.map((cat, index) => (
-                            <option key={index} value={cat}>
-                              {cat}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-                    <div className="col-md-12">
-                      <label className="form-label">Item Name <span className="text-danger">*</span></label>
-                      <input 
-                        className="form-control" 
-                        name="item_name"
-                        value={addForm.item_name}
-                        onChange={handleAddInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-12">
-                      <label className="form-label">Description</label>
-                      <textarea 
-                        className="form-control" 
-                        name="description"
-                        value={addForm.description}
-                        onChange={handleAddInputChange}
-                        rows="2"
-                      />
-                    </div>
-                    <div className="col-md-4">
-                      <label className="form-label">Unit <span className="text-danger">*</span></label>
-                      <input 
-                        className="form-control" 
-                        name="unit"
-                        value={addForm.unit}
-                        onChange={handleAddInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-4">
-                      <label className="form-label">Quantity</label>
-                      <input 
-                        type="number" 
-                        className="form-control" 
-                        name="quantity"
-                        value={addForm.quantity}
-                        onChange={handleAddInputChange}
-                        min="0"
-                      />
-                    </div>
-                    <div className="col-md-4">
-                      <label className="form-label">Reorder Level</label>
-                      <input 
-                        type="number" 
-                        className="form-control" 
-                        name="reorder_level"
-                        value={addForm.reorder_level}
-                        onChange={handleAddInputChange}
-                        min="0"
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Facility <span className="text-danger">*</span></label>
-                      {facilitiesLoading ? (
-                        <div className="form-control" disabled>Loading...</div>
-                      ) : (
-                        <select
-                          className="form-select"
-                          name="facility_id"
-                          value={addForm.facility_id}
-                          onChange={handleAddInputChange}
-                          required
-                        >
-                          <option value="">Select Facility</option>
-                          {facilities.map(fac => (
-                            <option key={fac.id} value={fac.id}>
-                              {fac.name} ({fac.type})
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-                  </div>
-                </form>
-              </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-                <button className="btn btn-primary" onClick={handleAddItem}>Add Item</button>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
       {/* ===== EDIT MODAL ===== */}
       {showEditModal && currentItem && (
-        <div className="modal show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
+        <div className="modal show d-block" tabIndex="-1">
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
@@ -675,23 +1012,12 @@ const SuperAdminInventory = () => {
                     </div>
                     <div className="col-md-6">
                       <label className="form-label">Category</label>
-                      {categoriesLoading ? (
-                        <div className="form-control" disabled>Loading...</div>
-                      ) : (
-                        <select
-                          className="form-select"
-                          name="category"
-                          value={editForm.category || ''}
-                          onChange={handleInputChange}
-                        >
-                          <option value="">Select Category</option>
-                          {categories.map((cat, index) => (
-                            <option key={index} value={cat}>
-                              {cat}
-                            </option>
-                          ))}
-                        </select>
-                      )}
+                      <input 
+                        className="form-control" 
+                        name="category"
+                        value={editForm.category || ''}
+                        onChange={handleInputChange}
+                      />
                     </div>
                     <div className="col-md-12">
                       <label className="form-label">Item Name</label>
@@ -711,7 +1037,7 @@ const SuperAdminInventory = () => {
                         onChange={handleInputChange}
                       />
                     </div>
-                    <div className="col-md-4">
+                    <div className="col-md-3">
                       <label className="form-label">Unit</label>
                       <input 
                         className="form-control" 
@@ -720,7 +1046,7 @@ const SuperAdminInventory = () => {
                         onChange={handleInputChange}
                       />
                     </div>
-                    <div className="col-md-4">
+                    <div className="col-md-3">
                       <label className="form-label">Quantity</label>
                       <input 
                         type="number" 
@@ -730,7 +1056,7 @@ const SuperAdminInventory = () => {
                         onChange={handleInputChange}
                       />
                     </div>
-                    <div className="col-md-4">
+                    <div className="col-md-3">
                       <label className="form-label">Reorder Level</label>
                       <input 
                         type="number" 
@@ -740,25 +1066,42 @@ const SuperAdminInventory = () => {
                         onChange={handleInputChange}
                       />
                     </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Item Cost ($)</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        className="form-control" 
+                        name="item_cost"
+                        value={editForm.item_cost || ''}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Expiry Date</label>
+                      <input 
+                        type="date" 
+                        className="form-control" 
+                        name="expiry_date"
+                        value={editForm.expiry_date || ''}
+                        onChange={handleInputChange}
+                      />
+                    </div>
                     <div className="col-md-6">
                       <label className="form-label">Facility</label>
-                      {facilitiesLoading ? (
-                        <div className="form-control" disabled>Loading...</div>
-                      ) : (
-                        <select
-                          className="form-select"
-                          name="facility_id"
-                          value={editForm.facility_id || ''}
-                          onChange={handleInputChange}
-                        >
-                          <option value="">Select Facility</option>
-                          {facilities.map(fac => (
-                            <option key={fac.id} value={fac.id}>
-                              {fac.name} ({fac.type})
-                            </option>
-                          ))}
-                        </select>
-                      )}
+                      <select 
+                        className="form-select" 
+                        name="facility_id"
+                        value={editForm.facility_id || ''}
+                        onChange={handleInputChange}
+                      >
+                        <option value="">Select a facility</option>
+                        {facilities.map(facility => (
+                          <option key={facility.id} value={facility.id}>
+                            {facility.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </form>
@@ -766,6 +1109,205 @@ const SuperAdminInventory = () => {
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
                 <button className="btn btn-primary" onClick={handleSaveEdit}>Save Changes</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== ADD ITEM MODAL ===== */}
+      {showAddModal && (
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Add New Inventory Item</h5>
+                <button type="button" className="btn-close" onClick={() => setShowAddModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <form>
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <label className="form-label">Item Code</label>
+                      <input 
+                        type="text"
+                        className="form-control" 
+                        name="item_code"
+                        value={addForm.item_code || ''}
+                        onChange={handleAddInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Category</label>
+                      <input 
+                        type="text"
+                        className="form-control" 
+                        name="category"
+                        value={addForm.category || ''}
+                        onChange={handleAddInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-12">
+                      <label className="form-label">Item Name</label>
+                      <input 
+                        type="text"
+                        className="form-control" 
+                        name="item_name"
+                        value={addForm.item_name || ''}
+                        onChange={handleAddInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-12">
+                      <label className="form-label">Description</label>
+                      <textarea 
+                        className="form-control" 
+                        name="description"
+                        value={addForm.description || ''}
+                        onChange={handleAddInputChange}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Unit</label>
+                      <input 
+                        type="text"
+                        className="form-control" 
+                        name="unit"
+                        value={addForm.unit || ''}
+                        onChange={handleAddInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Quantity</label>
+                      <input 
+                        type="number" 
+                        className="form-control" 
+                        name="quantity"
+                        value={addForm.quantity || ''}
+                        onChange={handleAddInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Reorder Level</label>
+                      <input 
+                        type="number" 
+                        className="form-control" 
+                        name="reorder_level"
+                        value={addForm.reorder_level || ''}
+                        onChange={handleAddInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Item Cost ($)</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        className="form-control" 
+                        name="item_cost"
+                        value={addForm.item_cost || ''}
+                        onChange={handleAddInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Facility</label>
+                      <select 
+                        className="form-select" 
+                        name="facility_id"
+                        value={addForm.facility_id || ''}
+                        onChange={handleAddInputChange}
+                        required
+                      >
+                        <option value="">Select a facility</option>
+                        {facilities.map(facility => (
+                          <option key={facility.id} value={facility.id}>
+                            {facility.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Expiry Date</label>
+                      <input 
+                        type="date" 
+                        className="form-control" 
+                        name="expiry_date"
+                        value={addForm.expiry_date || ''}
+                        onChange={handleAddInputChange}
+                      />
+                    </div>
+                  </div>
+                </form>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleAddItem}>Add Item</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MOVEMENT HISTORY MODAL ===== */}
+      {showHistoryModal && currentItem && (
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Movement History: {currentItem.item_name}</h5>
+                <button type="button" className="btn-close" onClick={() => setShowHistoryModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <p className="text-muted">Recent stock movements for <strong>{currentItem.item_code}</strong></p>
+                
+                {movementsLoading ? (
+                  <div className="text-center py-4">
+                    <div className="spinner-border" role="status">
+                      <span className="visually-hidden">Loading movements...</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="table-responsive">
+                    <table className="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Type</th>
+                          <th>Quantity</th>
+                          <th>From / To</th>
+                          <th>Reference</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {movements.length === 0 ? (
+                          <tr>
+                            <td colSpan="5" className="text-center py-3">No movement history found for this item.</td>
+                          </tr>
+                        ) : (
+                          movements.map((movement, index) => (
+                            <tr key={index}>
+                              <td>{new Date(movement.date).toLocaleDateString()}</td>
+                              <td>{getMovementTypeBadge(movement.type)}</td>
+                              <td className={movement.quantity > 0 ? "text-success" : "text-danger"}>
+                                {movement.quantity > 0 ? '+' : ''}{movement.quantity}
+                              </td>
+                              <td>{movement.from_to || '-'}</td>
+                              <td>{movement.reference || '-'}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowHistoryModal(false)}>Close</button>
               </div>
             </div>
           </div>
@@ -782,10 +1324,6 @@ const SuperAdminInventory = () => {
                 <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
               </div>
               <div className="modal-body">
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Item ID:</div>
-                  <div className="col-6">{viewItem.id}</div>
-                </div>
                 <div className="row mb-3">
                   <div className="col-6 fw-bold">Item Code:</div>
                   <div className="col-6">{viewItem.item_code}</div>
@@ -815,8 +1353,16 @@ const SuperAdminInventory = () => {
                   <div className="col-6">{viewItem.reorder_level}</div>
                 </div>
                 <div className="row mb-3">
+                  <div className="col-6 fw-bold">Item Cost:</div>
+                  <div className="col-6">${viewItem.item_cost ? parseFloat(viewItem.item_cost).toFixed(2) : '0.00'}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Expiry Date:</div>
+                  <div className="col-6">{viewItem.expiry_date ? formatDate(viewItem.expiry_date) : 'N/A'}</div>
+                </div>
+                <div className="row mb-3">
                   <div className="col-6 fw-bold">Facility:</div>
-                  <div className="col-6">{viewItem.facility_name || '—'}</div>
+                  <div className="col-6">{viewItem.facility_name || 'Central Warehouse'}</div>
                 </div>
                 <div className="row mb-3">
                   <div className="col-6 fw-bold">Last Updated:</div>
@@ -837,11 +1383,11 @@ const SuperAdminInventory = () => {
         </div>
       )}
       
-      {(showAddModal || showEditModal || showRestockModal || showBatchModal || showViewModal || showHistoryModal) && (
+      {(showAddModal || showEditModal || showRestockModal || showViewModal || showHistoryModal) && (
         <div className="modal-backdrop fade show"></div>
       )}
     </div>
   );
 };
 
-export default SuperAdminInventory;
+export default WarehouseInventory;

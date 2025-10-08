@@ -71,7 +71,7 @@ const SuperAdminDashboard = () => {
   // === KPI VALUES (from API) ===
   const kpis = dashboardData ? [
     { 
-      title: 'Total Inventory', 
+      title: 'Total Inventory Items', 
       value: dashboardData.stats.total_inventory_items, 
       change: '+2.3%', 
       positive: true 
@@ -93,19 +93,25 @@ const SuperAdminDashboard = () => {
       value: dashboardData.stats.today_requisitions, 
       change: '+3', 
       positive: true 
+    },
+    { 
+      title: 'Total Warehouse Net Worth', 
+      value: `$${dashboardData.stats.total_warehouse_worth?.toLocaleString() || '0'}`, 
+      change: '+4.2%', 
+      positive: true 
     }
   ] : [];
 
   // === STOCK MOVEMENT (Line Chart) ===
-  const stockMovementData = {
-    labels: dashboardData?.monthly_trends?.map(trend => {
+  const stockMovementData = dashboardData?.monthly_trends ? {
+    labels: dashboardData.monthly_trends.map(trend => {
       const date = new Date(trend.month);
       return date.toLocaleString('default', { month: 'short' });
-    }) || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    }),
     datasets: [
       {
         label: 'Stock In',
-        data: dashboardData?.monthly_trends?.map(trend => trend.requisition_count) || [300, 420, 380, 500, 620, 700],
+        data: dashboardData.monthly_trends.map(trend => trend.requisition_count),
         borderColor: COLORS.success,
         backgroundColor: COLORS.success + '20',
         fill: true,
@@ -114,7 +120,7 @@ const SuperAdminDashboard = () => {
       },
       {
         label: 'Stock Out',
-        data: dashboardData?.monthly_trends?.map(trend => trend.delivered_count) || [200, 300, 280, 400, 520, 600],
+        data: dashboardData.monthly_trends.map(trend => trend.delivered_count),
         borderColor: COLORS.danger,
         backgroundColor: COLORS.danger + '20',
         fill: true,
@@ -122,7 +128,7 @@ const SuperAdminDashboard = () => {
         borderWidth: 2
       }
     ]
-  };
+  } : null;
 
   const stockMovementOptions = {
     responsive: true,
@@ -153,28 +159,28 @@ const SuperAdminDashboard = () => {
   };
 
   // === REQUESTS vs COMPLETED (Bar Chart) ===
-  const requestsVsCompletedData = {
-    labels: dashboardData?.monthly_trends?.map(trend => {
+  const requestsVsCompletedData = dashboardData?.monthly_trends ? {
+    labels: dashboardData.monthly_trends.map(trend => {
       const date = new Date(trend.month);
       return date.toLocaleString('default', { month: 'short' });
-    }) || ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    }),
     datasets: [
       {
         label: 'Requests',
-        data: dashboardData?.monthly_trends?.map(trend => trend.requisition_count) || [45, 52, 60, 70, 65, 80],
+        data: dashboardData.monthly_trends.map(trend => trend.requisition_count),
         backgroundColor: COLORS.warning,
         borderRadius: 4,
         borderSkipped: false
       },
       {
         label: 'Completed',
-        data: dashboardData?.monthly_trends?.map(trend => trend.delivered_count) || [30, 40, 48, 55, 60, 72],
+        data: dashboardData.monthly_trends.map(trend => trend.delivered_count),
         backgroundColor: COLORS.success,
         borderRadius: 4,
         borderSkipped: false
       }
     ]
-  };
+  } : null;
 
   const requestsVsCompletedOptions = {
     responsive: true,
@@ -227,6 +233,19 @@ const SuperAdminDashboard = () => {
     );
   }
 
+  if (!dashboardData) {
+    return (
+      <div className="container-fluid py-4 px-3 px-md-4" style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+        <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
+          <div className="text-center">
+            <h3 className="text-muted">No data found</h3>
+            <p className="text-muted">Please try again later or contact support</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container-fluid py-4 px-3 px-md-4" style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       {/* Header */}
@@ -260,7 +279,13 @@ const SuperAdminDashboard = () => {
         <div className="col-lg-6">
           <div className="card border-0 shadow-sm rounded-3 h-100">
             <div className="card-body p-4" style={{ height: '400px' }}>
-              <Line data={stockMovementData} options={stockMovementOptions} />
+              {stockMovementData ? (
+                <Line data={stockMovementData} options={stockMovementOptions} />
+              ) : (
+                <div className="d-flex justify-content-center align-items-center h-100">
+                  <p className="text-muted">No stock movement data available</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -269,7 +294,13 @@ const SuperAdminDashboard = () => {
         <div className="col-lg-6">
           <div className="card border-0 shadow-sm rounded-3 h-100">
             <div className="card-body p-4" style={{ height: '400px' }}>
-              <Bar data={requestsVsCompletedData} options={requestsVsCompletedOptions} />
+              {requestsVsCompletedData ? (
+                <Bar data={requestsVsCompletedData} options={requestsVsCompletedOptions} />
+              ) : (
+                <div className="d-flex justify-content-center align-items-center h-100">
+                  <p className="text-muted">No requests data available</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

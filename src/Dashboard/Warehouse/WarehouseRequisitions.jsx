@@ -273,8 +273,7 @@ const WarehouseRequisitions = () => {
                       </td>
                       <td><StatusBadge status={req.status} /></td>
                       <td>
-                        {req.status?.toLowerCase() === 'pending' && req.items?.length > 0 ? (
-                          <div className="d-flex flex-wrap gap-1">
+                         <div className="d-flex flex-wrap gap-1">
                             {/* Individual Approval (for first item only as example, or you can skip this) */}
                             <button
                               className="btn btn-sm btn-success"
@@ -301,11 +300,6 @@ const WarehouseRequisitions = () => {
                               Reject
                             </button>
                           </div>
-                        ) : req.status?.toLowerCase() === 'pending' ? (
-                          <span className="text-muted">No items to approve</span>
-                        ) : (
-                          <span className="text-muted">—</span>
-                        )}
                       </td>
                     </tr>
                   ))

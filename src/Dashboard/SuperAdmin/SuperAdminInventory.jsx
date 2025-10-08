@@ -1,12 +1,276 @@
-import React, { useState, useEffect } from 'react';
-import { FaSearch, FaEdit, FaHistory } from 'react-icons/fa';
+import React, { useState, useEffect, useRef } from 'react';
+import { FaSearch, FaEdit, FaHistory, FaPlus, FaExclamationTriangle, FaClock, FaTimes, FaArrowRight } from 'react-icons/fa';
 import axios from 'axios';
 import BaseUrl from '../../Api/BaseUrl';
 import axiosInstance from '../../Api/axiosInstance';
 
 const SuperAdminInventory = () => {
+  // === DUMMY DATA ===
+  const dummyInventory = [
+    {
+      id: 1,
+      item_code: 'ITM001',
+      item_name: 'Paracetamol 500mg',
+      category: 'Medicine',
+      description: 'Pain relief medication',
+      unit: 'tablets',
+      quantity: 120,
+      reorder_level: 50,
+      item_cost: 2.50,
+      expiry_date: '2024-12-31',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-15T10:30:00Z'
+    },
+    {
+      id: 2,
+      item_code: 'ITM002',
+      item_name: 'Face Masks',
+      category: 'PPE',
+      description: 'Disposable face masks',
+      unit: 'pieces',
+      quantity: 25,
+      reorder_level: 100,
+      item_cost: 0.50,
+      expiry_date: '2025-06-30',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-10T14:20:00Z'
+    },
+    {
+      id: 3,
+      item_code: 'ITM003',
+      item_name: 'Hand Sanitizer',
+      category: 'Sanitizer',
+      description: 'Alcohol-based hand sanitizer',
+      unit: 'bottles',
+      quantity: 0,
+      reorder_level: 30,
+      item_cost: 3.75,
+      expiry_date: '2024-11-15',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-05T09:15:00Z'
+    },
+    {
+      id: 4,
+      item_code: 'ITM004',
+      item_name: 'Gloves',
+      category: 'PPE',
+      description: 'Disposable latex gloves',
+      unit: 'pairs',
+      quantity: 200,
+      reorder_level: 150,
+      item_cost: 1.25,
+      expiry_date: '2024-10-20',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-12T16:45:00Z'
+    },
+    {
+      id: 5,
+      item_code: 'ITM005',
+      item_name: 'Thermometer',
+      category: 'Equipment',
+      description: 'Digital thermometer',
+      unit: 'pieces',
+      quantity: 15,
+      reorder_level: 10,
+      item_cost: 12.99,
+      expiry_date: null,
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-08T11:30:00Z'
+    },
+    {
+      id: 6,
+      item_code: 'ITM006',
+      item_name: 'Ibuprofen 400mg',
+      category: 'Medicine',
+      description: 'Anti-inflammatory medication',
+      unit: 'tablets',
+      quantity: 75,
+      reorder_level: 80,
+      item_cost: 3.20,
+      expiry_date: '2024-11-05',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-14T13:20:00Z'
+    },
+    {
+      id: 7,
+      item_code: 'ITM007',
+      item_name: 'Surgical Gowns',
+      category: 'PPE',
+      description: 'Disposable surgical gowns',
+      unit: 'pieces',
+      quantity: 45,
+      reorder_level: 60,
+      item_cost: 5.50,
+      expiry_date: '2025-03-15',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-11T15:10:00Z'
+    },
+    {
+      id: 8,
+      item_code: 'ITM008',
+      item_name: 'Antiseptic Solution',
+      category: 'Sanitizer',
+      description: 'Chlorhexidine antiseptic solution',
+      unit: 'bottles',
+      quantity: 30,
+      reorder_level: 25,
+      item_cost: 4.75,
+      expiry_date: '2024-10-25',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-09T10:05:00Z'
+    },
+    {
+      id: 9,
+      item_code: 'ITM009',
+      item_name: 'Syringes',
+      category: 'Equipment',
+      description: 'Disposable syringes 5ml',
+      unit: 'pieces',
+      quantity: 0,
+      reorder_level: 100,
+      item_cost: 0.75,
+      expiry_date: '2025-01-20',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-07T14:30:00Z'
+    },
+    {
+      id: 10,
+      item_code: 'ITM010',
+      item_name: 'Oxygen Mask',
+      category: 'Equipment',
+      description: 'Adult oxygen mask',
+      unit: 'pieces',
+      quantity: 35,
+      reorder_level: 20,
+      item_cost: 8.25,
+      expiry_date: '2024-12-10',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-13T12:15:00Z'
+    },
+    {
+      id: 11,
+      item_code: 'ITM011',
+      item_name: 'Vitamin C Tablets',
+      category: 'Medicine',
+      description: 'Vitamin C 1000mg tablets',
+      unit: 'tablets',
+      quantity: 150,
+      reorder_level: 100,
+      item_cost: 5.99,
+      expiry_date: '2024-11-30',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-14T09:45:00Z'
+    },
+    {
+      id: 12,
+      item_code: 'ITM012',
+      item_name: 'Blood Pressure Monitor',
+      category: 'Equipment',
+      description: 'Digital blood pressure monitor',
+      unit: 'pieces',
+      quantity: 8,
+      reorder_level: 5,
+      item_cost: 45.99,
+      expiry_date: null,
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-12T11:20:00Z'
+    }
+  ];
+
+  const dummyPendingRequests = [
+    {
+      id: 1,
+      facility_name: 'City General Hospital',
+      item_count: 15,
+      request_date: '2023-10-15T08:30:00Z'
+    },
+    {
+      id: 2,
+      facility_name: 'Community Health Center',
+      item_count: 8,
+      request_date: '2023-10-14T14:15:00Z'
+    },
+    {
+      id: 3,
+      facility_name: 'District Medical Facility',
+      item_count: 22,
+      request_date: '2023-10-13T10:45:00Z'
+    },
+    {
+      id: 4,
+      facility_name: 'Regional Hospital',
+      item_count: 12,
+      request_date: '2023-10-12T16:30:00Z'
+    },
+    {
+      id: 5,
+      facility_name: 'Urgent Care Clinic',
+      item_count: 5,
+      request_date: '2023-10-11T09:20:00Z'
+    }
+  ];
+
+  const dummyMovements = [
+    {
+      id: 1,
+      date: '2023-10-15T10:30:00Z',
+      type: 'stock_in',
+      quantity: 50,
+      from_to: 'Supplier A',
+      reference: 'PO-2023-1050'
+    },
+    {
+      id: 2,
+      date: '2023-10-14T14:20:00Z',
+      type: 'dispatch',
+      quantity: -20,
+      from_to: 'City General Hospital',
+      reference: 'REQ-2023-0876'
+    },
+    {
+      id: 3,
+      date: '2023-10-13T09:15:00Z',
+      type: 'transfer',
+      quantity: -15,
+      from_to: 'Community Health Center',
+      reference: 'TRF-2023-0042'
+    },
+    {
+      id: 4,
+      date: '2023-10-12T11:30:00Z',
+      type: 'adjustment',
+      quantity: -5,
+      from_to: 'Inventory Adjustment',
+      reference: 'ADJ-2023-0015'
+    },
+    {
+      id: 5,
+      date: '2023-10-11T16:45:00Z',
+      type: 'stock_in',
+      quantity: 100,
+      from_to: 'Supplier B',
+      reference: 'PO-2023-1042'
+    }
+  ];
+
+  // Dummy facilities data
+  const dummyFacilities = [
+    'Central Warehouse',
+    'City General Hospital',
+    'Community Health Center',
+    'District Medical Facility',
+    'Regional Hospital',
+    'Urgent Care Clinic',
+    'Rural Health Post',
+    'Emergency Medical Center'
+  ];
+
   // === STATE ===
   const [inventory, setInventory] = useState([]);
+  const [lowStockItems, setLowStockItems] = useState([]);
+  const [outOfStockItems, setOutOfStockItems] = useState([]);
+  const [nearExpiryItems, setNearExpiryItems] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,48 +282,103 @@ const SuperAdminInventory = () => {
   const [editForm, setEditForm] = useState({});
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRestockModal, setShowRestockModal] = useState(false);
-  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [bulkItems, setBulkItems] = useState([{
+    item_code: '',
+    item_name: '',
+    category: '',
+    description: '',
+    unit: '',
+    quantity: '',
+    reorder_level: '',
+    item_cost: '',
+    expiry_date: '',
+    facility_name: 'Central Warehouse'
+  }]);
   const [movements, setMovements] = useState([]);
   const [movementsLoading, setMovementsLoading] = useState(false);
+  
+  // Hover state for stats cards
+  const [hoveredCard, setHoveredCard] = useState(null);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // Ref for document click handler
+  const hoverRef = useRef(null);
+
   // === FETCH INVENTORY DATA ===
   useEffect(() => {
-    const fetchInventory = async () => {
+    const fetchInventoryData = async () => {
       try {
         setLoading(true);
-        const response = await axiosInstance.get(`${BaseUrl}/inventory`);
-        if (response.data.success) {
-          setInventory(response.data.data);
-        } else {
-          setError('Failed to fetch inventory data');
-        }
+        
+        // Simulate API call with dummy data
+        setTimeout(() => {
+          const inventoryData = dummyInventory;
+          setInventory(inventoryData);
+          
+          // Categorize items
+          const lowStock = inventoryData.filter(item => 
+            item.quantity > 0 && item.quantity < item.reorder_level
+          );
+          const outOfStock = inventoryData.filter(item => item.quantity === 0);
+          const nearExpiry = inventoryData.filter(item => {
+            if (!item.expiry_date) return false;
+            const expiryDate = new Date(item.expiry_date);
+            const today = new Date();
+            const diffTime = expiryDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays <= 30; // Items expiring within 30 days
+          });
+          
+          setLowStockItems(lowStock);
+          setOutOfStockItems(outOfStock);
+          setNearExpiryItems(nearExpiry);
+          
+          // Set pending requests
+          setPendingRequests(dummyPendingRequests);
+          
+          setLoading(false);
+        }, 1000); // Simulate network delay
+        
       } catch (err) {
-        setError('Error fetching inventory: ' + err.message);
-      } finally {
+        setError('Error fetching data: ' + err.message);
         setLoading(false);
       }
     };
 
-    fetchInventory();
+    fetchInventoryData();
+  }, []);
+
+  // Handle clicks outside the hover tooltip
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (hoverRef.current && !hoverRef.current.contains(event.target)) {
+        setHoveredCard(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   // === FETCH MOVEMENT DATA ===
   const fetchMovements = async (itemId) => {
     try {
       setMovementsLoading(true);
-      const response = await axiosInstance.get(`${BaseUrl}/inventory/${itemId}/movements`);
-      if (response.data.success) {
-        setMovements(response.data.data.movements);
-      } else {
-        setError('Failed to fetch movement data');
-      }
+      
+      // Simulate API call with dummy data
+      setTimeout(() => {
+        setMovements(dummyMovements);
+        setMovementsLoading(false);
+      }, 500); // Simulate network delay
+      
     } catch (err) {
       setError('Error fetching movements: ' + err.message);
-    } finally {
       setMovementsLoading(false);
     }
   };
@@ -99,7 +418,10 @@ const SuperAdminInventory = () => {
       description: item.description,
       unit: item.unit,
       quantity: item.quantity,
-      reorder_level: item.reorder_level
+      reorder_level: item.reorder_level,
+      item_cost: item.item_cost,
+      expiry_date: item.expiry_date,
+      facility_name: item.facility_name || 'Central Warehouse'
     });
     setShowEditModal(true);
   };
@@ -108,6 +430,22 @@ const SuperAdminInventory = () => {
     setCurrentItem(item);
     setShowHistoryModal(true);
     await fetchMovements(item.id);
+  };
+
+  const openBulkModal = () => {
+    setBulkItems([{
+      item_code: '',
+      item_name: '',
+      category: '',
+      description: '',
+      unit: '',
+      quantity: '',
+      reorder_level: '',
+      item_cost: '',
+      expiry_date: '',
+      facility_name: 'Central Warehouse'
+    }]);
+    setShowBulkModal(true);
   };
 
   const closeModalOnBackdrop = (e) => {
@@ -125,23 +463,77 @@ const SuperAdminInventory = () => {
     }));
   };
 
+  const handleBulkItemChange = (index, field, value) => {
+    const newBulkItems = [...bulkItems];
+    newBulkItems[index][field] = value;
+    setBulkItems(newBulkItems);
+  };
+
+  const addBulkItemRow = () => {
+    setBulkItems([...bulkItems, {
+      item_code: '',
+      item_name: '',
+      category: '',
+      description: '',
+      unit: '',
+      quantity: '',
+      reorder_level: '',
+      item_cost: '',
+      expiry_date: '',
+      facility_name: 'Central Warehouse'
+    }]);
+  };
+
+  const removeBulkItemRow = (index) => {
+    if (bulkItems.length > 1) {
+      const newBulkItems = [...bulkItems];
+      newBulkItems.splice(index, 1);
+      setBulkItems(newBulkItems);
+    }
+  };
+
   // === ACTION HANDLERS ===
   const handleSaveEdit = async () => {
     try {
-      const response = await axiosInstance.put(`${BaseUrl}/inventory/${currentItem.id}`, editForm);
-      if (response.data.success) {
+      // Simulate API call
+      setTimeout(() => {
+        const updatedItem = {
+          ...currentItem,
+          ...editForm
+        };
+        
         setInventory(prevInventory => 
           prevInventory.map(item => 
-            item.id === currentItem.id ? response.data.data : item
+            item.id === currentItem.id ? updatedItem : item
           )
         );
+        
         alert(`Item ${currentItem.item_code} updated successfully`);
         setShowEditModal(false);
-      } else {
-        alert('Failed to update item');
-      }
+      }, 500); // Simulate network delay
+      
     } catch (err) {
       alert('Error updating item: ' + err.message);
+    }
+  };
+
+  const handleBulkAdd = async () => {
+    try {
+      // Simulate API call
+      setTimeout(() => {
+        const newItems = bulkItems.map((item, index) => ({
+          id: inventory.length + index + 1,
+          ...item,
+          updated_at: new Date().toISOString()
+        }));
+        
+        setInventory(prevInventory => [...prevInventory, ...newItems]);
+        alert(`${bulkItems.length} items added successfully`);
+        setShowBulkModal(false);
+      }, 500); // Simulate network delay
+      
+    } catch (err) {
+      alert('Error adding items: ' + err.message);
     }
   };
 
@@ -149,6 +541,16 @@ const SuperAdminInventory = () => {
   const calculateStatus = (item) => {
     if (item.quantity === 0) return 'out_of_stock';
     if (item.quantity < item.reorder_level) return 'low_stock';
+    
+    // Check if near expiry
+    if (item.expiry_date) {
+      const expiryDate = new Date(item.expiry_date);
+      const today = new Date();
+      const diffTime = expiryDate - today;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays <= 30) return 'near_expiry';
+    }
+    
     return 'in_stock';
   };
 
@@ -158,6 +560,8 @@ const SuperAdminInventory = () => {
         return <span className="badge bg-danger">Out of Stock</span>;
       case 'low_stock':
         return <span className="badge bg-warning text-dark">Low Stock</span>;
+      case 'near_expiry':
+        return <span className="badge bg-info">Near Expiry</span>;
       default:
         return <span className="badge bg-success">In Stock</span>;
     }
@@ -176,6 +580,22 @@ const SuperAdminInventory = () => {
       default:
         return <span className="badge bg-secondary">{type}</span>;
     }
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  // Calculate days until expiry
+  const daysUntilExpiry = (expiryDate) => {
+    if (!expiryDate) return null;
+    const expiry = new Date(expiryDate);
+    const today = new Date();
+    const diffTime = expiry - today;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
   // Pagination controls
@@ -273,8 +693,8 @@ const SuperAdminInventory = () => {
       {/* ===== Top Toolbar ===== */}
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <h2 className="fw-bold mb-0">Inventory (Global View)</h2>
-        <div className="ms-auto" style={{ maxWidth: '320px', width: '100%' }}>
-          <div className="input-group">
+        <div className="d-flex gap-2" style={{ maxWidth: '600px', width: '100%' }}>
+          <div className="input-group" style={{ maxWidth: '320px', width: '100%' }}>
             <input
               type="text"
               className="form-control"
@@ -287,7 +707,162 @@ const SuperAdminInventory = () => {
               <FaSearch />
             </button>
           </div>
+          <button 
+            className="btn btn-primary d-flex align-items-center gap-1" 
+            style={{ height: "40px" }}
+            onClick={openBulkModal}
+          >
+            <FaPlus /> Add Bulk Items
+          </button>
         </div>
+      </div>
+
+      {/* ===== ALERTS SECTION ===== */}
+      <div className="row mb-4 g-3" ref={hoverRef}>
+        {/* Low Stock Alert */}
+        <div className="col-md-4">
+          <div 
+            className="card border-warning bg-warning bg-opacity-10 h-100"
+            onMouseEnter={() => setHoveredCard('lowStock')}
+            onClick={() => setHoveredCard('lowStock')}
+          >
+            <div className="card-body d-flex align-items-center">
+              <div className="me-3">
+                <FaExclamationTriangle className="text-warning fs-2" />
+              </div>
+              <div className="flex-grow-1">
+                <h6 className="mb-0">Low Stock Items</h6>
+                <span className="fw-bold fs-5">{lowStockItems.length}</span>
+                {hoveredCard === 'lowStock' && lowStockItems.length > 0 && (
+                  <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
+                    <h6 className="text-warning mb-2">Items Low in Stock</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Item Name</th>
+                            <th>Quantity</th>
+                            <th>Reorder Level</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lowStockItems.slice(0, 5).map(item => (
+                            <tr key={item.id}>
+                              <td>{item.item_name}</td>
+                              <td className="text-warning">{item.quantity}</td>
+                              <td>{item.reorder_level}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {lowStockItems.length > 5 && (
+                      <div className="text-center mt-2">
+                        <small className="text-muted">+{lowStockItems.length - 5} more items</small>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Out of Stock Alert */}
+        <div className="col-md-4">
+          <div 
+            className="card border-danger bg-danger bg-opacity-10 h-100"
+            onMouseEnter={() => setHoveredCard('outOfStock')}
+            onClick={() => setHoveredCard('outOfStock')}
+          >
+            <div className="card-body d-flex align-items-center">
+              <div className="me-3">
+                <FaTimes className="text-danger fs-2" />
+              </div>
+              <div className="flex-grow-1">
+                <h6 className="mb-0">Out of Stock</h6>
+                <span className="fw-bold fs-5">{outOfStockItems.length}</span>
+                {hoveredCard === 'outOfStock' && outOfStockItems.length > 0 && (
+                  <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
+                    <h6 className="text-danger mb-2">Out of Stock Items</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Item Code</th>
+                            <th>Item Name</th>
+                            <th>Category</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {outOfStockItems.map(item => (
+                            <tr key={item.id}>
+                              <td>{item.item_code}</td>
+                              <td>{item.item_name}</td>
+                              <td>{item.category}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Near Expiry Alert */}
+        <div className="col-md-4">
+          <div 
+            className="card border-info bg-info bg-opacity-10 h-100"
+            onMouseEnter={() => setHoveredCard('nearExpiry')}
+            onClick={() => setHoveredCard('nearExpiry')}
+          >
+            <div className="card-body d-flex align-items-center">
+              <div className="me-3">
+                <FaClock className="text-info fs-2" />
+              </div>
+              <div className="flex-grow-1">
+                <h6 className="mb-0">Near Expiry</h6>
+                <span className="fw-bold fs-5">{nearExpiryItems.length}</span>
+                {hoveredCard === 'nearExpiry' && nearExpiryItems.length > 0 && (
+                  <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
+                    <h6 className="text-info mb-2">Items Expiring Soon</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Item Name</th>
+                            <th>Expiry Date</th>
+                            <th>Days Left</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {nearExpiryItems.map(item => {
+                            const daysLeft = daysUntilExpiry(item.expiry_date);
+                            return (
+                              <tr key={item.id}>
+                                <td>{item.item_name}</td>
+                                <td>{formatDate(item.expiry_date)}</td>
+                                <td className={daysLeft <= 7 ? "text-danger fw-bold" : "text-warning"}>
+                                  {daysLeft}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Pending Requests Alert */}
+   
       </div>
 
       {/* ===== LOADING AND ERROR STATES ===== */}
@@ -308,6 +883,9 @@ const SuperAdminInventory = () => {
       {/* ===== TABLE ===== */}
       {!loading && !error && (
         <div className="card border-0 shadow-sm">
+          <div className="card-header bg-white border-0 py-3">
+            <h5 className="mb-0">Inventory Items</h5>
+          </div>
           
           <div className="table-responsive">
             <table className="table table-hover mb-0 align-middle">
@@ -318,15 +896,19 @@ const SuperAdminInventory = () => {
                   <th>Category</th>
                   <th>Quantity</th>
                   <th>Reorder Level</th>
+                  <th>Item Cost</th>
+                  <th>Expiry Date</th>
                   <th>Facility</th>
-                  <th>Last Updated</th>
+                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {currentInventory.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="text-center py-4">No inventory items found.</td>
+                    <td colSpan="10" className="text-center py-4">
+                      {searchTerm ? "No items match your search criteria." : "No inventory items found."}
+                    </td>
                   </tr>
                 ) : (
                   currentInventory.map((item) => (
@@ -338,8 +920,16 @@ const SuperAdminInventory = () => {
                         {item.quantity.toLocaleString()}
                       </td>
                       <td>{item.reorder_level.toLocaleString()}</td>
+                      <td>${item.item_cost ? parseFloat(item.item_cost).toFixed(2) : '0.00'}</td>
+                      <td>
+                        {item.expiry_date ? (
+                          <span className={daysUntilExpiry(item.expiry_date) <= 30 ? "text-info fw-medium" : ""}>
+                            {formatDate(item.expiry_date)}
+                          </span>
+                        ) : 'N/A'}
+                      </td>
                       <td>{item.facility_name || 'Central Warehouse'}</td>
-                      <td>{new Date(item.updated_at).toLocaleDateString()}</td>
+                      <td>{getStatusBadge(calculateStatus(item))}</td>
                       <td>
                         <div className="btn-group" role="group">
                           <button
@@ -420,7 +1010,7 @@ const SuperAdminInventory = () => {
                         onChange={handleInputChange}
                       />
                     </div>
-                    <div className="col-md-4">
+                    <div className="col-md-3">
                       <label className="form-label">Unit</label>
                       <input 
                         className="form-control" 
@@ -429,7 +1019,7 @@ const SuperAdminInventory = () => {
                         onChange={handleInputChange}
                       />
                     </div>
-                    <div className="col-md-4">
+                    <div className="col-md-3">
                       <label className="form-label">Quantity</label>
                       <input 
                         type="number" 
@@ -439,7 +1029,7 @@ const SuperAdminInventory = () => {
                         onChange={handleInputChange}
                       />
                     </div>
-                    <div className="col-md-4">
+                    <div className="col-md-3">
                       <label className="form-label">Reorder Level</label>
                       <input 
                         type="number" 
@@ -448,6 +1038,40 @@ const SuperAdminInventory = () => {
                         value={editForm.reorder_level || ''}
                         onChange={handleInputChange}
                       />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Item Cost ($)</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        className="form-control" 
+                        name="item_cost"
+                        value={editForm.item_cost || ''}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Expiry Date</label>
+                      <input 
+                        type="date" 
+                        className="form-control" 
+                        name="expiry_date"
+                        value={editForm.expiry_date || ''}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Facility</label>
+                      <select 
+                        className="form-control" 
+                        name="facility_name"
+                        value={editForm.facility_name || 'Central Warehouse'}
+                        onChange={handleInputChange}
+                      >
+                        {dummyFacilities.map(facility => (
+                          <option key={facility} value={facility}>{facility}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </form>
@@ -522,6 +1146,159 @@ const SuperAdminInventory = () => {
         </div>
       )}
 
+      {/* ===== BULK ADD MODAL ===== */}
+      {showBulkModal && (
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog modal-xl">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Add Bulk Items</h5>
+                <button type="button" className="btn-close" onClick={() => setShowBulkModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <div className="table-responsive">
+                  <table className="table table-bordered">
+                    <thead>
+                      <tr>
+                        <th>Item Code</th>
+                        <th>Item Name</th>
+                        <th>Category</th>
+                        <th>Description</th>
+                        <th>Unit</th>
+                        <th>Quantity</th>
+                        <th>Reorder Level</th>
+                        <th>Item Cost ($)</th>
+                        <th>Expiry Date</th>
+                        <th>Facility</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bulkItems.map((item, index) => (
+                        <tr key={index}>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={item.item_code}
+                              onChange={(e) => handleBulkItemChange(index, 'item_code', e.target.value)}
+                              required
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={item.item_name}
+                              onChange={(e) => handleBulkItemChange(index, 'item_name', e.target.value)}
+                              required
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={item.category}
+                              onChange={(e) => handleBulkItemChange(index, 'category', e.target.value)}
+                              required
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={item.description}
+                              onChange={(e) => handleBulkItemChange(index, 'description', e.target.value)}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={item.unit}
+                              onChange={(e) => handleBulkItemChange(index, 'unit', e.target.value)}
+                              required
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="form-control"
+                              value={item.quantity}
+                              onChange={(e) => handleBulkItemChange(index, 'quantity', e.target.value)}
+                              required
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="form-control"
+                              value={item.reorder_level}
+                              onChange={(e) => handleBulkItemChange(index, 'reorder_level', e.target.value)}
+                              required
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              step="0.01"
+                              className="form-control"
+                              value={item.item_cost}
+                              onChange={(e) => handleBulkItemChange(index, 'item_cost', e.target.value)}
+                              required
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="date"
+                              className="form-control"
+                              value={item.expiry_date}
+                              onChange={(e) => handleBulkItemChange(index, 'expiry_date', e.target.value)}
+                            />
+                          </td>
+                          <td>
+                            <select
+                              className="form-control"
+                              value={item.facility_name || 'Central Warehouse'}
+                              onChange={(e) => handleBulkItemChange(index, 'facility_name', e.target.value)}
+                            >
+                              {dummyFacilities.map(facility => (
+                                <option key={facility} value={facility}>{facility}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-danger"
+                              onClick={() => removeBulkItemRow(index)}
+                              disabled={bulkItems.length <= 1}
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-primary mt-2"
+                  onClick={addBulkItemRow}
+                >
+                  + Add Another Item
+                </button>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowBulkModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleBulkAdd}>Add All Items</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* View Item Modal */}
       {showViewModal && viewItem && (
         <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
@@ -532,7 +1309,6 @@ const SuperAdminInventory = () => {
                 <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
               </div>
               <div className="modal-body">
-                
                 <div className="row mb-3">
                   <div className="col-6 fw-bold">Item Code:</div>
                   <div className="col-6">{viewItem.item_code}</div>
@@ -562,6 +1338,14 @@ const SuperAdminInventory = () => {
                   <div className="col-6">{viewItem.reorder_level}</div>
                 </div>
                 <div className="row mb-3">
+                  <div className="col-6 fw-bold">Item Cost:</div>
+                  <div className="col-6">${viewItem.item_cost ? parseFloat(viewItem.item_cost).toFixed(2) : '0.00'}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Expiry Date:</div>
+                  <div className="col-6">{viewItem.expiry_date ? formatDate(viewItem.expiry_date) : 'N/A'}</div>
+                </div>
+                <div className="row mb-3">
                   <div className="col-6 fw-bold">Facility:</div>
                   <div className="col-6">{viewItem.facility_name || 'Central Warehouse'}</div>
                 </div>
@@ -584,7 +1368,7 @@ const SuperAdminInventory = () => {
         </div>
       )}
       
-      {(showAddModal || showEditModal || showRestockModal || showBatchModal || showViewModal || showHistoryModal) && (
+      {(showAddModal || showEditModal || showRestockModal || showBulkModal || showViewModal || showHistoryModal) && (
         <div className="modal-backdrop fade show"></div>
       )}
     </div>

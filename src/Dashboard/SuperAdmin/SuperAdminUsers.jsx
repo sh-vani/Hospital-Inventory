@@ -577,7 +577,6 @@ const SuperAdminUsers = () => {
                     <div className="col-12 col-md-6">
                       <label className="form-label">Role</label>
                       <select className="form-select" name="role" value={newUser.role} onChange={handleAddUserChange}>
-                        <option value="super_admin">Super Admin</option>
                         <option value="facility_admin">Facility Admin</option>
                         <option value="facility_user">Facility User</option>
                         <option value="warehouse_admin">Warehouse Admin</option>
@@ -849,4 +848,4 @@ const SuperAdminUsers = () => {
   );
 };
 
-export default SuperAdminUsers;   
+export default SuperAdminUsers;
