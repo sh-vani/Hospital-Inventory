@@ -109,6 +109,7 @@ useEffect(() => {
         name: "Dashboard",
         icon: faChartBar,
         path: "/warehouse/dashboard",
+        
       },
       {
         name: "Inventory",
@@ -157,6 +158,11 @@ useEffect(() => {
         name: "Facility Inventory",
         icon: faWarehouse,
         path: "/facility/facilityinventory"
+      },
+      {
+        name: "My Request",
+        icon: faBuilding,
+        path: "/facility/myrequest",
       },
       {
         name: "Requisitions",

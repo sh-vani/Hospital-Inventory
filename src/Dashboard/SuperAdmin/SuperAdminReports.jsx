@@ -7,6 +7,7 @@ import {
 } from 'react-icons/fa';
 import BaseUrl from '../../Api/BaseUrl';
 import axiosInstance from '../../Api/axiosInstance';
+import Swal from 'sweetalert2'; // Import SweetAlert2
 
 const SuperAdminReports = () => {
   // State for form inputs
@@ -103,9 +104,21 @@ const SuperAdminReports = () => {
         setReportData(response.data.data);
       } else {
         setError('Failed to fetch report data');
+        Swal.fire({
+          icon: 'error',
+          title: 'Fetch Failed',
+          text: 'Failed to fetch report data',
+          confirmButtonColor: '#e74a3b'
+        });
       }
     } catch (err) {
       setError('Error fetching report data: ' + err.message);
+      Swal.fire({
+        icon: 'error',
+        title: 'Network Error',
+        text: 'Error fetching report data: ' + err.message,
+        confirmButtonColor: '#e74a3b'
+      });
     } finally {
       setLoading(false);
     }
@@ -113,157 +126,173 @@ const SuperAdminReports = () => {
   
   // === EXPORT TO PDF ===
   const exportToPDF = (reportData, reportType) => {
-    // Create a new window for printing
-    const printWindow = window.open('', '_blank');
-    
-    // Create HTML content for the report
-    let htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>${reportType} Report</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <style>
-          body { font-family: Arial, sans-serif; }
-          .header { text-align: center; margin-bottom: 20px; }
-          .summary-card { border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin-bottom: 20px; }
-          .table { width: 100%; border-collapse: collapse; }
-          .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          .table th { background-color: #f2f2f2; }
-          .badge { display: inline-block; padding: 3px 7px; font-size: 12px; font-weight: bold; border-radius: 4px; }
-          .badge-success { background-color: #28a745; color: white; }
-          .badge-warning { background-color: #ffc107; color: black; }
-          .badge-danger { background-color: #dc3545; color: white; }
-          @media print {
-            .no-print { display: none; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container-fluid">
-          <div class="header">
-            <h2>${reportType} Report</h2>
-            <p>Generated on: ${new Date().toLocaleDateString()}</p>
-          </div>
-    `;
-    
-    // Add summary cards if available
-    if (reportData?.summary && reportType === 'Requisition Summary') {
-      htmlContent += `
-        <div class="row mb-4">
-          <div class="col-md-3">
-            <div class="summary-card">
-              <h5 class="text-primary">${reportData.summary.total_requisitions}</h5>
-              <p class="mb-0">Total Requisitions</p>
+    // Show confirmation alert
+    Swal.fire({
+      title: 'Export Report?',
+      text: "This will generate a PDF report in a new window",
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, export!'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Create a new window for printing
+        const printWindow = window.open('', '_blank');
+        
+        // Create HTML content for the report
+        let htmlContent = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>${reportType} Report</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            <style>
+              body { font-family: Arial, sans-serif; }
+              .header { text-align: center; margin-bottom: 20px; }
+              .summary-card { border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin-bottom: 20px; }
+              .table { width: 100%; border-collapse: collapse; }
+              .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+              .table th { background-color: #f2f2f2; }
+              .badge { display: inline-block; padding: 3px 7px; font-size: 12px; font-weight: bold; border-radius: 4px; }
+              .badge-success { background-color: #28a745; color: white; }
+              .badge-warning { background-color: #ffc107; color: black; }
+              .badge-danger { background-color: #dc3545; color: white; }
+              @media print {
+                .no-print { display: none; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container-fluid">
+              <div class="header">
+                <h2>${reportType} Report</h2>
+                <p>Generated on: ${new Date().toLocaleDateString()}</p>
+              </div>
+        `;
+        
+        // Add summary cards if available
+        if (reportData?.summary && reportType === 'Requisition Summary') {
+          htmlContent += `
+            <div class="row mb-4">
+              <div class="col-md-3">
+                <div class="summary-card">
+                  <h5 class="text-primary">${reportData.summary.total_requisitions}</h5>
+                  <p class="mb-0">Total Requisitions</p>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="summary-card">
+                  <h5 class="text-warning">${reportData.summary.pending_count}</h5>
+                  <p class="mb-0">Pending</p>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="summary-card">
+                  <h5 class="text-success">${reportData.summary.approved_count}</h5>
+                  <p class="mb-0">Approved</p>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="summary-card">
+                  <h5 class="text-info">${reportData.summary.avg_processing_days}</h5>
+                  <p class="mb-0">Avg. Processing Days</p>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+        
+        // Add chart image placeholder
+        htmlContent += `
+          <div class="mb-4 text-center">
+            <h4>Chart Visualization</h4>
+            <div class="alert alert-info">
+              Chart visualization would appear here in the actual application
             </div>
           </div>
-          <div class="col-md-3">
-            <div class="summary-card">
-              <h5 class="text-warning">${reportData.summary.pending_count}</h5>
-              <p class="mb-0">Pending</p>
-            </div>
-          </div>
-          <div class="col-md-3">
-            <div class="summary-card">
-              <h5 class="text-success">${reportData.summary.approved_count}</h5>
-              <p class="mb-0">Approved</p>
-            </div>
-          </div>
-          <div class="col-md-3">
-            <div class="summary-card">
-              <h5 class="text-info">${reportData.summary.avg_processing_days}</h5>
-              <p class="mb-0">Avg. Processing Days</p>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-    
-    // Add chart image placeholder
-    htmlContent += `
-      <div class="mb-4 text-center">
-        <h4>Chart Visualization</h4>
-        <div class="alert alert-info">
-          Chart visualization would appear here in the actual application
-        </div>
-      </div>
-    `;
-    
-    // Add table based on report type
-    if (reportType === 'Requisition Summary' && reportData?.requisitions) {
-      htmlContent += `
-        <h4>Requisition Details</h4>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Req ID</th>
-              <th>Facility</th>
-              <th>User</th>
-              <th>Items</th>
-              <th>Status</th>
-              <th>Date</th>
-              <th>Processing Days</th>
-            </tr>
-          </thead>
-          <tbody>
-      `;
-      
-      reportData.requisitions.forEach(req => {
-        const statusClass = req.status === 'approved' ? 'badge-success' : 
-                             req.status === 'pending' ? 'badge-warning' : 'badge-danger';
+        `;
+        
+        // Add table based on report type
+        if (reportType === 'Requisition Summary' && reportData?.requisitions) {
+          htmlContent += `
+            <h4>Requisition Details</h4>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Req ID</th>
+                  <th>Facility</th>
+                  <th>User</th>
+                  <th>Items</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th>Processing Days</th>
+                </tr>
+              </thead>
+              <tbody>
+          `;
+          
+          reportData.requisitions.forEach(req => {
+            const statusClass = req.status === 'approved' ? 'badge-success' : 
+                                 req.status === 'pending' ? 'badge-warning' : 'badge-danger';
+            
+            htmlContent += `
+              <tr>
+                <td>#${req.id}</td>
+                <td>${req.facility_name}</td>
+                <td>${req.user_name}</td>
+                <td>${req.item_count}</td>
+                <td><span class="badge ${statusClass}">${req.status.charAt(0).toUpperCase() + req.status.slice(1)}</span></td>
+                <td>${new Date(req.created_at).toLocaleDateString()}</td>
+                <td>${req.processing_days}</td>
+              </tr>
+            `;
+          });
+          
+          htmlContent += `
+              </tbody>
+            </table>
+          `;
+        }
+        
+        // Add summary section
+        htmlContent += `
+          <div class="mt-4 p-3 bg-light rounded">
+            <h5>Report Summary</h5>
+        `;
+        
+        if (reportType === 'Requisition Summary' && reportData?.summary) {
+          htmlContent += `
+            <p>Total Requisitions: <span class="fw-bold">${reportData.summary.total_requisitions}</span></p>
+            <p>Pending: <span class="fw-bold">${reportData.summary.pending_count}</span>, Approved: <span class="fw-bold">${reportData.summary.approved_count}</span>, Delivered: <span class="fw-bold">${reportData.summary.delivered_count}</span>, Rejected: <span class="fw-bold">${reportData.summary.rejected_count}</span></p>
+            <p>Average Processing Days: <span class="fw-bold">${reportData.summary.avg_processing_days}</span></p>
+          `;
+        }
         
         htmlContent += `
-          <tr>
-            <td>#${req.id}</td>
-            <td>${req.facility_name}</td>
-            <td>${req.user_name}</td>
-            <td>${req.item_count}</td>
-            <td><span class="badge ${statusClass}">${req.status.charAt(0).toUpperCase() + req.status.slice(1)}</span></td>
-            <td>${new Date(req.created_at).toLocaleDateString()}</td>
-            <td>${req.processing_days}</td>
-          </tr>
+          </div>
+          <div class="no-print mt-4">
+            <button class="btn btn-primary" onclick="window.print()">Print Report</button>
+            <button class="btn btn-secondary" onclick="window.close()">Close</button>
+          </div>
+        </div>
+        </body>
+        </html>
         `;
-      });
-      
-      htmlContent += `
-          </tbody>
-        </table>
-      `;
-    }
-    
-    // Add summary section
-    htmlContent += `
-      <div class="mt-4 p-3 bg-light rounded">
-        <h5>Report Summary</h5>
-    `;
-    
-    if (reportType === 'Requisition Summary' && reportData?.summary) {
-      htmlContent += `
-        <p>Total Requisitions: <span class="fw-bold">${reportData.summary.total_requisitions}</span></p>
-        <p>Pending: <span class="fw-bold">${reportData.summary.pending_count}</span>, Approved: <span class="fw-bold">${reportData.summary.approved_count}</span>, Delivered: <span class="fw-bold">${reportData.summary.delivered_count}</span>, Rejected: <span class="fw-bold">${reportData.summary.rejected_count}</span></p>
-        <p>Average Processing Days: <span class="fw-bold">${reportData.summary.avg_processing_days}</span></p>
-      `;
-    }
-    
-    htmlContent += `
-      </div>
-      <div class="no-print mt-4">
-        <button class="btn btn-primary" onclick="window.print()">Print Report</button>
-        <button class="btn btn-secondary" onclick="window.close()">Close</button>
-      </div>
-    </div>
-    </body>
-    </html>
-    `;
-    
-    // Write the HTML content to the new window
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    
-    // Automatically print the report
-    setTimeout(() => {
-      printWindow.print();
-    }, 500);
+        
+        // Write the HTML content to the new window
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        
+        // Show success alert
+        Swal.fire({
+          icon: 'success',
+          title: 'PDF Exported!',
+          text: 'Your report has been exported successfully',
+          confirmButtonColor: '#28a745'
+        });
+      }
+    });
   };
   
   // Modal handlers
@@ -299,6 +328,14 @@ const SuperAdminReports = () => {
       summary: reportData?.summary || null
     });
     setShowGeneratedModal(true);
+    
+    // Show success alert
+    Swal.fire({
+      icon: 'success',
+      title: 'Report Generated!',
+      text: 'Your custom report has been generated successfully',
+      confirmButtonColor: '#28a745'
+    });
   };
   
   // Filter data based on search term
@@ -328,6 +365,17 @@ const SuperAdminReports = () => {
       case 'Requisition Summary': return 'Monthly Requisition Count';
       default: return 'Report Data';
     }
+  };
+  
+  // Close modals
+  const closeRequisitionModal = () => {
+    setShowRequisitionModal(false);
+    setSearchTerm(''); // Reset search term
+  };
+  
+  const closeGeneratedModal = () => {
+    setShowGeneratedModal(false);
+    setSearchTerm(''); // Reset search term
   };
   
   return (
@@ -450,7 +498,7 @@ const SuperAdminReports = () => {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Requisition Summary Report</h5>
-                <button type="button" className="btn-close" onClick={() => setShowRequisitionModal(false)}></button>
+                <button type="button" className="btn-close" onClick={closeRequisitionModal}></button>
               </div>
               <div className="modal-body">
                 {loading && (
@@ -611,7 +659,7 @@ const SuperAdminReports = () => {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">{generatedReport.type} - {generatedReport.facility}</h5>
-                <button type="button" className="btn-close" onClick={() => setShowGeneratedModal(false)}></button>
+                <button type="button" className="btn-close" onClick={closeGeneratedModal}></button>
               </div>
               <div className="modal-body">
                 <div className="d-flex justify-content-between mb-4">

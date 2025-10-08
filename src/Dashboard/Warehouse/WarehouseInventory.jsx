@@ -1,1193 +1,1380 @@
-import React, { useState, useEffect } from 'react';
-import { FaEdit, FaPlusCircle, FaArrowDown, FaArrowUp, FaHistory } from 'react-icons/fa';
+import React, { useState, useEffect, useRef } from 'react';
+import { FaSearch, FaEdit, FaHistory, FaPlus, FaExclamationTriangle, FaClock, FaTimes, FaArrowRight } from 'react-icons/fa';
 import axios from 'axios';
 import BaseUrl from '../../Api/BaseUrl';
+import axiosInstance from '../../Api/axiosInstance';
 
 const WarehouseInventory = () => {
-  // Sample inventory data (updated to include lastIn and lastOut)
-  const initialInventoryItems = [
+  // === DUMMY DATA ===
+  const dummyInventory = [
     {
-      id: 'DRG-0421',
-      name: 'Paracetamol 500mg',
-      category: 'Pharmaceutical',
-      stock: 8,
-      unit: 'Tablets',
-      minLevel: 20,
-      standardCost: 2.50,
-      movingAvgCost: 2.60,
-      lastPOCost: 2.45,
-      batchNo: 'B2023-087',
-      expiryDate: '2025-12-01',
-      abcClass: 'A',
-      facilityTransferPrice: 3.00,
-      batches: [
-        { batchNo: 'B2023-087', expiry: '2025-12-01', quantity: 8, cost: 2.50 },
-        { batchNo: 'B2023-045', expiry: '2025-08-15', quantity: 0, cost: 2.40 },
-      ],
-      lastIn: '2023-10-15',
-      lastOut: '2023-10-10',
-      movementHistory: [
-        { date: '2023-10-15', type: 'IN', quantity: 10, source: 'Supplier', notes: 'Regular supply' },
-        { date: '2023-10-10', type: 'OUT', quantity: 5, destination: 'Facility A', notes: 'Regular demand' },
-        { date: '2023-10-05', type: 'OUT', quantity: 7, destination: 'Facility B', notes: 'Emergency request' },
-        { date: '2023-10-01', type: 'IN', quantity: 20, source: 'Supplier', notes: 'Monthly stock' },
-      ]
+      id: 1,
+      item_code: 'ITM001',
+      item_name: 'Paracetamol 500mg',
+      category: 'Medicine',
+      description: 'Pain relief medication',
+      unit: 'tablets',
+      quantity: 120,
+      reorder_level: 50,
+      item_cost: 2.50,
+      expiry_date: '2024-12-31',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-15T10:30:00Z'
     },
     {
-      id: 'MS-0876',
-      name: 'Surgical Gloves (Large)',
-      category: 'Medical Supply',
-      stock: 0,
-      unit: 'Pairs',
-      minLevel: 50,
-      standardCost: 1.20,
-      movingAvgCost: 1.25,
-      lastPOCost: 1.18,
-      batchNo: 'B2023-102',
-      expiryDate: '2026-03-22',
-      abcClass: 'B',
-      facilityTransferPrice: 1.50,
-      batches: [
-        { batchNo: 'B2023-102', expiry: '2026-03-22', quantity: 0, cost: 1.20 },
-      ],
-      lastIn: '2023-09-20',
-      lastOut: '2023-10-05',
-      movementHistory: [
-        { date: '2023-09-20', type: 'IN', quantity: 100, source: 'Supplier', notes: 'Monthly supply' },
-        { date: '2023-10-05', type: 'OUT', quantity: 100, destination: 'Facility C', notes: 'Regular demand' },
-      ]
+      id: 2,
+      item_code: 'ITM002',
+      item_name: 'Face Masks',
+      category: 'PPE',
+      description: 'Disposable face masks',
+      unit: 'pieces',
+      quantity: 25,
+      reorder_level: 100,
+      item_cost: 0.50,
+      expiry_date: '2025-06-30',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-10T14:20:00Z'
     },
     {
-      id: 'CON-1543',
-      name: 'Syringe 5ml',
-      category: 'Consumable',
-      stock: 142,
-      unit: 'Pieces',
-      minLevel: 30,
-      standardCost: 0.80,
-      movingAvgCost: 0.82,
-      lastPOCost: 0.79,
-      batchNo: 'B2023-066',
-      expiryDate: '2025-10-30',
-      abcClass: 'C',
-      facilityTransferPrice: 1.00,
-      batches: [
-        { batchNo: 'B2023-066', expiry: '2025-10-30', quantity: 100, cost: 0.80 },
-        { batchNo: 'B2023-021', expiry: '2025-07-12', quantity: 42, cost: 0.78 },
-      ],
-      lastIn: '2023-10-12',
-      lastOut: '2023-10-08',
-      movementHistory: [
-        { date: '2023-10-12', type: 'IN', quantity: 50, source: 'Supplier', notes: 'Weekly supply' },
-        { date: '2023-10-08', type: 'OUT', quantity: 30, destination: 'Facility A', notes: 'Regular demand' },
-        { date: '2023-10-01', type: 'IN', quantity: 100, source: 'Supplier', notes: 'Monthly stock' },
-      ]
+      id: 3,
+      item_code: 'ITM003',
+      item_name: 'Hand Sanitizer',
+      category: 'Sanitizer',
+      description: 'Alcohol-based hand sanitizer',
+      unit: 'bottles',
+      quantity: 0,
+      reorder_level: 30,
+      item_cost: 3.75,
+      expiry_date: '2024-11-15',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-05T09:15:00Z'
     },
     {
-      id: 'DRG-2087',
-      name: 'Amoxicillin 250mg',
-      category: 'Pharmaceutical',
-      stock: 45,
-      unit: 'Capsules',
-      minLevel: 25,
-      standardCost: 4.00,
-      movingAvgCost: 4.10,
-      lastPOCost: 3.95,
-      batchNo: 'B2023-118',
-      expiryDate: '2025-11-05',
-      abcClass: 'A',
-      facilityTransferPrice: 4.50,
-      batches: [
-        { batchNo: 'B2023-118', expiry: '2025-11-05', quantity: 45, cost: 4.00 },
-      ],
-      lastIn: '2023-10-01',
-      lastOut: '2023-09-28',
-      movementHistory: [
-        { date: '2023-10-01', type: 'IN', quantity: 50, source: 'Supplier', notes: 'Monthly supply' },
-        { date: '2023-09-28', type: 'OUT', quantity: 15, destination: 'Facility B', notes: 'Regular demand' },
-      ]
+      id: 4,
+      item_code: 'ITM004',
+      item_name: 'Gloves',
+      category: 'PPE',
+      description: 'Disposable latex gloves',
+      unit: 'pairs',
+      quantity: 200,
+      reorder_level: 150,
+      item_cost: 1.25,
+      expiry_date: '2024-10-20',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-12T16:45:00Z'
     },
+    {
+      id: 5,
+      item_code: 'ITM005',
+      item_name: 'Thermometer',
+      category: 'Equipment',
+      description: 'Digital thermometer',
+      unit: 'pieces',
+      quantity: 15,
+      reorder_level: 10,
+      item_cost: 12.99,
+      expiry_date: null,
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-08T11:30:00Z'
+    },
+    {
+      id: 6,
+      item_code: 'ITM006',
+      item_name: 'Ibuprofen 400mg',
+      category: 'Medicine',
+      description: 'Anti-inflammatory medication',
+      unit: 'tablets',
+      quantity: 75,
+      reorder_level: 80,
+      item_cost: 3.20,
+      expiry_date: '2024-11-05',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-14T13:20:00Z'
+    },
+    {
+      id: 7,
+      item_code: 'ITM007',
+      item_name: 'Surgical Gowns',
+      category: 'PPE',
+      description: 'Disposable surgical gowns',
+      unit: 'pieces',
+      quantity: 45,
+      reorder_level: 60,
+      item_cost: 5.50,
+      expiry_date: '2025-03-15',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-11T15:10:00Z'
+    },
+    {
+      id: 8,
+      item_code: 'ITM008',
+      item_name: 'Antiseptic Solution',
+      category: 'Sanitizer',
+      description: 'Chlorhexidine antiseptic solution',
+      unit: 'bottles',
+      quantity: 30,
+      reorder_level: 25,
+      item_cost: 4.75,
+      expiry_date: '2024-10-25',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-09T10:05:00Z'
+    },
+    {
+      id: 9,
+      item_code: 'ITM009',
+      item_name: 'Syringes',
+      category: 'Equipment',
+      description: 'Disposable syringes 5ml',
+      unit: 'pieces',
+      quantity: 0,
+      reorder_level: 100,
+      item_cost: 0.75,
+      expiry_date: '2025-01-20',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-07T14:30:00Z'
+    },
+    {
+      id: 10,
+      item_code: 'ITM010',
+      item_name: 'Oxygen Mask',
+      category: 'Equipment',
+      description: 'Adult oxygen mask',
+      unit: 'pieces',
+      quantity: 35,
+      reorder_level: 20,
+      item_cost: 8.25,
+      expiry_date: '2024-12-10',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-13T12:15:00Z'
+    },
+    {
+      id: 11,
+      item_code: 'ITM011',
+      item_name: 'Vitamin C Tablets',
+      category: 'Medicine',
+      description: 'Vitamin C 1000mg tablets',
+      unit: 'tablets',
+      quantity: 150,
+      reorder_level: 100,
+      item_cost: 5.99,
+      expiry_date: '2024-11-30',
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-14T09:45:00Z'
+    },
+    {
+      id: 12,
+      item_code: 'ITM012',
+      item_name: 'Blood Pressure Monitor',
+      category: 'Equipment',
+      description: 'Digital blood pressure monitor',
+      unit: 'pieces',
+      quantity: 8,
+      reorder_level: 5,
+      item_cost: 45.99,
+      expiry_date: null,
+      facility_name: 'Central Warehouse',
+      updated_at: '2023-10-12T11:20:00Z'
+    }
   ];
 
-  const [inventoryItems, setInventoryItems] = useState([]);
+  const dummyPendingRequests = [
+    {
+      id: 1,
+      facility_name: 'City General Hospital',
+      item_count: 15,
+      request_date: '2023-10-15T08:30:00Z'
+    },
+    {
+      id: 2,
+      facility_name: 'Community Health Center',
+      item_count: 8,
+      request_date: '2023-10-14T14:15:00Z'
+    },
+    {
+      id: 3,
+      facility_name: 'District Medical Facility',
+      item_count: 22,
+      request_date: '2023-10-13T10:45:00Z'
+    },
+    {
+      id: 4,
+      facility_name: 'Regional Hospital',
+      item_count: 12,
+      request_date: '2023-10-12T16:30:00Z'
+    },
+    {
+      id: 5,
+      facility_name: 'Urgent Care Clinic',
+      item_count: 5,
+      request_date: '2023-10-11T09:20:00Z'
+    }
+  ];
+
+  const dummyMovements = [
+    {
+      id: 1,
+      date: '2023-10-15T10:30:00Z',
+      type: 'stock_in',
+      quantity: 50,
+      from_to: 'Supplier A',
+      reference: 'PO-2023-1050'
+    },
+    {
+      id: 2,
+      date: '2023-10-14T14:20:00Z',
+      type: 'dispatch',
+      quantity: -20,
+      from_to: 'City General Hospital',
+      reference: 'REQ-2023-0876'
+    },
+    {
+      id: 3,
+      date: '2023-10-13T09:15:00Z',
+      type: 'transfer',
+      quantity: -15,
+      from_to: 'Community Health Center',
+      reference: 'TRF-2023-0042'
+    },
+    {
+      id: 4,
+      date: '2023-10-12T11:30:00Z',
+      type: 'adjustment',
+      quantity: -5,
+      from_to: 'Inventory Adjustment',
+      reference: 'ADJ-2023-0015'
+    },
+    {
+      id: 5,
+      date: '2023-10-11T16:45:00Z',
+      type: 'stock_in',
+      quantity: 100,
+      from_to: 'Supplier B',
+      reference: 'PO-2023-1042'
+    }
+  ];
+
+  // Dummy facilities data
+  const dummyFacilities = [
+    { id: 1, name: 'Central Warehouse' },
+    { id: 2, name: 'City General Hospital' },
+    { id: 3, name: 'Community Health Center' },
+    { id: 4, name: 'District Medical Facility' },
+    { id: 5, name: 'Regional Hospital' },
+    { id: 6, name: 'Urgent Care Clinic' },
+    { id: 7, name: 'Specialized Care Center' },
+    { id: 8, name: 'Mobile Health Unit' }
+  ];
+
+  // === STATE ===
+  const [inventory, setInventory] = useState([]);
+  const [lowStockItems, setLowStockItems] = useState([]);
+  const [outOfStockItems, setOutOfStockItems] = useState([]);
+  const [nearExpiryItems, setNearExpiryItems] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showStockInModal, setShowStockInModal] = useState(false);
-  const [showStockOutModal, setShowStockOutModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewItem, setViewItem] = useState(null);
   const [currentItem, setCurrentItem] = useState(null);
-  const [formData, setFormData] = useState({
-    id: '',
-    name: '',
-    category: 'Pharmaceutical',
-    stock: 0,
+  const [editForm, setEditForm] = useState({});
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [addForm, setAddForm] = useState({
+    item_code: '',
+    item_name: '',
+    category: '',
+    description: '',
     unit: '',
-    minLevel: 0,
-    standardCost: 0,
-    movingAvgCost: 0,
-    lastPOCost: 0,
-    batchNo: '',
-    expiryDate: '',
-    abcClass: 'A',
-    facilityTransferPrice: 0,
-    batches: [],
-    lastIn: '',
-    lastOut: ''
+    quantity: '',
+    reorder_level: '',
+    item_cost: '',
+    expiry_date: '',
+    facility_id: ''
   });
-
-  const [stockFormData, setStockFormData] = useState({
-    quantity: 0,
-    source: '',
-    destination: '',
-    notes: '',
-    batchNo: '',
-    expiryDate: ''
-  });
-
+  const [movements, setMovements] = useState([]);
+  const [movementsLoading, setMovementsLoading] = useState(false);
   
+  // Hover state for stats cards
+  const [hoveredCard, setHoveredCard] = useState(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Ref for document click handler
+  const hoverRef = useRef(null);
+
+  // === FETCH INVENTORY DATA ===
   useEffect(() => {
-    fetchInventoryItems();
+    const fetchInventoryData = async () => {
+      try {
+        setLoading(true);
+        
+        // Simulate API call with dummy data
+        setTimeout(() => {
+          const inventoryData = dummyInventory;
+          setInventory(inventoryData);
+          
+          // Categorize items
+          const lowStock = inventoryData.filter(item => 
+            item.quantity > 0 && item.quantity < item.reorder_level
+          );
+          const outOfStock = inventoryData.filter(item => item.quantity === 0);
+          const nearExpiry = inventoryData.filter(item => {
+            if (!item.expiry_date) return false;
+            const expiryDate = new Date(item.expiry_date);
+            const today = new Date();
+            const diffTime = expiryDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays <= 30; // Items expiring within 30 days
+          });
+          
+          setLowStockItems(lowStock);
+          setOutOfStockItems(outOfStock);
+          setNearExpiryItems(nearExpiry);
+          
+          // Set pending requests
+          setPendingRequests(dummyPendingRequests);
+          
+          // Set facilities
+          setFacilities(dummyFacilities);
+          
+          setLoading(false);
+        }, 1000); // Simulate network delay
+        
+      } catch (err) {
+        setError('Error fetching data: ' + err.message);
+        setLoading(false);
+      }
+    };
+
+    fetchInventoryData();
   }, []);
 
-  const fetchInventoryItems = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${BaseUrl}/inventory`);
-      console.log('API response:', response.data); // Debug: see what the API returns
-
-      // Correctly extract items array from response
-      let itemsArray = [];
-      if (Array.isArray(response?.data?.data)) {
-        itemsArray = response.data.data;
-      } else {
-        itemsArray = [];
+  // Handle clicks outside the hover tooltip
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (hoverRef.current && !hoverRef.current.contains(event.target)) {
+        setHoveredCard(null);
       }
+    };
 
-      const mappedData = itemsArray.map(item => ({
-        id: item.item_code || item.id, // Use item_code for display
-        name: item.item_name,
-        category: item.category,
-        stock: item.quantity,
-        unit: item.unit,
-        minLevel: item.reorder_level,
-        description: item.description,
-        standardCost: item.standard_cost || 0,
-        movingAvgCost: item.moving_avg_cost || 0,
-        lastPOCost: item.last_po_cost || 0,
-        batchNo: item.batch_no || '',
-        expiryDate: item.expiry_date || '',
-        abcClass: item.abc_class || 'C',
-        facilityTransferPrice: item.facility_transfer_price || 0,
-        batches: item.batches || [],
-        lastIn: item.last_in || '',
-        lastOut: item.last_out || '',
-        movementHistory: item.movement_history || []
-      }));
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
-      setInventoryItems(mappedData);
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching inventory items:', err);
-      setError('Failed to fetch inventory items. Please try again later.');
-      setLoading(false);
-      setInventoryItems(initialInventoryItems);
-    }
-  };
-
-  const updateInventoryItem = async (id, updatedData) => {
+  // === FETCH MOVEMENT DATA ===
+  const fetchMovements = async (itemId) => {
     try {
-      // API के लिए data format करें
-      const apiData = {
-        item_name: updatedData.name,
-        category: updatedData.category,
-        description: updatedData.description || '',
-        unit: updatedData.unit,
-        quantity: updatedData.stock,
-        reorder_level: updatedData.minLevel,
-        standard_cost: updatedData.standardCost,
-        moving_avg_cost: updatedData.movingAvgCost,
-        last_po_cost: updatedData.lastPOCost,
-        batch_no: updatedData.batchNo,
-        expiry_date: updatedData.expiryDate,
-        abc_class: updatedData.abcClass,
-        facility_transfer_price: updatedData.facilityTransferPrice
-      };
+      setMovementsLoading(true);
       
-      const response = await axios.put(`${BaseUrl}/inventory/${id}`, apiData);
+      // Simulate API call with dummy data
+      setTimeout(() => {
+        setMovements(dummyMovements);
+        setMovementsLoading(false);
+      }, 500); // Simulate network delay
       
-      if (response.status === 200) {
-        // Local state भी update करें
-        setInventoryItems(
-          inventoryItems.map((item) =>
-            item.id === id ? { ...updatedData } : item
-          )
-        );
-        return true;
-      }
-      return false;
     } catch (err) {
-      console.error('Error updating inventory item:', err);
-      return false;
+      setError('Error fetching movements: ' + err.message);
+      setMovementsLoading(false);
     }
   };
 
-  // Calculate status
-  const calculateStatus = (item) => {
-    if (item.stock === 0) return 'out';
-    if (item.stock < item.minLevel) return 'low';
-    return 'in';
-  };
+  // === FILTER LOGIC ===
+  const filteredInventory = inventory.filter(item => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      item.item_code.toLowerCase().includes(q) ||
+      item.item_name.toLowerCase().includes(q) ||
+      item.category.toLowerCase().includes(q)
+    );
+  });
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'low':
-        return <span className="badge bg-warning text-dark rounded-pill px-3 py-2">Low Stock</span>;
-      case 'out':
-        return <span className="badge bg-danger rounded-pill px-3 py-2">Out of Stock</span>;
-      case 'in':
-        return <span className="badge bg-success rounded-pill px-3 py-2">In Stock</span>;
-      default:
-        return <span className="badge bg-secondary rounded-pill px-3 py-2">Unknown</span>;
-    }
-  };
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredInventory.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentInventory = filteredInventory.slice(startIndex, startIndex + itemsPerPage);
 
-  const getRowClass = (status) => {
-    switch (status) {
-      case 'low':
-        return 'table-warning';
-      case 'out':
-        return 'table-danger';
-      default:
-        return '';
-    }
-  };
+  // Reset to first page when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
-  // Modal handlers
-  const openAddModal = () => {
-    setFormData({
-      id: '',
-      name: '',
-      category: 'Pharmaceutical',
-      stock: 0,
-      unit: '',
-      minLevel: 0,
-      standardCost: 0,
-      movingAvgCost: 0,
-      lastPOCost: 0,
-      batchNo: '',
-      expiryDate: '',
-      abcClass: 'A',
-      facilityTransferPrice: 0,
-      batches: [],
-      lastIn: '',
-      lastOut: '',
-      movementHistory: []
-    });
-    setShowAddModal(true);
+  // === MODAL HANDLERS ===
+  const openViewModal = (item) => {
+    setViewItem(item);
+    setShowViewModal(true);
   };
-
+  
   const openEditModal = (item) => {
     setCurrentItem(item);
-    setFormData({
-      id: item.id,
-      name: item.name,
+    // Find the facility ID based on the facility name
+    const facility = facilities.find(f => f.name === item.facility_name);
+    setEditForm({
+      item_name: item.item_name,
       category: item.category,
-      stock: item.stock,
+      description: item.description,
       unit: item.unit,
-      minLevel: item.minLevel,
-      standardCost: item.standardCost,
-      movingAvgCost: item.movingAvgCost,
-      lastPOCost: item.lastPOCost,
-      batchNo: item.batchNo,
-      expiryDate: item.expiryDate,
-      abcClass: item.abcClass,
-      facilityTransferPrice: item.facilityTransferPrice,
-      batches: item.batches,
-      lastIn: item.lastIn,
-      lastOut: item.lastOut,
-      movementHistory: item.movementHistory || []
+      quantity: item.quantity,
+      reorder_level: item.reorder_level,
+      item_cost: item.item_cost,
+      expiry_date: item.expiry_date,
+      facility_id: facility ? facility.id : ''
     });
     setShowEditModal(true);
   };
 
-  const openStockInModal = (item) => {
-    setCurrentItem(item);
-    setStockFormData({
-      quantity: 0,
-      source: 'Supplier',
-      notes: '',
-      batchNo: '',
-      expiryDate: ''
-    });
-    setShowStockInModal(true);
-  };
-
-  const openStockOutModal = (item) => {
-    setCurrentItem(item);
-    setStockFormData({
-      quantity: 0,
-      destination: '',
-      notes: ''
-    });
-    setShowStockOutModal(true);
-  };
-
-  const openHistoryModal = (item) => {
+  const openHistoryModal = async (item) => {
     setCurrentItem(item);
     setShowHistoryModal(true);
+    await fetchMovements(item.id);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: ['stock', 'minLevel', 'standardCost', 'movingAvgCost', 'lastPOCost', 'facilityTransferPrice'].includes(name)
-        ? parseFloat(value) || 0
-        : value,
+  const openAddModal = () => {
+    setAddForm({
+      item_code: '',
+      item_name: '',
+      category: '',
+      description: '',
+      unit: '',
+      quantity: '',
+      reorder_level: '',
+      item_cost: '',
+      expiry_date: '',
+      facility_id: ''
     });
-  };
-
-  const handleStockInputChange = (e) => {
-    const { name, value } = e.target;
-    setStockFormData({
-      ...stockFormData,
-      [name]: name === 'quantity' ? parseInt(value) || 0 : value,
-    });
-  };
-
-  const handleAddItem = async () => {
-    if (!formData.id || !formData.name || !formData.unit) {
-      alert('Please fill required fields: ID, Name, Unit.');
-      return;
-    }
-    
-    try {
-      // API call to add new item
-      const apiData = {
-        item_name: formData.name,
-        category: formData.category,
-        description: '',
-        unit: formData.unit,
-        quantity: formData.stock,
-        reorder_level: formData.minLevel,
-        standard_cost: formData.standardCost,
-        moving_avg_cost: formData.movingAvgCost,
-        last_po_cost: formData.lastPOCost,
-        batch_no: formData.batchNo,
-        expiry_date: formData.expiryDate,
-        abc_class: formData.abcClass,
-        facility_transfer_price: formData.facilityTransferPrice
-      };
-      
-      const response = await axios.post(`${BaseUrl}/inventory`, apiData);
-      
-      if (response.status === 201) {
-        // API से आई response को हमारे structure में map करें
-        const newItem = {
-          ...formData,
-          id: response.data.id || formData.id,
-          batches: [],
-          lastIn: '',
-          lastOut: '',
-          movementHistory: []
-        };
-        
-        setInventoryItems([...inventoryItems, newItem]);
-        setShowAddModal(false);
-      } else {
-        alert('Failed to add item. Please try again.');
-      }
-    } catch (err) {
-      console.error('Error adding inventory item:', err);
-      alert('Failed to add item. Please try again.');
-    }
-  };
-
-  const handleEditItem = async () => {
-    const success = await updateInventoryItem(currentItem.id, formData);
-    
-    if (success) {
-      setShowEditModal(false);
-    } else {
-      alert('Failed to update item. Please try again.');
-    }
-  };
-
-  const handleStockIn = async () => {
-    const quantity = stockFormData.quantity || 0;
-    if (quantity <= 0) {
-      alert('Enter valid quantity.');
-      return;
-    }
-    
-    const today = new Date().toISOString().split('T')[0];
-    const newMovement = {
-      date: today,
-      type: 'IN',
-      quantity: quantity,
-      source: stockFormData.source,
-      notes: stockFormData.notes
-    };
-    
-    try {
-      // Stock In API call
-      const stockInData = {
-        item_id: currentItem.id,
-        quantity: quantity,
-        source: stockFormData.source,
-        notes: stockFormData.notes,
-        batch_no: stockFormData.batchNo,
-        expiry_date: stockFormData.expiryDate
-      };
-      
-      const response = await axios.post(`${BaseUrl}/inventory/stock-in`, stockInData);
-      
-      if (response.status === 200) {
-        setInventoryItems(
-          inventoryItems.map((item) => {
-            if (item.id === currentItem.id) {
-              // Add new batch if provided
-              let updatedBatches = [...item.batches];
-              if (stockFormData.batchNo && stockFormData.expiryDate) {
-                updatedBatches.push({
-                  batchNo: stockFormData.batchNo,
-                  expiry: stockFormData.expiryDate,
-                  quantity: quantity,
-                  cost: item.standardCost
-                });
-              }
-              
-              return {
-                ...item, 
-                stock: item.stock + quantity,
-                lastIn: today,
-                movementHistory: [newMovement, ...(item.movementHistory || [])],
-                batches: updatedBatches
-              };
-            }
-            return item;
-          })
-        );
-        setShowStockInModal(false);
-      } else {
-        alert('Failed to record stock in. Please try again.');
-      }
-    } catch (err) {
-      console.error('Error recording stock in:', err);
-      alert('Failed to record stock in. Please try again.');
-    }
-  };
-
-  const handleStockOut = async () => {
-    const quantity = stockFormData.quantity || 0;
-    if (quantity <= 0) {
-      alert('Enter valid quantity.');
-      return;
-    }
-    
-    if (quantity > currentItem.stock) {
-      alert('Not enough stock available.');
-      return;
-    }
-    
-    const today = new Date().toISOString().split('T')[0];
-    const newMovement = {
-      date: today,
-      type: 'OUT',
-      quantity: quantity,
-      destination: stockFormData.destination,
-      notes: stockFormData.notes
-    };
-    
-    try {
-      // Stock Out API call
-      const stockOutData = {
-        item_id: currentItem.id,
-        quantity: quantity,
-        destination: stockFormData.destination,
-        notes: stockFormData.notes
-      };
-      
-      const response = await axios.post(`${BaseUrl}/inventory/stock-out`, stockOutData);
-      
-      if (response.status === 200) {
-        setInventoryItems(
-          inventoryItems.map((item) => {
-            if (item.id === currentItem.id) {
-              // Update batches (FIFO - First In First Out)
-              let updatedBatches = [...item.batches];
-              let remainingQuantity = quantity;
-              
-              for (let i = 0; i < updatedBatches.length && remainingQuantity > 0; i++) {
-                if (updatedBatches[i].quantity > 0) {
-                  const deductAmount = Math.min(updatedBatches[i].quantity, remainingQuantity);
-                  updatedBatches[i].quantity -= deductAmount;
-                  remainingQuantity -= deductAmount;
-                }
-              }
-              
-              return {
-                ...item, 
-                stock: item.stock - quantity,
-                lastOut: today,
-                movementHistory: [newMovement, ...(item.movementHistory || [])],
-                batches: updatedBatches
-              };
-            }
-            return item;
-          })
-        );
-        setShowStockOutModal(false);
-      } else {
-        alert('Failed to record stock out. Please try again.');
-      }
-    } catch (err) {
-      console.error('Error recording stock out:', err);
-      alert('Failed to record stock out. Please try again.');
-    }
+    setShowAddModal(true);
   };
 
   const closeModalOnBackdrop = (e) => {
-    if (e.target.classList.contains('modal')) {
-      setShowAddModal(false);
-      setShowEditModal(false);
-      setShowStockInModal(false);
-      setShowStockOutModal(false);
-      setShowHistoryModal(false);
+    if (e.target === e.currentTarget) {
+      setShowViewModal(false);
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '—';
-    return dateString.split('-').reverse().join('/');
+  // === FORM HANDLERS ===
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  if (loading) {
-    return (
-      <div className="container-fluid py-4 text-center">
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-        <p className="mt-2">Loading inventory data...</p>
-      </div>
-    );
-  }
+  const handleAddInputChange = (e) => {
+    const { name, value } = e.target;
+    setAddForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
-  if (error) {
+  // === ACTION HANDLERS ===
+  const handleSaveEdit = async () => {
+    try {
+      // Simulate API call
+      setTimeout(() => {
+        // Find the selected facility name based on the facility_id
+        const selectedFacility = facilities.find(f => f.id === parseInt(editForm.facility_id));
+        
+        const updatedItem = {
+          ...currentItem,
+          ...editForm,
+          facility_name: selectedFacility ? selectedFacility.name : currentItem.facility_name
+        };
+        
+        setInventory(prevInventory => 
+          prevInventory.map(item => 
+            item.id === currentItem.id ? updatedItem : item
+          )
+        );
+        
+        alert(`Item ${currentItem.item_code} updated successfully`);
+        setShowEditModal(false);
+      }, 500); // Simulate network delay
+      
+    } catch (err) {
+      alert('Error updating item: ' + err.message);
+    }
+  };
+
+  const handleAddItem = async () => {
+    try {
+      // Simulate API call
+      setTimeout(() => {
+        // Find the selected facility name
+        const selectedFacility = facilities.find(f => f.id === parseInt(addForm.facility_id));
+        
+        const newItem = {
+          id: inventory.length + 1,
+          ...addForm,
+          facility_name: selectedFacility ? selectedFacility.name : 'Central Warehouse',
+          updated_at: new Date().toISOString()
+        };
+        
+        setInventory(prevInventory => [...prevInventory, newItem]);
+        alert(`Item ${addForm.item_code} added successfully`);
+        setShowAddModal(false);
+      }, 500); // Simulate network delay
+      
+    } catch (err) {
+      alert('Error adding item: ' + err.message);
+    }
+  };
+
+  // === HELPER FUNCTIONS ===
+  const calculateStatus = (item) => {
+    if (item.quantity === 0) return 'out_of_stock';
+    if (item.quantity < item.reorder_level) return 'low_stock';
+    
+    // Check if near expiry
+    if (item.expiry_date) {
+      const expiryDate = new Date(item.expiry_date);
+      const today = new Date();
+      const diffTime = expiryDate - today;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays <= 30) return 'near_expiry';
+    }
+    
+    return 'in_stock';
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'out_of_stock':
+        return <span className="badge bg-danger">Out of Stock</span>;
+      case 'low_stock':
+        return <span className="badge bg-warning text-dark">Low Stock</span>;
+      case 'near_expiry':
+        return <span className="badge bg-info">Near Expiry</span>;
+      default:
+        return <span className="badge bg-success">In Stock</span>;
+    }
+  };
+
+  const getMovementTypeBadge = (type) => {
+    switch (type) {
+      case 'stock_in':
+        return <span className="badge bg-success">Stock In</span>;
+      case 'dispatch':
+        return <span className="badge bg-warning text-dark">Dispatch</span>;
+      case 'adjustment':
+        return <span className="badge bg-danger">Adjustment</span>;
+      case 'transfer':
+        return <span className="badge bg-info">Transfer</span>;
+      default:
+        return <span className="badge bg-secondary">{type}</span>;
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
+  };
+
+  // Calculate days until expiry
+  const daysUntilExpiry = (expiryDate) => {
+    if (!expiryDate) return null;
+    const expiry = new Date(expiryDate);
+    const today = new Date();
+    const diffTime = expiry - today;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  // Pagination controls
+  const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const renderPagination = () => {
+    // Only hide pagination if there are NO items at all
+    if (filteredInventory.length === 0) return null;
+
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+    
     return (
-      <div className="container-fluid py-4">
+      <nav className="d-flex justify-content-center mt-3">
+        <ul className="pagination mb-0">
+          <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+            <button 
+              className="page-link" 
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </button>
+          </li>
+          
+          {startPage > 1 && (
+            <>
+              <li className="page-item">
+                <button className="page-link" onClick={() => goToPage(1)}>
+                  1
+                </button>
+              </li>
+              {startPage > 2 && (
+                <li className="page-item disabled">
+                  <span className="page-link">...</span>
+                </li>
+              )}
+            </>
+          )}
+          
+          {pageNumbers.map(number => (
+            <li key={number} className={`page-item ${number === currentPage ? 'active' : ''}`}>
+              <button className="page-link" onClick={() => goToPage(number)}>
+                {number}
+              </button>
+            </li>
+          ))}
+          
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && (
+                <li className="page-item disabled">
+                  <span className="page-link">...</span>
+                </li>
+              )}
+              <li className="page-item">
+                <button className="page-link" onClick={() => goToPage(totalPages)}>
+                  {totalPages}
+                </button>
+              </li>
+            </>
+          )}
+          
+          <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+            <button 
+              className="page-link" 
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </button>
+          </li>
+        </ul>
+      </nav>
+    );
+  };
+
+  return (
+    <div className="container-fluid py-3">
+      {/* ===== Top Toolbar ===== */}
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <h2 className="fw-bold mb-0">Inventory (Global View)</h2>
+        <div className="d-flex gap-2" style={{ maxWidth: '600px', width: '100%' }}>
+          <div className="input-group" style={{ maxWidth: '320px', width: '100%' }}>
+            <input
+              type="text"
+              className="form-control"
+              style={{ height: "40px" }}
+              placeholder="Search by Item Code, Name, or Category..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <button className="btn btn-outline-secondary" style={{ height: "40px" }} type="button">
+              <FaSearch />
+            </button>
+          </div>
+          <button 
+            className="btn btn-primary d-flex align-items-center gap-1" 
+            style={{ height: "40px" }}
+            onClick={openAddModal}
+          >
+            <FaPlus /> Add Item
+          </button>
+        </div>
+      </div>
+
+      {/* ===== ALERTS SECTION ===== */}
+      <div className="row mb-4 g-3" ref={hoverRef}>
+        {/* Low Stock Alert */}
+        <div className="col-md-3">
+          <div 
+            className="card border-warning bg-warning bg-opacity-10 h-100"
+            onMouseEnter={() => setHoveredCard('lowStock')}
+            onClick={() => setHoveredCard('lowStock')}
+          >
+            <div className="card-body d-flex align-items-center">
+              <div className="me-3">
+                <FaExclamationTriangle className="text-warning fs-2" />
+              </div>
+              <div className="flex-grow-1">
+                <h6 className="mb-0">Low Stock Items</h6>
+                <span className="fw-bold fs-5">{lowStockItems.length}</span>
+                {hoveredCard === 'lowStock' && lowStockItems.length > 0 && (
+                  <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
+                    <h6 className="text-warning mb-2">Items Low in Stock</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Item Name</th>
+                            <th>Quantity</th>
+                            <th>Reorder Level</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lowStockItems.slice(0, 5).map(item => (
+                            <tr key={item.id}>
+                              <td>{item.item_name}</td>
+                              <td className="text-warning">{item.quantity}</td>
+                              <td>{item.reorder_level}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {lowStockItems.length > 5 && (
+                      <div className="text-center mt-2">
+                        <small className="text-muted">+{lowStockItems.length - 5} more items</small>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Out of Stock Alert */}
+        <div className="col-md-3">
+          <div 
+            className="card border-danger bg-danger bg-opacity-10 h-100"
+            onMouseEnter={() => setHoveredCard('outOfStock')}
+            onClick={() => setHoveredCard('outOfStock')}
+          >
+            <div className="card-body d-flex align-items-center">
+              <div className="me-3">
+                <FaTimes className="text-danger fs-2" />
+              </div>
+              <div className="flex-grow-1">
+                <h6 className="mb-0">Out of Stock</h6>
+                <span className="fw-bold fs-5">{outOfStockItems.length}</span>
+                {hoveredCard === 'outOfStock' && outOfStockItems.length > 0 && (
+                  <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
+                    <h6 className="text-danger mb-2">Out of Stock Items</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Item Code</th>
+                            <th>Item Name</th>
+                            <th>Category</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {outOfStockItems.map(item => (
+                            <tr key={item.id}>
+                              <td>{item.item_code}</td>
+                              <td>{item.item_name}</td>
+                              <td>{item.category}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Near Expiry Alert */}
+        <div className="col-md-3">
+          <div 
+            className="card border-info bg-info bg-opacity-10 h-100"
+            onMouseEnter={() => setHoveredCard('nearExpiry')}
+            onClick={() => setHoveredCard('nearExpiry')}
+          >
+            <div className="card-body d-flex align-items-center">
+              <div className="me-3">
+                <FaClock className="text-info fs-2" />
+              </div>
+              <div className="flex-grow-1">
+                <h6 className="mb-0">Near Expiry</h6>
+                <span className="fw-bold fs-5">{nearExpiryItems.length}</span>
+                {hoveredCard === 'nearExpiry' && nearExpiryItems.length > 0 && (
+                  <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
+                    <h6 className="text-info mb-2">Items Expiring Soon</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Item Name</th>
+                            <th>Expiry Date</th>
+                            <th>Days Left</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {nearExpiryItems.map(item => {
+                            const daysLeft = daysUntilExpiry(item.expiry_date);
+                            return (
+                              <tr key={item.id}>
+                                <td>{item.item_name}</td>
+                                <td>{formatDate(item.expiry_date)}</td>
+                                <td className={daysLeft <= 7 ? "text-danger fw-bold" : "text-warning"}>
+                                  {daysLeft}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Pending Requests Alert */}
+        <div className="col-md-3">
+          <div 
+            className="card border-primary bg-primary bg-opacity-10 h-100"
+            onMouseEnter={() => setHoveredCard('pendingRequests')}
+            onClick={() => setHoveredCard('pendingRequests')}
+          >
+            <div className="card-body d-flex align-items-center">
+              <div className="me-3">
+                <FaArrowRight className="text-primary fs-2" />
+              </div>
+              <div className="flex-grow-1">
+                <h6 className="mb-0">Pending Requests</h6>
+                <span className="fw-bold fs-5">{pendingRequests.length}</span>
+                {hoveredCard === 'pendingRequests' && pendingRequests.length > 0 && (
+                  <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
+                    <h6 className="text-primary mb-2">Pending Facility Requests</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Facility</th>
+                            <th>Items</th>
+                            <th>Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pendingRequests.map(request => (
+                            <tr key={request.id}>
+                              <td>{request.facility_name}</td>
+                              <td>{request.item_count}</td>
+                              <td>{new Date(request.request_date).toLocaleDateString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== LOADING AND ERROR STATES ===== */}
+      {loading && (
+        <div className="text-center py-4">
+          <div className="spinner-border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      )}
+      
+      {error && (
         <div className="alert alert-danger" role="alert">
           {error}
         </div>
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div className="container-fluid py-4">
-      {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="text-primary mb-0">Inventory Management</h2>
-        <button className="btn btn-primary d-flex align-items-center" onClick={openAddModal}>
-          <FaPlusCircle className="me-2" /> Add New Item
-        </button>
-      </div>
-
-      {/* Table Card */}
-      <div className="card border-0 ">
-        <div className="card-header bg-light">
-          <h5 className="mb-0 text-muted">All Inventory Items</h5>
-        </div>
-        <div className="card-body p-0">
+      {/* ===== TABLE ===== */}
+      {!loading && !error && (
+        <div className="card border-0 shadow-sm">
+          <div className="card-header bg-white border-0 py-3">
+            <h5 className="mb-0">Inventory Items</h5>
+          </div>
+          
           <div className="table-responsive">
-            <table className="table table-hover table-striped mb-0">
-              <thead className="table-light">
+            <table className="table table-hover mb-0 align-middle">
+              <thead className="bg-light">
                 <tr>
-                  <th scope="col" className="px-4 py-3">Item Code</th>
-                  <th scope="col" className="px-4 py-3">Item Name</th>
-                  <th scope="col" className="px-4 py-3">Category</th>
-                  <th scope="col" className="px-4 py-3">Qty Available</th>
-                  <th scope="col" className="px-4 py-3">Reorder Level</th>
-                  <th scope="col" className="px-4 py-3">Last In</th>
-                  <th scope="col" className="px-4 py-3">Last Out</th>
-                  <th scope="col" className="px-4 py-3">Actions</th>
+                  <th>Item Code</th>
+                  <th>Item Name</th>
+                  <th>Category</th>
+                  <th>Quantity</th>
+                  <th>Reorder Level</th>
+                  <th>Item Cost</th>
+                  <th>Expiry Date</th>
+                  <th>Facility</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {inventoryItems.map((item) => {
-                  const status = calculateStatus(item);
-                  return (
-                    <tr key={item.id} className={getRowClass(status)}>
-                      <td className="px-4 py-3 align-middle">{item.id}</td>
-                      <td className="px-4 py-3 align-middle">{item.name}</td>
-                      <td className="px-4 py-3 align-middle">{item.category}</td>
-                      <td className="px-4 py-3 align-middle fw-bold">{item.stock}</td>
-                      <td className="px-4 py-3 align-middle">{item.minLevel}</td>
-                      <td className="px-4 py-3 align-middle">{formatDate(item.lastIn)}</td>
-                      <td className="px-4 py-3 align-middle">{formatDate(item.lastOut)}</td>
-                      <td className="px-4 py-3 align-middle">
-                        <div className="d-flex gap-1 flex-wrap">
-                          {/* <button
-                            className="btn btn-sm btn-success d-flex align-items-center"
-                            onClick={() => openStockInModal(item)}
-                            title="Stock In"
-                          >
-                            <FaArrowDown className="me-1" /> In
-                          </button> */}
-                          {/* <button
-                            className="btn btn-sm btn-warning d-flex align-items-center"
-                            onClick={() => openStockOutModal(item)}
-                            title="Stock Out"
-                          >
-                            <FaArrowUp className="me-1" /> Out
-                          </button> */}
-                          {/* <button
-                            className="btn btn-sm btn-info d-flex align-items-center text-white"
-                            onClick={() => openHistoryModal(item)}
-                            title="View Movement History"
-                          >
-                            <FaHistory className="me-1" /> History
-                          </button> */}
+                {currentInventory.length === 0 ? (
+                  <tr>
+                    <td colSpan="10" className="text-center py-4">
+                      {searchTerm ? "No items match your search criteria." : "No inventory items found."}
+                    </td>
+                  </tr>
+                ) : (
+                  currentInventory.map((item) => (
+                    <tr key={item.id}>
+                      <td className="fw-bold">{item.item_code}</td>
+                      <td>{item.item_name}</td>
+                      <td><span className="badge bg-light text-dark">{item.category}</span></td>
+                      <td className={item.quantity < item.reorder_level ? "text-warning fw-medium" : "text-success fw-medium"}>
+                        {item.quantity.toLocaleString()}
+                      </td>
+                      <td>{item.reorder_level.toLocaleString()}</td>
+                      <td>${item.item_cost ? parseFloat(item.item_cost).toFixed(2) : '0.00'}</td>
+                      <td>
+                        {item.expiry_date ? (
+                          <span className={daysUntilExpiry(item.expiry_date) <= 30 ? "text-info fw-medium" : ""}>
+                            {formatDate(item.expiry_date)}
+                          </span>
+                        ) : 'N/A'}
+                      </td>
+                      <td>{item.facility_name || 'Central Warehouse'}</td>
+                      <td>{getStatusBadge(calculateStatus(item))}</td>
+                      <td>
+                        <div className="btn-group" role="group">
                           <button
                             className="btn btn-sm btn-outline-primary"
+                            title="Edit Item"
                             onClick={() => openEditModal(item)}
-                            title="Edit"
                           >
                             <FaEdit />
+                          </button>
+                          
+                          <button
+                            className="btn btn-sm btn-outline-success"
+                            title="View Details"
+                            onClick={() => openViewModal(item)}
+                          >
+                            View
                           </button>
                         </div>
                       </td>
                     </tr>
-                  );
-                })}
+                  ))
+                )}
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
+          {renderPagination()}
         </div>
-      </div>
+      )}
 
-      {/* ========== MODALS ========== */}
-
-      {/* Add Item Modal */}
-      {showAddModal && (
-        <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
-          <div className="modal-dialog modal-dialog-centered">
+      {/* ===== EDIT MODAL ===== */}
+      {showEditModal && currentItem && (
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog modal-lg">
             <div className="modal-content">
-              <div className="modal-header border-bottom-0">
+              <div className="modal-header">
+                <h5 className="modal-title">Edit Inventory Item: {currentItem.item_code}</h5>
+                <button type="button" className="btn-close" onClick={() => setShowEditModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <form>
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <label className="form-label">Item Code</label>
+                      <input className="form-control" defaultValue={currentItem.item_code} readOnly />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Category</label>
+                      <input 
+                        className="form-control" 
+                        name="category"
+                        value={editForm.category || ''}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="col-md-12">
+                      <label className="form-label">Item Name</label>
+                      <input 
+                        className="form-control" 
+                        name="item_name"
+                        value={editForm.item_name || ''}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="col-md-12">
+                      <label className="form-label">Description</label>
+                      <textarea 
+                        className="form-control" 
+                        name="description"
+                        value={editForm.description || ''}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Unit</label>
+                      <input 
+                        className="form-control" 
+                        name="unit"
+                        value={editForm.unit || ''}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Quantity</label>
+                      <input 
+                        type="number" 
+                        className="form-control" 
+                        name="quantity"
+                        value={editForm.quantity || ''}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Reorder Level</label>
+                      <input 
+                        type="number" 
+                        className="form-control" 
+                        name="reorder_level"
+                        value={editForm.reorder_level || ''}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Item Cost ($)</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        className="form-control" 
+                        name="item_cost"
+                        value={editForm.item_cost || ''}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Expiry Date</label>
+                      <input 
+                        type="date" 
+                        className="form-control" 
+                        name="expiry_date"
+                        value={editForm.expiry_date || ''}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Facility</label>
+                      <select 
+                        className="form-select" 
+                        name="facility_id"
+                        value={editForm.facility_id || ''}
+                        onChange={handleInputChange}
+                      >
+                        <option value="">Select a facility</option>
+                        {facilities.map(facility => (
+                          <option key={facility.id} value={facility.id}>
+                            {facility.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </form>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleSaveEdit}>Save Changes</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== ADD ITEM MODAL ===== */}
+      {showAddModal && (
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content">
+              <div className="modal-header">
                 <h5 className="modal-title">Add New Inventory Item</h5>
                 <button type="button" className="btn-close" onClick={() => setShowAddModal(false)}></button>
               </div>
               <div className="modal-body">
-                <div className="mb-3">
-                  <label className="form-label">Item Code <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg"
-                    name="id"
-                    value={formData.id}
-                    onChange={handleInputChange}
-                    placeholder="e.g. DRG-0421"
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Item Name <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Paracetamol"
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Category</label>
-                  <select
-                    className="form-select form-select-lg"
-                    name="category"
-                    value={formData.category}
-                    onChange={handleInputChange}
-                  >
-                    <option value="Pharmaceutical">Pharmaceutical</option>
-                    <option value="Medical Supply">Medical Supply</option>
-                    <option value="Consumable">Consumable</option>
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Qty Available</label>
-                  <input
-                    type="number"
-                    className="form-control form-control-lg"
-                    name="stock"
-                    value={formData.stock}
-                    onChange={handleInputChange}
-                    min="0"
-                    step="1"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Unit <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg"
-                    name="unit"
-                    value={formData.unit}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Tablets, Boxes"
-                    required
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Reorder Level</label>
-                  <input
-                    type="number"
-                    className="form-control form-control-lg"
-                    name="minLevel"
-                    value={formData.minLevel}
-                    onChange={handleInputChange}
-                    min="0"
-                    step="1"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Standard Cost</label>
-                  <input
-                    type="number"
-                    className="form-control form-control-lg"
-                    name="standardCost"
-                    value={formData.standardCost}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Moving Avg Cost</label>
-                  <input
-                    type="number"
-                    className="form-control form-control-lg"
-                    name="movingAvgCost"
-                    value={formData.movingAvgCost}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Last PO Cost</label>
-                  <input
-                    type="number"
-                    className="form-control form-control-lg"
-                    name="lastPOCost"
-                    value={formData.lastPOCost}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Batch/Lot No</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg"
-                    name="batchNo"
-                    value={formData.batchNo}
-                    onChange={handleInputChange}
-                    placeholder="e.g. B2023-087"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Expiry Date</label>
-                  <input
-                    type="date"
-                    className="form-control form-control-lg"
-                    name="expiryDate"
-                    value={formData.expiryDate}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">ABC Class</label>
-                  <select
-                    className="form-select form-select-lg"
-                    name="abcClass"
-                    value={formData.abcClass}
-                    onChange={handleInputChange}
-                  >
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="C">C</option>
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Facility Transfer Price</label>
-                  <input
-                    type="number"
-                    className="form-control form-control-lg"
-                    name="facilityTransferPrice"
-                    value={formData.facilityTransferPrice}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-              </div>
-              <div className="modal-footer border-top-0">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
-                  Cancel
-                </button>
-                <button type="button" className="btn btn-primary" onClick={handleAddItem}>
-                  Add Item
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Item Modal */}
-      {showEditModal && (
-        <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header border-bottom-0">
-                <h5 className="modal-title">Edit Inventory Item</h5>
-                <button type="button" className="btn-close" onClick={() => setShowEditModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label className="form-label">Item Code</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg"
-                    name="id"
-                    value={formData.id}
-                    onChange={handleInputChange}
-                    disabled
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Item Name</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Category</label>
-                  <select
-                    className="form-select form-select-lg"
-                    name="category"
-                    value={formData.category}
-                    onChange={handleInputChange}
-                  >
-                    <option value="Pharmaceutical">Pharmaceutical</option>
-                    <option value="Medical Supply">Medical Supply</option>
-                    <option value="Consumable">Consumable</option>
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Unit</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg"
-                    name="unit"
-                    value={formData.unit}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Reorder Level</label>
-                  <input
-                    type="number"
-                    className="form-control form-control-lg"
-                    name="minLevel"
-                    value={formData.minLevel}
-                    onChange={handleInputChange}
-                    min="0"
-                    step="1"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Standard Cost</label>
-                  <input
-                    type="number"
-                    className="form-control form-control-lg"
-                    name="standardCost"
-                    value={formData.standardCost}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Moving Avg Cost</label>
-                  <input
-                    type="number"
-                    className="form-control form-control-lg"
-                    name="movingAvgCost"
-                    value={formData.movingAvgCost}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Last PO Cost</label>
-                  <input
-                    type="number"
-                    className="form-control form-control-lg"
-                    name="lastPOCost"
-                    value={formData.lastPOCost}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">ABC Class</label>
-                  <select
-                    className="form-select form-select-lg"
-                    name="abcClass"
-                    value={formData.abcClass}
-                    onChange={handleInputChange}
-                  >
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="C">C</option>
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Facility Transfer Price</label>
-                  <input
-                    type="number"
-                    className="form-control form-control-lg"
-                    name="facilityTransferPrice"
-                    value={formData.facilityTransferPrice}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-              </div>
-              <div className="modal-footer border-top-0">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>
-                  Cancel
-                </button>
-                <button type="button" className="btn btn-primary" onClick={handleEditItem}>
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Stock In Modal */}
-      {showStockInModal && currentItem && (
-        <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header border-bottom-0">
-                <h5 className="modal-title">Stock In: {currentItem.name}</h5>
-                <button type="button" className="btn-close" onClick={() => setShowStockInModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label className="form-label">Current Stock</label>
-                  <div className="form-control form-control-lg bg-light">
-                    {currentItem.stock} {currentItem.unit}
+                <form>
+                  <div className="row g-3">
+                    <div className="col-md-6">
+                      <label className="form-label">Item Code</label>
+                      <input 
+                        type="text"
+                        className="form-control" 
+                        name="item_code"
+                        value={addForm.item_code || ''}
+                        onChange={handleAddInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Category</label>
+                      <input 
+                        type="text"
+                        className="form-control" 
+                        name="category"
+                        value={addForm.category || ''}
+                        onChange={handleAddInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-12">
+                      <label className="form-label">Item Name</label>
+                      <input 
+                        type="text"
+                        className="form-control" 
+                        name="item_name"
+                        value={addForm.item_name || ''}
+                        onChange={handleAddInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-12">
+                      <label className="form-label">Description</label>
+                      <textarea 
+                        className="form-control" 
+                        name="description"
+                        value={addForm.description || ''}
+                        onChange={handleAddInputChange}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Unit</label>
+                      <input 
+                        type="text"
+                        className="form-control" 
+                        name="unit"
+                        value={addForm.unit || ''}
+                        onChange={handleAddInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Quantity</label>
+                      <input 
+                        type="number" 
+                        className="form-control" 
+                        name="quantity"
+                        value={addForm.quantity || ''}
+                        onChange={handleAddInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Reorder Level</label>
+                      <input 
+                        type="number" 
+                        className="form-control" 
+                        name="reorder_level"
+                        value={addForm.reorder_level || ''}
+                        onChange={handleAddInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Item Cost ($)</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        className="form-control" 
+                        name="item_cost"
+                        value={addForm.item_cost || ''}
+                        onChange={handleAddInputChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Facility</label>
+                      <select 
+                        className="form-select" 
+                        name="facility_id"
+                        value={addForm.facility_id || ''}
+                        onChange={handleAddInputChange}
+                        required
+                      >
+                        <option value="">Select a facility</option>
+                        {facilities.map(facility => (
+                          <option key={facility.id} value={facility.id}>
+                            {facility.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label">Expiry Date</label>
+                      <input 
+                        type="date" 
+                        className="form-control" 
+                        name="expiry_date"
+                        value={addForm.expiry_date || ''}
+                        onChange={handleAddInputChange}
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Quantity <span className="text-danger">*</span></label>
-                  <input
-                    type="number"
-                    className="form-control form-control-lg"
-                    name="quantity"
-                    value={stockFormData.quantity}
-                    onChange={handleStockInputChange}
-                    min="1"
-                    step="1"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Source</label>
-                  <select
-                    className="form-select form-select-lg"
-                    name="source"
-                    value={stockFormData.source}
-                    onChange={handleStockInputChange}
-                  >
-                    <option value="Supplier">Supplier</option>
-                    <option value="Return">Return</option>
-                    <option value="Transfer">Transfer</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Batch/Lot No</label>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg"
-                    name="batchNo"
-                    value={stockFormData.batchNo}
-                    onChange={handleStockInputChange}
-                    placeholder="e.g. B2023-087"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Expiry Date</label>
-                  <input
-                    type="date"
-                    className="form-control form-control-lg"
-                    name="expiryDate"
-                    value={stockFormData.expiryDate}
-                    onChange={handleStockInputChange}
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Notes</label>
-                  <textarea
-                    className="form-control form-control-lg"
-                    name="notes"
-                    value={stockFormData.notes}
-                    onChange={handleStockInputChange}
-                    rows="2"
-                  ></textarea>
-                </div>
+                </form>
               </div>
-              <div className="modal-footer border-top-0">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowStockInModal(false)}>
-                  Cancel
-                </button>
-                <button type="button" className="btn btn-success" onClick={handleStockIn}>
-                  Stock In
-                </button>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleAddItem}>Add Item</button>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Stock Out Modal */}
-      {showStockOutModal && currentItem && (
-        <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header border-bottom-0">
-                <h5 className="modal-title">Stock Out: {currentItem.name}</h5>
-                <button type="button" className="btn-close" onClick={() => setShowStockOutModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label className="form-label">Current Stock</label>
-                  <div className="form-control form-control-lg bg-light">
-                    {currentItem.stock} {currentItem.unit}
-                  </div>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Quantity <span className="text-danger">*</span></label>
-                  <input
-                    type="number"
-                    className="form-control form-control-lg"
-                    name="quantity"
-                    value={stockFormData.quantity}
-                    onChange={handleStockInputChange}
-                    min="1"
-                    max={currentItem.stock}
-                    step="1"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Destination Facility <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg"
-                    name="destination"
-                    value={stockFormData.destination}
-                    onChange={handleStockInputChange}
-                    placeholder="e.g. Facility A"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Notes</label>
-                  <textarea
-                    className="form-control form-control-lg"
-                    name="notes"
-                    value={stockFormData.notes}
-                    onChange={handleStockInputChange}
-                    rows="2"
-                  ></textarea>
-                </div>
-              </div>
-              <div className="modal-footer border-top-0">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowStockOutModal(false)}>
-                  Cancel
-                </button>
-                <button type="button" className="btn btn-warning" onClick={handleStockOut}>
-                  Stock Out
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Movement History Modal */}
+      {/* ===== MOVEMENT HISTORY MODAL ===== */}
       {showHistoryModal && currentItem && (
-        <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
-          <div className="modal-dialog modal-dialog-centered modal-lg">
+        <div className="modal show d-block" tabIndex="-1">
+          <div className="modal-dialog modal-lg">
             <div className="modal-content">
-              <div className="modal-header border-bottom-0">
-                <h5 className="modal-title">Movement History: {currentItem.name}</h5>
+              <div className="modal-header">
+                <h5 className="modal-title">Movement History: {currentItem.item_name}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowHistoryModal(false)}></button>
               </div>
               <div className="modal-body">
-                <div className="table-responsive">
-                  <table className="table table-striped table-hover">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Type</th>
-                        <th>Quantity</th>
-                        <th>Source/Destination</th>
-                        <th>Notes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentItem.movementHistory && currentItem.movementHistory.length > 0 ? (
-                        currentItem.movementHistory.map((movement, index) => (
-                          <tr key={index}>
-                            <td>{formatDate(movement.date)}</td>
-                            <td>
-                              <span className={`badge ${movement.type === 'IN' ? 'bg-success' : 'bg-warning'}`}>
-                                {movement.type}
-                              </span>
-                            </td>
-                            <td>{movement.quantity} {currentItem.unit}</td>
-                            <td>{movement.source || movement.destination || '—'}</td>
-                            <td>{movement.notes || '—'}</td>
-                          </tr>
-                        ))
-                      ) : (
+                <p className="text-muted">Recent stock movements for <strong>{currentItem.item_code}</strong></p>
+                
+                {movementsLoading ? (
+                  <div className="text-center py-4">
+                    <div className="spinner-border" role="status">
+                      <span className="visually-hidden">Loading movements...</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="table-responsive">
+                    <table className="table table-sm">
+                      <thead>
                         <tr>
-                          <td colSpan="5" className="text-center">No movement history available</td>
+                          <th>Date</th>
+                          <th>Type</th>
+                          <th>Quantity</th>
+                          <th>From / To</th>
+                          <th>Reference</th>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {movements.length === 0 ? (
+                          <tr>
+                            <td colSpan="5" className="text-center py-3">No movement history found for this item.</td>
+                          </tr>
+                        ) : (
+                          movements.map((movement, index) => (
+                            <tr key={index}>
+                              <td>{new Date(movement.date).toLocaleDateString()}</td>
+                              <td>{getMovementTypeBadge(movement.type)}</td>
+                              <td className={movement.quantity > 0 ? "text-success" : "text-danger"}>
+                                {movement.quantity > 0 ? '+' : ''}{movement.quantity}
+                              </td>
+                              <td>{movement.from_to || '-'}</td>
+                              <td>{movement.reference || '-'}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowHistoryModal(false)}>Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Item Modal */}
+      {showViewModal && viewItem && (
+        <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header border-bottom-0">
+                <h5 className="modal-title">Item Details: {viewItem.item_name}</h5>
+                <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Item Code:</div>
+                  <div className="col-6">{viewItem.item_code}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Name:</div>
+                  <div className="col-6">{viewItem.item_name}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Category:</div>
+                  <div className="col-6">{viewItem.category}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Description:</div>
+                  <div className="col-6">{viewItem.description || '—'}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Stock:</div>
+                  <div className="col-6">{viewItem.quantity} {viewItem.unit}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Unit:</div>
+                  <div className="col-6">{viewItem.unit}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Reorder Level:</div>
+                  <div className="col-6">{viewItem.reorder_level}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Item Cost:</div>
+                  <div className="col-6">${viewItem.item_cost ? parseFloat(viewItem.item_cost).toFixed(2) : '0.00'}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Expiry Date:</div>
+                  <div className="col-6">{viewItem.expiry_date ? formatDate(viewItem.expiry_date) : 'N/A'}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Facility:</div>
+                  <div className="col-6">{viewItem.facility_name || 'Central Warehouse'}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Last Updated:</div>
+                  <div className="col-6">{new Date(viewItem.updated_at).toLocaleString()}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-6 fw-bold">Status:</div>
+                  <div className="col-6">{getStatusBadge(calculateStatus(viewItem))}</div>
                 </div>
               </div>
               <div className="modal-footer border-top-0">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowHistoryModal(false)}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowViewModal(false)}>
                   Close
                 </button>
               </div>
@@ -1196,7 +1383,7 @@ const WarehouseInventory = () => {
         </div>
       )}
       
-      {(showAddModal || showEditModal || showStockInModal || showStockOutModal || showHistoryModal) && (
+      {(showAddModal || showEditModal || showRestockModal || showViewModal || showHistoryModal) && (
         <div className="modal-backdrop fade show"></div>
       )}
     </div>

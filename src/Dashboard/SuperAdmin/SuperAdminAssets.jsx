@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   FaSearch, FaEye, FaEdit, FaUserPlus, FaUserMinus, FaPlus
 } from 'react-icons/fa';
-import BaseUrl from '../../Api/BaseUrl';
-import axios from 'axios';
 import axiosInstance from '../../Api/axiosInstance';
+import Swal from 'sweetalert2';
 
 const SuperAdminAssets = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -13,6 +12,7 @@ const SuperAdminAssets = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [currentAsset, setCurrentAsset] = useState(null);
+  
   const [newAsset, setNewAsset] = useState({
     id: '',
     name: '',
@@ -22,11 +22,11 @@ const SuperAdminAssets = () => {
     manufacturer: '',
     purchase_date: '',
     warranty_expiry: '',
-    facility_id: 1,
     department: '',
     assigned_to: '',
     status: 'active'
   });
+
   const [createAsset, setCreateAsset] = useState({
     name: '',
     type: 'Medical Equipment',
@@ -35,15 +35,17 @@ const SuperAdminAssets = () => {
     manufacturer: '',
     purchase_date: '',
     warranty_expiry: '',
-    facility_id: 1,
     department: ''
   });
+
   const [assignForm, setAssignForm] = useState({ facility_id: '' });
   const [assets, setAssets] = useState([]);
   const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [facilitiesLoading, setFacilitiesLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Pagination state
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -51,14 +53,18 @@ const SuperAdminAssets = () => {
     itemsPerPage: 10
   });
 
-  // Fetch assets from API
+  // Filter states
+  const [filterType, setFilterType] = useState('');
+  const [filterStatus, setFilterStatus] = useState('active');
+
+  // Fetch assets from API with filters
   const fetchAssets = async (page = 1, type = '', status = 'active') => {
     setLoading(true);
     setError(null);
     try {
       const params = {
         page,
-        limit: 10
+        limit: pagination.itemsPerPage
       };
       
       if (type) params.type = type;
@@ -67,8 +73,13 @@ const SuperAdminAssets = () => {
       const response = await axiosInstance.get('/assets', { params });
       
       if (response.data.success) {
-        setAssets(response.data.data);
-        setPagination(response.data.data);
+        setAssets(response.data.data || []);
+        setPagination({
+          currentPage: response.data.currentPage || 1,
+          totalPages: response.data.totalPages || 1,
+          totalItems: response.data.totalItems || 0,
+          itemsPerPage: response.data.itemsPerPage || 10
+        });
       } else {
         setError('Failed to fetch assets');
       }
@@ -86,16 +97,17 @@ const SuperAdminAssets = () => {
       const response = await axiosInstance.get('/facilities');
       
       if (response.data.success) {
-        setFacilities(response.data.data.facilities);
-        // Set default facility_id to the first facility if available
-        if (response.data.data.facilities.length > 0 && !assignForm.facility_id) {
-          setAssignForm(prev => ({ ...prev, facility_id: response.data.data.facilities[0].id }));
+        const facilitiesList = response.data.data || [];
+        setFacilities(facilitiesList);
+        
+        if (facilitiesList.length > 0 && !assignForm.facility_id) {
+          setAssignForm(prev => ({ ...prev, facility_id: String(facilitiesList[0].id) }));
         }
       } else {
-        console.error('Failed to fetch facilities data');
+        setError('Failed to fetch facilities');
       }
     } catch (err) {
-      console.error('Failed to fetch facilities data:', err);
+      setError('Error fetching facilities: ' + (err.response?.data?.message || err.message));
     } finally {
       setFacilitiesLoading(false);
     }
@@ -104,11 +116,15 @@ const SuperAdminAssets = () => {
   // Create a new asset
   const handleCreateAsset = async () => {
     try {
-      const response = await axiosInstance.post('/assets', createAsset);
+      const payload = { ...createAsset };
+      if (assignForm.facility_id) {
+        payload.facility_id = parseInt(assignForm.facility_id, 10);
+      }
+
+      const response = await axiosInstance.post('/assets', payload);
       
       if (response.data.success) {
         setShowCreateModal(false);
-        // Reset form
         setCreateAsset({
           name: '',
           type: 'Medical Equipment',
@@ -117,35 +133,45 @@ const SuperAdminAssets = () => {
           manufacturer: '',
           purchase_date: '',
           warranty_expiry: '',
-          facility_id: 1,
           department: ''
         });
-        // Refresh assets list
-        fetchAssets(pagination.currentPage);
-        alert('Asset created successfully!');
+        fetchAssets(pagination.currentPage, filterType, filterStatus);
+        Swal.fire('Success!', 'Asset created successfully!', 'success');
       } else {
-        alert('Failed to create asset: ' + (response.data.message || 'Unknown error'));
+        Swal.fire('Error!', 'Failed to create asset: ' + (response.data.message || 'Unknown error'), 'error');
       }
     } catch (err) {
-      alert('Error creating asset: ' + (err.response?.data?.message || err.message));
+      Swal.fire('Error!', 'Error creating asset: ' + (err.response?.data?.message || err.message), 'error');
     }
   };
 
-  // Update an existing asset
+  // Handle edit asset
   const handleEditAsset = async () => {
     try {
-      const response = await axiosInstance.put(`/assets/${newAsset.id}`, newAsset);
+      const payload = {
+        name: newAsset.name,
+        type: newAsset.type,
+        serial_number: newAsset.serial_number,
+        model: newAsset.model,
+        manufacturer: newAsset.manufacturer,
+        purchase_date: newAsset.purchase_date,
+        warranty_expiry: newAsset.warranty_expiry,
+        department: newAsset.department,
+        assigned_to: newAsset.assigned_to ? parseInt(newAsset.assigned_to, 10) : null,
+        status: newAsset.status
+      };
+
+      const response = await axiosInstance.put(`/assets/${newAsset.id}`, payload);
       
       if (response.data.success) {
         setShowEditModal(false);
-        // Refresh assets list
-        fetchAssets(pagination.currentPage);
-        alert('Asset updated successfully!');
+        fetchAssets(pagination.currentPage, filterType, filterStatus);
+        Swal.fire('Success!', 'Asset updated successfully!', 'success');
       } else {
-        alert('Failed to update asset: ' + (response.data.message || 'Unknown error'));
+        Swal.fire('Error!', 'Failed to update asset: ' + (response.data.message || 'Unknown error'), 'error');
       }
     } catch (err) {
-      alert('Error updating asset: ' + (err.response?.data?.message || err.message));
+      Swal.fire('Error!', 'Error updating asset: ' + (err.response?.data?.message || err.message), 'error');
     }
   };
 
@@ -153,21 +179,20 @@ const SuperAdminAssets = () => {
   const handleAssignAsset = async () => {
     try {
       const payload = {
-        facility_id: parseInt(assignForm.facility_id)
+        facility_id: parseInt(assignForm.facility_id, 10)
       };
       
       const response = await axiosInstance.put(`/assets/facility/${currentAsset.id}`, payload);
       
       if (response.data.success) {
         setShowAssignModal(false);
-        // Refresh assets list
-        fetchAssets(pagination.currentPage);
-        alert('Asset assigned to facility successfully!');
+        fetchAssets(pagination.currentPage, filterType, filterStatus);
+        Swal.fire('Success!', 'Asset assigned to facility successfully!', 'success');
       } else {
-        alert('Failed to assign asset to facility: ' + (response.data.message || 'Unknown error'));
+        Swal.fire('Error!', 'Failed to assign asset: ' + (response.data.message || 'Unknown error'), 'error');
       }
     } catch (err) {
-      alert('Error assigning asset to facility: ' + (err.response?.data?.message || err.message));
+      Swal.fire('Error!', 'Error assigning asset: ' + (err.response?.data?.message || err.message), 'error');
     }
   };
 
@@ -176,6 +201,17 @@ const SuperAdminAssets = () => {
     fetchAssets();
     fetchFacilities();
   }, []);
+
+  // Auto-fetch when filters change
+  useEffect(() => {
+    fetchAssets(1, filterType, filterStatus);
+  }, [filterType, filterStatus]);
+
+  // Handle pagination change
+  const handlePageChange = (page) => {
+    setPagination(prev => ({ ...prev, currentPage: page }));
+    fetchAssets(page, filterType, filterStatus);
+  };
 
   // Badges
   const StatusBadge = ({ status }) => {
@@ -189,7 +225,11 @@ const SuperAdminAssets = () => {
   };
 
   // Handlers
-  const openViewModal = (asset) => { setCurrentAsset(asset); setShowViewModal(true); };
+  const openViewModal = (asset) => { 
+    setCurrentAsset(asset); 
+    setShowViewModal(true); 
+  };
+
   const openEditModal = (asset) => { 
     setNewAsset({
       id: asset.id,
@@ -200,18 +240,19 @@ const SuperAdminAssets = () => {
       manufacturer: asset.manufacturer,
       purchase_date: asset.purchase_date ? asset.purchase_date.split('T')[0] : '',
       warranty_expiry: asset.warranty_expiry ? asset.warranty_expiry.split('T')[0] : '',
-      facility_id: asset.facility_id,
       department: asset.department,
-      assigned_to: asset.assigned_to,
+      assigned_to: asset.assigned_to ? String(asset.assigned_to) : '',
       status: asset.status
     }); 
     setShowEditModal(true); 
   };
+
   const openAssignModal = (asset) => {
     setCurrentAsset(asset);
-    setAssignForm({ 
-      facility_id: asset.facility_id || (facilities.length > 0 ? facilities[0].id : '')
-    });
+    const defaultFacilityId = asset.facility_id 
+      ? String(asset.facility_id) 
+      : (facilities.length > 0 ? String(facilities[0].id) : '');
+    setAssignForm({ facility_id: defaultFacilityId });
     setShowAssignModal(true);
   };
 
@@ -229,20 +270,22 @@ const SuperAdminAssets = () => {
     setAssignForm({ facility_id: e.target.value });
   };
 
-  // Search
-  const filtered = assets.filter(a => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      a.id.toString().toLowerCase().includes(q) ||
-      a.name.toLowerCase().includes(q) ||
-      a.type.toLowerCase().includes(q) ||
-      a.department.toLowerCase().includes(q) ||
-      a.serial_number.toLowerCase().includes(q) ||
-      (a.assigned_to_name && a.assigned_to_name.toLowerCase().includes(q)) ||
-      a.status.toLowerCase().includes(q)
-    );
-  });
+  // Search and filter logic
+  const filtered = useMemo(() => {
+    return assets.filter(a => {
+      const q = searchTerm.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        a.id.toString().toLowerCase().includes(q) ||
+        a.name.toLowerCase().includes(q) ||
+        a.type.toLowerCase().includes(q) ||
+        a.department.toLowerCase().includes(q) ||
+        a.serial_number.toLowerCase().includes(q) ||
+        (a.assigned_to_name && a.assigned_to_name.toLowerCase().includes(q)) ||
+        a.status.toLowerCase().includes(q)
+      );
+    });
+  }, [assets, searchTerm]);
 
   // Stats calculation
   const totalAssets = assets.length;
@@ -250,29 +293,56 @@ const SuperAdminAssets = () => {
   const maintenanceAssets = assets.filter(a => a.status === 'maintenance').length;
   const needAttentionAssets = assets.filter(a => a.status === 'active' && !a.assigned_to).length;
 
+  // Get unique asset types for filter dropdown
+  const assetTypes = useMemo(() => {
+    return [...new Set(assets.map(a => a.type))].sort();
+  }, [assets]);
+
   return (
     <div className="container-fluid py-3">
       {/* Toolbar */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-stretch align-items-md-center gap-2 mb-4">
         <h2 className="fw-bold mb-0">Assets Management</h2>
         <div className="d-flex flex-column flex-sm-row align-items-stretch gap-2 w-90 w-md-auto">
-          <div className="input-group">
-            <input
-              type="text"
-              className="form-control form-control-sm"
-              style={{ height: "40px" }}
-              placeholder="Search assets..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              aria-label="Search assets"
-            />
-            <button className="btn btn-outline-secondary btn-sm" style={{ height: "40px" }} type="button">
-              <FaSearch />
-            </button>
-          </div>
-          <button  className="btn btn-primary btn-sm" style={{ height: "40px",whiteSpace:"nowrap " }} onClick={() => setShowCreateModal(true)}>
-            <FaPlus  className="me-1" /> Add Asset
+         
+          <button className="btn btn-primary btn-sm" style={{ height: "40px", whiteSpace: "nowrap" }} onClick={() => setShowCreateModal(true)}>
+            <FaPlus className="me-1" /> Add Asset
           </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="card border-0 shadow-sm mb-4">
+        <div className="card-body">
+          <div className="row g-3">
+            <div className="col-md-6">
+              <label className="form-label">Filter by Type</label>
+              <select 
+                className="form-select" 
+                value={filterType} 
+                onChange={(e) => setFilterType(e.target.value)}
+              >
+                <option value="">All Types</option>
+                {assetTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+            <div className="col-md-6">
+              <label className="form-label">Filter by Status</label>
+              <select 
+                className="form-select" 
+                value={filterStatus} 
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="maintenance">Maintenance</option>
+                <option value="retired">Retired</option>
+                <option value="">All Statuses</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -340,7 +410,7 @@ const SuperAdminAssets = () => {
         ) : error ? (
           <div className="card-body text-center p-5">
             <div className="alert alert-danger">{error}</div>
-            <button className="btn btn-primary" onClick={() => fetchAssets()}>Retry</button>
+            <button className="btn btn-primary" onClick={() => fetchAssets(pagination.currentPage, filterType, filterStatus)}>Retry</button>
           </div>
         ) : (
           <>
@@ -361,9 +431,9 @@ const SuperAdminAssets = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((asset) => (
+                    {filtered.map((asset,index) => (
                       <tr key={asset.id}>
-                        <td className="fw-bold">{asset.id}</td>
+                        <td className="fw-bold">{index+1}</td>
                         <td>{asset.name}</td>
                         <td>{asset.type}</td>
                         <td>{asset.serial_number}</td>
@@ -459,10 +529,85 @@ const SuperAdminAssets = () => {
         )}
       </div>
 
+      {/* Pagination */}
+      {!loading && !error && filtered.length > 0 && (
+        <nav className="d-flex justify-content-center mt-4">
+          <ul className="pagination">
+            <li className={`page-item ${pagination.currentPage === 1 ? 'disabled' : ''}`}>
+              <button 
+                className="page-link" 
+                onClick={() => handlePageChange(pagination.currentPage - 1)}
+                disabled={pagination.currentPage === 1}
+              >
+                Previous
+              </button>
+            </li>
+            
+            {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+              let page;
+              if (pagination.totalPages <= 5) {
+                page = i + 1;
+              } else {
+                if (pagination.currentPage <= 3) {
+                  page = i + 1;
+                } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                  page = pagination.totalPages - 4 + i;
+                } else {
+                  page = pagination.currentPage - 2 + i;
+                }
+              }
+              return page;
+            }).map(page => (
+              <li 
+                key={page} 
+                className={`page-item ${pagination.currentPage === page ? 'active' : ''}`}
+              >
+                <button 
+                  className="page-link" 
+                  onClick={() => handlePageChange(page)}
+                >
+                  {page}
+                </button>
+              </li>
+            ))}
+            
+            {pagination.totalPages > 5 && (
+              <>
+                {pagination.currentPage < pagination.totalPages - 2 && (
+                  <li className="page-item disabled">
+                    <span className="page-link">...</span>
+                  </li>
+                )}
+                {pagination.currentPage < pagination.totalPages - 1 && (
+                  <li className="page-item">
+                    <button 
+                      className="page-link" 
+                      onClick={() => handlePageChange(pagination.totalPages)}
+                    >
+                      {pagination.totalPages}
+                    </button>
+                  </li>
+                )}
+              </>
+            )}
+            
+            <li className={`page-item ${pagination.currentPage === pagination.totalPages ? 'disabled' : ''}`}>
+              <button 
+                className="page-link" 
+                onClick={() => handlePageChange(pagination.currentPage + 1)}
+                disabled={pagination.currentPage === pagination.totalPages}
+              >
+                Next
+              </button>
+            </li>
+          </ul>
+        </nav>
+      )}
+
       {/* View Modal */}
       {showViewModal && currentAsset && (
         <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
+          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Asset Details: {currentAsset.id}</h5>
@@ -491,7 +636,7 @@ const SuperAdminAssets = () => {
       {/* Create Modal */}
       {showCreateModal && (
         <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
+          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Create New Asset</h5>
@@ -536,6 +681,27 @@ const SuperAdminAssets = () => {
                   <label className="form-label">Department</label>
                   <input type="text" className="form-control" name="department" value={createAsset.department} onChange={handleCreateChange} />
                 </div>
+                <div className="mb-3">
+                  <label className="form-label">Facility</label>
+                  {facilitiesLoading ? (
+                    <div className="form-select disabled">
+                      <span>Loading...</span>
+                    </div>
+                  ) : (
+                    <select 
+                      className="form-select" 
+                      value={assignForm.facility_id}
+                      onChange={(e) => setAssignForm({ facility_id: e.target.value })}
+                    >
+                      <option value="">Select Facility (Optional)</option>
+                      {facilities.map((facility) => (
+                        <option key={facility.id} value={facility.id}>
+                          {facility.name} ({facility.location})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>Cancel</button>
@@ -549,7 +715,7 @@ const SuperAdminAssets = () => {
       {/* Edit Modal */}
       {showEditModal && (
         <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
+          <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Edit Asset: {newAsset.id}</h5>
@@ -620,7 +786,7 @@ const SuperAdminAssets = () => {
       {/* Assign/Unassign Modal */}
       {showAssignModal && currentAsset && (
         <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down">
+          <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Assign Asset to Facility</h5>
@@ -634,9 +800,11 @@ const SuperAdminAssets = () => {
                 <div className="mb-3">
                   <label className="form-label">Assign to Facility</label>
                   {facilitiesLoading ? (
-                    <div className="form-select">
-                      <option>Loading facilities...</option>
+                    <div className="form-select disabled">
+                      <span>Loading facilities...</span>
                     </div>
+                  ) : facilities.length === 0 ? (
+                    <div className="text-muted">No facilities available</div>
                   ) : (
                     <select 
                       className="form-select" 
@@ -667,7 +835,7 @@ const SuperAdminAssets = () => {
           </div>
         </div>
       )}
-
+          
       {/* Backdrop */}
       {(showViewModal || showEditModal || showAssignModal || showCreateModal) && <div className="modal-backdrop show"></div>}
     </div>

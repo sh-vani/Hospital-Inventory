@@ -11,76 +11,149 @@ import {
   Spinner,
 } from "react-bootstrap";
 import axios from "axios";
-import axiosInstance from "../Api/axiosInstance";
+import BaseUrl from "../Api/BaseUrl";
 
 const FacilityDashboard = () => {
   const [inventoryData, setInventoryData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Modal States
   const [selectedItem, setSelectedItem] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // ✅ Get facility_id from localStorage (assuming you stored user object as JSON)
-  const facilityId = JSON.parse(localStorage.getItem("user"))?.facility_id;
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const entriesPerPage = 10;
 
-  // ✅ Fetch Inventory from API
+  // ✅ Get facility ID from localStorage (no default fallback)
+  const [facilityId, setFacilityId] = useState(null);
+
   useEffect(() => {
-    const fetchInventory = async () => {
+    const userStr =
+      localStorage.getItem("user") ||
+      localStorage.getItem("userData") ||
+      localStorage.getItem("authUser");
+
+    if (userStr) {
       try {
-        const response = await axiosInstance.get(
-          `/inventory`
+        const user = JSON.parse(userStr);
+        if (user && user.facility_id) {
+          setFacilityId(user.facility_id);
+        } else {
+          setError("Facility ID not found in user data.");
+          setLoading(false);
+        }
+      } catch (e) {
+        console.error("Error parsing user data:", e);
+        setError("Invalid user data in localStorage.");
+        setLoading(false);
+      }
+    } else {
+      setError("User not found. Please log in as a facility user.");
+      setLoading(false);
+    }
+  }, []);
+
+  // ✅ Fetch inventory data using new API endpoint
+  useEffect(() => {
+    if (!facilityId) return;
+
+    const fetchInventoryData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await axios.get(
+          `${BaseUrl}/inventory/fasilities/${facilityId}`
         );
-        const items = response.data?.data || [];
 
-        // ✅ Filter items with matching facility_id
-        const filteredItems = items.filter(
-          (item) => item.facility_id === facilityId
-        );
+        if (response.data?.success) {
+          const rawData = Array.isArray(response.data.data)
+            ? response.data.data
+            : [response.data.data];
 
-        // ✅ Map API data into table-friendly format
-        const formattedItems = filteredItems.map((item) => ({
-          id: item.id,
-          code: item.item_code,
-          name: item.item_name,
-          qty: item.quantity,
-          reserved: 0, // Reserved value (if available from API, replace here)
-          lastReceipt: new Date(item.updated_at).toLocaleDateString(),
-          category: item.category,
-          description: item.description,
-          unit: item.unit,
-        }));
+          const transformedData = rawData.map((item) => ({
+            id: item.id,
+            code: item.item_code || "N/A",
+            name: item.item_name || "Unnamed Item",
+            qty: item.quantity || 0,
+            reserved: item.reserved || 0,
+            lastReceipt: item.updated_at
+              ? new Date(item.updated_at).toLocaleDateString()
+              : "N/A",
+            category: item.category || "Uncategorized",
+            description: item.description || "-",
+            unit: item.unit || "Unit",
+            facility_name: item.facility_name || "Unknown Facility",
+          }));
 
-        setInventoryData(formattedItems);
-      } catch (error) {
-        console.error("Error fetching inventory:", error);
+          setInventoryData(transformedData);
+        } else {
+          setInventoryData([]);
+          setError("No data found for this facility.");
+        }
+      } catch (err) {
+        console.error("Error fetching facility inventory:", err);
+        setError("Failed to fetch inventory data.");
+        setInventoryData([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchInventory();
+    fetchInventoryData();
   }, [facilityId]);
 
-  // ✅ Handle View
+  // ✅ View item details
   const handleView = (item) => {
     setSelectedItem(item);
     setShowViewModal(true);
   };
 
-  // ✅ Handle Edit
+  // ✅ Edit item details
   const handleEdit = (item) => {
     setSelectedItem(item);
     setShowEditModal(true);
   };
 
-  // ✅ Handle Save (Edit Modal)
-  const handleSaveEdit = () => {
-    setInventoryData((prev) =>
-      prev.map((item) => (item.id === selectedItem.id ? selectedItem : item))
-    );
-    setShowEditModal(false);
+  // ✅ Save updated item (PUT API)
+  const handleSaveEdit = async () => {
+    if (!selectedItem) return;
+    try {
+      const updatedData = {
+        quantity: selectedItem.qty,
+        reserved: selectedItem.reserved,
+      };
+
+      await axios.put(`${BaseUrl}/inventory/${selectedItem.id}`, updatedData);
+
+      // Update state after save
+      setInventoryData((prev) =>
+        prev.map((item) =>
+          item.id === selectedItem.id ? { ...item, ...updatedData } : item
+        )
+      );
+
+      setShowEditModal(false);
+      alert("Item updated successfully!");
+    } catch (error) {
+      console.error("Error updating item:", error);
+      alert("Failed to update item. Please try again.");
+    }
+  };
+
+  // ✅ Pagination logic
+  const totalPages = Math.ceil(inventoryData.length / entriesPerPage);
+  const indexOfLastEntry = currentPage * entriesPerPage;
+  const currentEntries = inventoryData.slice(
+    indexOfLastEntry - entriesPerPage,
+    indexOfLastEntry
+  );
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
   return (
@@ -108,94 +181,125 @@ const FacilityDashboard = () => {
                   <Spinner animation="border" variant="primary" />
                   <p className="mt-2">Loading inventory...</p>
                 </div>
+              ) : error ? (
+                <p className="text-center text-danger py-4">{error}</p>
               ) : inventoryData.length === 0 ? (
                 <p className="text-center text-muted py-5">
-                  No inventory data available for this facility.
+                  No inventory data available.
                 </p>
               ) : (
-                <Table responsive striped hover>
-                  <thead>
-                    <tr>
-                      <th>Item Code</th>
-                      <th>Item Name</th>
-                      <th>Available Qty</th>
-                      <th>Reserved</th>
-                      <th>Last Receipt</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {inventoryData.map((item) => (
-                      <tr key={item.id}>
-                        <td>{item.code}</td>
-                        <td>{item.name}</td>
-                        <td>{item.qty}</td>
-                        <td>{item.reserved}</td>
-                        <td>{item.lastReceipt}</td>
-                        <td>
-                          <Button
-                            size="sm"
-                            variant="outline-primary"
-                            className="me-2"
-                            onClick={() => handleView(item)}
-                          >
-                            View
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline-success"
-                            onClick={() => handleEdit(item)}
-                          >
-                            Edit
-                          </Button>
-                        </td>
+                <>
+                  <Table responsive striped hover>
+                    <thead>
+                      <tr>
+                        <th>Item Code</th>
+                        <th>Item Name</th>
+                        <th>Available Qty</th>
+                        <th>Reserved</th>
+                        <th>Last Receipt</th>
+                        <th>Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </Table>
+                    </thead>
+                    <tbody>
+                      {currentEntries.map((item) => (
+                        <tr key={item.id}>
+                          <td>{item.code}</td>
+                          <td>{item.name}</td>
+                          <td>{item.qty}</td>
+                          <td>{item.reserved}</td>
+                          <td>{item.lastReceipt}</td>
+                          <td>
+                            <Button
+                              size="sm"
+                              variant="outline-primary"
+                              className="me-2"
+                              onClick={() => handleView(item)}
+                            >
+                              View
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline-success"
+                              onClick={() => handleEdit(item)}
+                            >
+                              Edit
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </>
               )}
             </Card.Body>
           </Card>
         </Col>
       </Row>
 
+      {/* Pagination */}
+      <div className="d-flex justify-content-end mt-3">
+        <nav>
+          <ul className="pagination mb-0">
+            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage - 1)}
+              >
+                Previous
+              </button>
+            </li>
+            {[...Array(totalPages)].map((_, i) => {
+              const page = i + 1;
+              return (
+                <li
+                  key={page}
+                  className={`page-item ${
+                    currentPage === page ? "active" : ""
+                  }`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => handlePageChange(page)}
+                  >
+                    {page}
+                  </button>
+                </li>
+              );
+            })}
+            <li
+              className={`page-item ${
+                currentPage === totalPages || totalPages === 0 ? "disabled" : ""
+              }`}
+            >
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage + 1)}
+              >
+                Next
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
       {/* View Modal */}
-      <Modal
-        show={showViewModal}
-        onHide={() => setShowViewModal(false)}
-        centered
-      >
+      <Modal show={showViewModal} onHide={() => setShowViewModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Item Details</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           {selectedItem && (
-            <div>
-              <p>
-                <strong>Item Code:</strong> {selectedItem.code}
-              </p>
-              <p>
-                <strong>Name:</strong> {selectedItem.name}
-              </p>
-              <p>
-                <strong>Available Qty:</strong> {selectedItem.qty}
-              </p>
-              <p>
-                <strong>Reserved:</strong> {selectedItem.reserved}
-              </p>
-              <p>
-                <strong>Last Receipt:</strong> {selectedItem.lastReceipt}
-              </p>
-              <p>
-                <strong>Category:</strong> {selectedItem.category}
-              </p>
-              <p>
-                <strong>Description:</strong> {selectedItem.description}
-              </p>
-              <p>
-                <strong>Unit:</strong> {selectedItem.unit}
-              </p>
-            </div>
+            <>
+              <p><strong>Item Code:</strong> {selectedItem.code}</p>
+              <p><strong>Name:</strong> {selectedItem.name}</p>
+              <p><strong>Available Qty:</strong> {selectedItem.qty}</p>
+              <p><strong>Reserved:</strong> {selectedItem.reserved}</p>
+              <p><strong>Last Receipt:</strong> {selectedItem.lastReceipt}</p>
+              <p><strong>Category:</strong> {selectedItem.category}</p>
+              <p><strong>Description:</strong> {selectedItem.description}</p>
+              <p><strong>Unit:</strong> {selectedItem.unit}</p>
+              <p><strong>Facility:</strong> {selectedItem.facility_name}</p>
+            </>
           )}
         </Modal.Body>
         <Modal.Footer>
@@ -206,11 +310,7 @@ const FacilityDashboard = () => {
       </Modal>
 
       {/* Edit Modal */}
-      <Modal
-        show={showEditModal}
-        onHide={() => setShowEditModal(false)}
-        centered
-      >
+      <Modal show={showEditModal} onHide={() => setShowEditModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Edit Item</Modal.Title>
         </Modal.Header>
@@ -223,7 +323,10 @@ const FacilityDashboard = () => {
                   type="number"
                   value={selectedItem.qty}
                   onChange={(e) =>
-                    setSelectedItem({ ...selectedItem, qty: e.target.value })
+                    setSelectedItem({
+                      ...selectedItem,
+                      qty: parseInt(e.target.value) || 0,
+                    })
                   }
                 />
               </Form.Group>
@@ -233,7 +336,10 @@ const FacilityDashboard = () => {
                   type="number"
                   value={selectedItem.reserved}
                   onChange={(e) =>
-                    setSelectedItem({ ...selectedItem, reserved: e.target.value })
+                    setSelectedItem({
+                      ...selectedItem,
+                      reserved: parseInt(e.target.value) || 0,
+                    })
                   }
                 />
               </Form.Group>

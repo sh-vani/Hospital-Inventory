@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaEye, FaTimes } from 'react-icons/fa';
+import { FaPlus, FaEye, FaTrash } from 'react-icons/fa';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import BaseUrl from '../../Api/BaseUrl';
 import axiosInstance from '../../Api/axiosInstance';
-import Swal from 'sweetalert2'; // ✅ Import SweetAlert2
+// import Swal from 'sweetalert2';
 
 const FacilityUserRequisition = () => {
   // Form states
@@ -34,6 +34,10 @@ const FacilityUserRequisition = () => {
   // Real facility items from API
   const [facilityItems, setFacilityItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(true);
+
+  // ✅ Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const entriesPerPage = 10;
 
   // Get user from localStorage
   const getUserFromStorage = () => {
@@ -71,52 +75,46 @@ const FacilityUserRequisition = () => {
   };
 
   // Fetch facility items with retry mechanism
-// Fetch facility items with retry mechanism
-const fetchFacilityItems = async (facilityId) => {
-  try {
-    setLoadingItems(true);
-    const response = await fetchWithRetry(() =>
-      axiosInstance.get(`${BaseUrl}/inventory/${facilityId}`)
-    );
-    console.log(response.data);
-    if (response.data.success) {
-      // ✅ Handle both cases:
-      // Case 1: data is an array → use as-is
-      // Case 2: data is a single object → wrap in array
-      let items = [];
-      if (Array.isArray(response.data.data)) {
-        items = response.data.data;
-      } else if (response.data.data && typeof response.data.data === 'object') {
-        // Assume it's a single item → convert to array
-        items = [response.data.data];
+  const fetchFacilityItems = async (facilityId) => {
+    try {
+      setLoadingItems(true);
+      const response = await fetchWithRetry(() =>
+        axiosInstance.get(`${BaseUrl}/inventory/${facilityId}`)
+      );
+      if (response.data.success) {
+        let items = [];
+        if (Array.isArray(response.data.data)) {
+          items = response.data.data;
+        } else if (response.data.data && typeof response.data.data === 'object') {
+          items = [response.data.data];
+        }
+        setFacilityItems(items);
+      } else {
+        setFacilityItems([]);
       }
-      setFacilityItems(items);
-    } else {
+    } catch (error) {
+      console.error('Failed to fetch facility items:', error);
       setFacilityItems([]);
-    }
-  } catch (error) {
-    console.error('Failed to fetch facility items:', error);
-    setFacilityItems([]);
 
-    if (error.response?.status === 429) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Too Many Requests',
-        text: 'Please wait a moment and try again.',
-        timer: 3000,
-        showConfirmButton: false
-      });
-    } else {
-      Swal.fire({
-        icon: 'error',
-        title: 'Fetch Failed',
-        text: 'Failed to fetch facility items. Please try again later.'
-      });
+      if (error.response?.status === 429) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Too Many Requests',
+          text: 'Please wait a moment and try again.',
+          timer: 3000,
+          showConfirmButton: false
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Fetch Failed',
+          text: 'Failed to fetch facility items. Please try again later.'
+        });
+      }
+    } finally {
+      setLoadingItems(false);
     }
-  } finally {
-    setLoadingItems(false);
-  }
-};
+  };
 
   // Fetch requisition history
   const fetchRequisitionHistory = async (userId) => {
@@ -124,16 +122,16 @@ const fetchFacilityItems = async (facilityId) => {
       const response = await axiosInstance.get(`${BaseUrl}/requisitions/user/${userId}`);
       if (response.data.success && Array.isArray(response.data.data)) {
         const formatted = response.data.data
-        .map(req => ({
-          id: req.id,
-          item_name: req.items?.length > 0 ? req.items[0].item_name : 'N/A',
-          status: (req.status || '').charAt(0).toUpperCase() + (req.status || '').slice(1),
-          priority: (req.priority || 'normal').charAt(0).toUpperCase() + (req.priority || 'normal').slice(1),
-          remarks: req.remarks || '',
-          items: Array.isArray(req.items) ? req.items : []
-        }))
-        .sort((a, b) => a.id - b.id); // Sort by ID descending
-      setRequisitionHistory(formatted);
+          .map(req => ({
+            id: req.id,
+            item_name: req.items?.length > 0 ? req.items[0].item_name : 'N/A',
+            status: (req.status || '').charAt(0).toUpperCase() + (req.status || '').slice(1),
+            priority: (req.priority || 'normal').charAt(0).toUpperCase() + (req.priority || 'normal').slice(1),
+            remarks: req.remarks || '',
+            items: Array.isArray(req.items) ? req.items : []
+          }))
+          .sort((a, b) => b.id - a.id); // Sort by ID descending
+        setRequisitionHistory(formatted);
       } else {
         setRequisitionHistory([]);
       }
@@ -165,7 +163,6 @@ const fetchFacilityItems = async (facilityId) => {
     }
   }, []);
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -198,7 +195,7 @@ const fetchFacilityItems = async (facilityId) => {
           {
             item_id: parseInt(selectedItem),
             quantity: parseInt(quantity),
-            priority: priority.toLowerCase()
+            priority: priority.toLowerCase() // ✅ Send lowercase to backend
           }
         ]
       };
@@ -346,6 +343,22 @@ const fetchFacilityItems = async (facilityId) => {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
+  // ✅ Pagination logic
+  const totalPages = Math.ceil(filteredRequisitions.length / entriesPerPage);
+  const indexOfLastEntry = currentPage * entriesPerPage;
+  const currentEntries = filteredRequisitions.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // Reset to page 1 when filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, priorityFilter]);
+
   return (
     <div className="container py-4">
       <div className="card shadow">
@@ -355,7 +368,7 @@ const fetchFacilityItems = async (facilityId) => {
         </div>
 
         <div className="card-body">
-          {/* Success alert (optional: you can remove this since SweetAlert shows success) */}
+          {/* Success alert */}
           {success && (
             <div className="alert alert-success alert-dismissible fade show" role="alert">
               <strong>Success!</strong> Your requisition has been submitted to Facility Admin.
@@ -367,20 +380,6 @@ const fetchFacilityItems = async (facilityId) => {
             <div>
               <div className="text-muted small">Department: {department}</div>
               <div>User: {username}</div>
-            </div>
-
-            {/* Priority */}
-            <div className="mb-3">
-              <label className="form-label">Priority</label>
-              <select
-                className="form-select"
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-              >
-                <option value="Normal">Normal</option>
-                <option value="High">High</option>
-                <option value="Urgent">Urgent</option>
-              </select>
             </div>
 
             {/* Requisition Type */}
@@ -496,8 +495,8 @@ const fetchFacilityItems = async (facilityId) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRequisitions.length > 0 ? (
-                    filteredRequisitions.map((req,index) => (
+                  {currentEntries.length > 0 ? (
+                    currentEntries.map((req, index) => (
                       <tr key={req.id}>
                         <td>{req.id}</td>
                         <td>{req.item_name || 'N/A'}</td>
@@ -527,7 +526,7 @@ const fetchFacilityItems = async (facilityId) => {
                               onClick={() => handleCancelRequisition(req.id)}
                               disabled={loading}
                             >
-                              <FaTimes />
+                              <FaTrash />
                             </button>
                           )}
                         </td>
@@ -546,8 +545,53 @@ const fetchFacilityItems = async (facilityId) => {
                 </tbody>
               </table>
             </div>
+
+
           </div>
         </div>
+      </div>
+      {/* ✅ PAGINATION UI — Always shown when not loading */}
+      <div className="d-flex justify-content-end mt-3">
+        <nav>
+          <ul className="pagination mb-0">
+            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+            </li>
+
+            {[...Array(totalPages)].map((_, i) => {
+              const page = i + 1;
+              return (
+                <li
+                  key={page}
+                  className={`page-item ${currentPage === page ? 'active' : ''}`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => handlePageChange(page)}
+                  >
+                    {page}
+                  </button>
+                </li>
+              );
+            })}
+
+            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                Next
+              </button>
+            </li>
+          </ul>
+        </nav>
       </div>
 
       {/* Create Requisition Modal */}
@@ -560,7 +604,10 @@ const fetchFacilityItems = async (facilityId) => {
               <button
                 type="button"
                 className="btn-close"
-                onClick={() => setShowRequisitionModal(false)}
+                onClick={() => {
+                  setShowRequisitionModal(false);
+                  setPriority('Normal');
+                }}
               ></button>
             </div>
             <div className="modal-body">
@@ -600,6 +647,7 @@ const fetchFacilityItems = async (facilityId) => {
                   />
                 </div>
 
+                {/* Priority dropdown — ONLY IN MODAL */}
                 <div className="mb-3">
                   <label className="form-label">Priority</label>
                   <select
@@ -628,7 +676,10 @@ const fetchFacilityItems = async (facilityId) => {
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    onClick={() => setShowRequisitionModal(false)}
+                    onClick={() => {
+                      setShowRequisitionModal(false);
+                      setPriority('Normal');
+                    }}
                   >
                     Cancel
                   </button>
@@ -717,7 +768,7 @@ const fetchFacilityItems = async (facilityId) => {
                               <td>{item.quantity}</td>
                               <td>
                                 <span className={`badge ${getPriorityBadgeClass(item.priority || 'Normal')}`}>
-                                  {(item.priority || 'normal').charAt(0).toUpperCase() + (item.priority || 'normal').slice(1)}
+                                  {item.priority || 'Normal'}
                                 </span>
                               </td>
                               {item.description && <td>{item.description}</td>}
@@ -814,6 +865,7 @@ const fetchFacilityItems = async (facilityId) => {
       {showDetailModal && <div className="modal-backdrop fade show"></div>}
       {showItemDetailModal && <div className="modal-backdrop fade show"></div>}
     </div>
+
   );
 };
 
