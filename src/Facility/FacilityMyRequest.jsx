@@ -351,8 +351,6 @@ function FacilityMyRequest() {
                 <th>Item Name</th>
                 <th>Requested Qty</th>
                 <th>Facility Stock</th>
-                
-
                 <th>Status</th>
                 <th>Raised On</th>
                 <th className="text-center">Actions</th>
@@ -396,7 +394,7 @@ function FacilityMyRequest() {
                     <td>{req.raisedOn}</td>
                     <td className="text-center">
                       <div className="d-flex justify-content-center gap-2 flex-wrap">
-                        {req.status === 'Delivered' && (
+                        {/* {req.status === 'Delivered' && (
                           <>
                             <button 
                               className="btn btn-sm btn-success" 
@@ -413,7 +411,7 @@ function FacilityMyRequest() {
                               Disapprove
                             </button>
                           </>
-                        )}
+                        )} */}
                         <button 
                           className="btn btn-sm btn-outline-secondary" 
                           onClick={() => handleViewDetail(req)}
