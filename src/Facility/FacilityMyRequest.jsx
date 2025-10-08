@@ -351,7 +351,8 @@ function FacilityMyRequest() {
                 <th>Item Name</th>
                 <th>Requested Qty</th>
                 <th>Facility Stock</th>
-                <th>Priority</th>
+                
+
                 <th>Status</th>
                 <th>Raised On</th>
                 <th className="text-center">Actions</th>
@@ -372,17 +373,7 @@ function FacilityMyRequest() {
                     <td>{req.item}</td>
                     <td>{req.qty}</td>
                     <td>{req.facilityStock}</td>
-                    <td>
-                      <span className={`badge rounded-pill ${
-                        req.priority === 'Normal' 
-                          ? 'bg-secondary-subtle text-secondary-emphasis' 
-                          : req.priority === 'High' 
-                            ? 'bg-warning-subtle text-warning-emphasis' 
-                            : 'bg-danger-subtle text-danger-emphasis'
-                      } px-3 py-1`}>
-                        {req.priority}
-                      </span>
-                    </td>
+              
                     <td>
                       <span className={`badge rounded-pill ${
                         req.status === 'Pending' 

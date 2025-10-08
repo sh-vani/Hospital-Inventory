@@ -21,7 +21,8 @@ function FacilityRequisitions() {
         { status: 'Raised by User', timestamp: '27-Sep-2025 10:00' },
         { status: 'Seen by Facility Admin', timestamp: '27-Sep-2025 10:30' }
       ],
-      remarksLog: []
+      remarksLog: [],
+      expiryDate: '30-Dec-2025' // Added expiry date
     },
     {
       id: 'REQ-2025-102',
@@ -38,7 +39,8 @@ function FacilityRequisitions() {
         { status: 'Raised by User', timestamp: '26-Sep-2025 09:15' },
         { status: 'Seen by Facility Admin', timestamp: '26-Sep-2025 09:45' }
       ],
-      remarksLog: []
+      remarksLog: [],
+      expiryDate: '15-Nov-2025' // Added expiry date
     },
     {
       id: 'REQ-2025-103',
@@ -58,7 +60,8 @@ function FacilityRequisitions() {
       ],
       remarksLog: [
         { user: 'Facility Admin', remark: 'Urgent request, no stock available', timestamp: '25-Sep-2025 12:30' }
-      ]
+      ],
+      expiryDate: '20-Oct-2025' // Added expiry date
     },
     {
       id: 'REQ-2025-104',
@@ -78,7 +81,8 @@ function FacilityRequisitions() {
       ],
       remarksLog: [
         { user: 'Facility Admin', remark: 'Insufficient stock', timestamp: '24-Sep-2025 15:20' }
-      ]
+      ],
+      expiryDate: '05-Oct-2025' // Near expiry item
     },
     {
       id: 'REQ-2025-105',
@@ -98,7 +102,8 @@ function FacilityRequisitions() {
       ],
       remarksLog: [
         { user: 'Facility Admin', remark: 'Delivered from available stock', timestamp: '23-Sep-2025 10:45' }
-      ]
+      ],
+      expiryDate: '30-Dec-2025' // Added expiry date
     },
     {
       id: 'REQ-2025-106',
@@ -119,7 +124,8 @@ function FacilityRequisitions() {
       ],
       remarksLog: [
         { user: 'Facility Admin', remark: 'Delivered from available stock', timestamp: '22-Sep-2025 14:30' }
-      ]
+      ],
+      expiryDate: '15-Nov-2025' // Added expiry date
     },
     {
       id: 'REQ-2025-107',
@@ -139,7 +145,8 @@ function FacilityRequisitions() {
       ],
       remarksLog: [
         { user: 'Facility Admin', remark: 'Duplicate request', timestamp: '21-Sep-2025 12:15' }
-      ]
+      ],
+      expiryDate: '10-Oct-2025' // Near expiry item
     },
     // Add more mock data to test pagination (optional)
     ...Array.from({ length: 5 }, (_, i) => ({
@@ -154,13 +161,16 @@ function FacilityRequisitions() {
       status: 'Pending',
       raisedOn: '20-Sep-2025',
       statusTimeline: [{ status: 'Raised by User', timestamp: '20-Sep-2025 10:00' }],
-      remarksLog: []
+      remarksLog: [],
+      expiryDate: '15-Dec-2025' // Added expiry date
     }))
   ];
+  
   // Extract unique values for dropdown filters
   const users = [...new Set(initialRequisitions.map(req => req.user))];
   const items = [...new Set(initialRequisitions.map(req => req.item))];
   const departments = [...new Set(initialRequisitions.map(req => req.department))];
+  
   // State management
   const [activeTab, setActiveTab] = useState('all');
   const [requisitions, setRequisitions] = useState(initialRequisitions);
@@ -168,6 +178,8 @@ function FacilityRequisitions() {
   const [showRaiseModal, setShowRaiseModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [showSuggestionModal, setShowSuggestionModal] = useState(false);
   const [selectedRequisition, setSelectedRequisition] = useState(null);
   const [deliverQty, setDeliverQty] = useState('');
   const [deliverRemarks, setDeliverRemarks] = useState('');
@@ -175,6 +187,9 @@ function FacilityRequisitions() {
   const [raiseRemarks, setRaiseRemarks] = useState('');
   const [raiseRequiredQty, setRaiseRequiredQty] = useState('');
   const [rejectReason, setRejectReason] = useState('');
+  const [bulkRequisitionList, setBulkRequisitionList] = useState([]);
+  const [suggestedRequisitions, setSuggestedRequisitions] = useState([]);
+  
   // Filter states
   const [userFilter, setUserFilter] = useState('');
   const [itemFilter, setItemFilter] = useState('');
@@ -185,6 +200,72 @@ function FacilityRequisitions() {
   // ✅ Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 10;
+
+  // Check for items that need requisition suggestions (low stock, out of stock, near expiry)
+  useEffect(() => {
+    const today = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(today.getDate() + 30);
+    
+    const suggestions = [];
+    
+    // Check all items in the facility
+    const facilityItems = {};
+    
+    requisitions.forEach(req => {
+      if (req.facility === adminFacility) {
+        if (!facilityItems[req.item]) {
+          facilityItems[req.item] = {
+            name: req.item,
+            currentStock: req.facilityStock,
+            expiryDate: req.expiryDate,
+            avgMonthlyUsage: 10 // Default value, would be calculated from historical data
+          };
+        }
+      }
+    });
+    
+    // Check for low stock, out of stock, and near expiry
+    Object.values(facilityItems).forEach(item => {
+      const expiryDate = new Date(item.expiryDate);
+      
+      // Out of stock
+      if (item.currentStock === 0) {
+        suggestions.push({
+          item: item.name,
+          reason: 'Out of Stock',
+          priority: 'Urgent',
+          suggestedQty: item.avgMonthlyUsage * 2
+        });
+      }
+      // Low stock (less than 15 days of supply)
+      else if (item.currentStock < item.avgMonthlyUsage / 2) {
+        suggestions.push({
+          item: item.name,
+          reason: 'Low Stock',
+          priority: 'High',
+          suggestedQty: item.avgMonthlyUsage * 2
+        });
+      }
+      // Near expiry (within 30 days)
+      else if (expiryDate <= thirtyDaysFromNow) {
+        suggestions.push({
+          item: item.name,
+          reason: 'Near Expiry',
+          priority: 'Normal',
+          suggestedQty: item.avgMonthlyUsage * 3
+        });
+      }
+    });
+    
+    setSuggestedRequisitions(suggestions);
+    
+    // Show suggestion modal if there are new suggestions
+    if (suggestions.length > 0 && !sessionStorage.getItem('suggestionsShown')) {
+      setShowSuggestionModal(true);
+      sessionStorage.setItem('suggestionsShown', 'true');
+    }
+  }, [requisitions, adminFacility]);
 
   // Filter requisitions based on admin's facility, active tab, and other filters
   const filteredRequisitions = requisitions.filter(req => {
@@ -222,6 +303,31 @@ function FacilityRequisitions() {
     setCurrentPage(1);
   }, [activeTab, userFilter, itemFilter, departmentFilter, priorityFilter, searchTerm]);
 
+  // Get facility status for each requisition
+  const getFacilityStatus = (req) => {
+    const today = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(today.getDate() + 30);
+    const expiryDate = new Date(req.expiryDate);
+    
+    // Out of Stock condition
+    if (req.facilityStock === 0) {
+      return { status: 'Out of Stock', class: 'bg-danger-subtle text-danger-emphasis' };
+    }
+    // Near Expiry condition (within 30 days)
+    else if (expiryDate <= thirtyDaysFromNow) {
+      return { status: 'Near Expiry', class: 'bg-info-subtle text-info-emphasis' };
+    }
+    // Low Stock condition (requested quantity is more than available stock)
+    else if (req.qty > req.facilityStock) {
+      return { status: 'Low Stock', class: 'bg-warning-subtle text-warning-emphasis' };
+    }
+    // In Stock condition (sufficient stock and not near expiry)
+    else {
+      return { status: 'In Stock', class: 'bg-success-subtle text-success-emphasis' };
+    }
+  };
+
   // Handle deliver action
   const handleDeliver = (req) => {
     setSelectedRequisition(req);
@@ -229,6 +335,7 @@ function FacilityRequisitions() {
     setDeliverRemarks('');
     setShowDeliverModal(true);
   };
+  
   // Handle raise to warehouse action
   const handleRaiseToWarehouse = (req) => {
     setSelectedRequisition(req);
@@ -237,17 +344,51 @@ function FacilityRequisitions() {
     setRaiseRequiredQty(req.qty.toString());
     setShowRaiseModal(true);
   };
+  
+  // Handle add to bulk requisition list
+  const handleAddToBulkList = (req) => {
+    // Check if item already exists in bulk list
+    const existingItemIndex = bulkRequisitionList.findIndex(item => item.name === req.item);
+    
+    if (existingItemIndex >= 0) {
+      // Update existing item quantity
+      const updatedList = [...bulkRequisitionList];
+      updatedList[existingItemIndex] = {
+        ...updatedList[existingItemIndex],
+        qty: updatedList[existingItemIndex].qty + req.qty
+      };
+      setBulkRequisitionList(updatedList);
+    } else {
+      // Add new item to bulk list
+      setBulkRequisitionList([
+        ...bulkRequisitionList,
+        {
+          id: req.id,
+          name: req.item,
+          qty: req.qty,
+          priority: req.priority,
+          reason: 'User request'
+        }
+      ]);
+    }
+    
+    // Show confirmation
+    alert(`${req.item} added to bulk requisition list`);
+  };
+  
   // Handle reject action
   const handleReject = (req) => {
     setSelectedRequisition(req);
     setRejectReason('');
     setShowRejectModal(true);
   };
+  
   // Handle view detail action
   const handleViewDetail = (req) => {
     setSelectedRequisition(req);
     setShowViewModal(true);
   };
+  
   // Submit deliver action
   const submitDeliver = () => {
     if (!deliverQty || parseInt(deliverQty) <= 0 || parseInt(deliverQty) > selectedRequisition.facilityStock) {
@@ -283,6 +424,7 @@ function FacilityRequisitions() {
     setDeliverQty('');
     setDeliverRemarks('');
   };
+  
   // Submit raise to warehouse action
   const submitRaiseToWarehouse = () => {
     if (!raiseRequiredQty || parseInt(raiseRequiredQty) <= 0) {
@@ -320,6 +462,7 @@ function FacilityRequisitions() {
     setRaiseRemarks('');
     setRaiseRequiredQty('');
   };
+  
   // Submit reject action
   const submitReject = () => {
     if (!rejectReason.trim()) {
@@ -354,6 +497,7 @@ function FacilityRequisitions() {
     setSelectedRequisition(null);
     setRejectReason('');
   };
+  
   // Mark requisition as completed
   const markAsCompleted = (reqId) => {
     const updatedRequisitions = requisitions.map(req => {
@@ -372,6 +516,99 @@ function FacilityRequisitions() {
     });
     setRequisitions(updatedRequisitions);
   };
+  
+  // Submit bulk requisition
+  const submitBulkRequisition = () => {
+    if (bulkRequisitionList.length === 0) {
+      alert('Bulk requisition list is empty');
+      return;
+    }
+    
+    // Create a new requisition for the bulk order
+    const newBulkRequisition = {
+      id: `BULK-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      facility: adminFacility,
+      user: 'Facility Admin',
+      department: 'Administration',
+      item: 'Bulk Order',
+      qty: bulkRequisitionList.reduce((sum, item) => sum + item.qty, 0),
+      facilityStock: 0,
+      priority: 'Normal',
+      status: 'Processing',
+      raisedOn: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      statusTimeline: [
+        { status: 'Raised by Facility Admin', timestamp: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) },
+        { status: 'Raised to Warehouse', timestamp: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }
+      ],
+      remarksLog: [
+        { 
+          user: 'Facility Admin', 
+          remark: `Bulk requisition with ${bulkRequisitionList.length} items`, 
+          timestamp: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
+        }
+      ],
+      isBulk: true,
+      bulkItems: [...bulkRequisitionList]
+    };
+    
+    setRequisitions([...requisitions, newBulkRequisition]);
+    setBulkRequisitionList([]);
+    setShowBulkModal(false);
+    
+    alert('Bulk requisition submitted successfully');
+  };
+  
+  // Remove item from bulk list
+  const removeFromBulkList = (index) => {
+    const updatedList = [...bulkRequisitionList];
+    updatedList.splice(index, 1);
+    setBulkRequisitionList(updatedList);
+  };
+  
+  // Update item quantity in bulk list
+  const updateBulkItemQty = (index, newQty) => {
+    if (newQty <= 0) return;
+    
+    const updatedList = [...bulkRequisitionList];
+    updatedList[index] = {
+      ...updatedList[index],
+      qty: parseInt(newQty)
+    };
+    setBulkRequisitionList(updatedList);
+  };
+  
+  // Add suggested item to bulk list
+  const addSuggestedToBulk = (item) => {
+    // Check if item already exists in bulk list
+    const existingItemIndex = bulkRequisitionList.findIndex(bulkItem => bulkItem.name === item.item);
+    
+    if (existingItemIndex >= 0) {
+      // Update existing item quantity
+      const updatedList = [...bulkRequisitionList];
+      updatedList[existingItemIndex] = {
+        ...updatedList[existingItemIndex],
+        qty: updatedList[existingItemIndex].qty + item.suggestedQty
+      };
+      setBulkRequisitionList(updatedList);
+    } else {
+      // Add new item to bulk list
+      setBulkRequisitionList([
+        ...bulkRequisitionList,
+        {
+          id: `SUGG-${Date.now()}`,
+          name: item.item,
+          qty: item.suggestedQty,
+          priority: item.priority,
+          reason: item.reason
+        }
+      ]);
+    }
+    
+    // Remove from suggestions
+    const updatedSuggestions = suggestedRequisitions.filter(s => s.item !== item.item);
+    setSuggestedRequisitions(updatedSuggestions);
+  };
+  
   // Close modals
   const closeDeliverModal = () => {
     setShowDeliverModal(false);
@@ -379,6 +616,7 @@ function FacilityRequisitions() {
     setDeliverQty('');
     setDeliverRemarks('');
   };
+  
   const closeRaiseModal = () => {
     setShowRaiseModal(false);
     setSelectedRequisition(null);
@@ -386,15 +624,26 @@ function FacilityRequisitions() {
     setRaiseRemarks('');
     setRaiseRequiredQty('');
   };
+  
   const closeRejectModal = () => {
     setShowRejectModal(false);
     setSelectedRequisition(null);
     setRejectReason('');
   };
+  
   const closeViewModal = () => {
     setShowViewModal(false);
     setSelectedRequisition(null);
   };
+  
+  const closeBulkModal = () => {
+    setShowBulkModal(false);
+  };
+  
+  const closeSuggestionModal = () => {
+    setShowSuggestionModal(false);
+  };
+  
   // Reset all filters
   const resetFilters = () => {
     setUserFilter('');
@@ -412,7 +661,17 @@ function FacilityRequisitions() {
           <h1 className="mb-0">Requisitions (From Users)</h1>
           <p className="text-muted mb-0">Manage and process all requisitions raised by users in your facility.</p>
         </div>
+        <div>
+          <button 
+            className="btn btn-primary d-flex align-items-center gap-2"
+            onClick={() => setShowBulkModal(true)}
+          >
+            <i className="bi bi-cart-plus"></i>
+            Bulk Requisition ({bulkRequisitionList.length})
+          </button>
+        </div>
       </div>
+      
       {/* Filters */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">
@@ -457,16 +716,18 @@ function FacilityRequisitions() {
               </select>
             </div>
             <div className="col-md-2">
-              <label className="form-label small text-muted">Priority</label>
+              <label className="form-label small text-muted">Status</label>
               <select 
                 className="form-select" 
                 value={priorityFilter} 
                 onChange={(e) => setPriorityFilter(e.target.value)}
               >
-                <option value="">All Priorities</option>
-                <option value="Normal">Normal</option>
-                <option value="High">High</option>
-                <option value="Urgent">Urgent</option>
+                <option value="">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Processing">Processing</option>
+                <option value="Delivered">Delivered</option>
+                <option value="Completed">Completed</option>
+                <option value="Rejected">Rejected</option>
               </select>
             </div>
             <div className="col-md-2">
@@ -487,6 +748,7 @@ function FacilityRequisitions() {
           </div>
         </div>
       </div>
+      
       {/* Tabs */}
       <ul className="nav nav-tabs mb-4">
         <li className="nav-item">
@@ -538,6 +800,7 @@ function FacilityRequisitions() {
           </button>
         </li>
       </ul>
+      
       {/* Requisitions Table */}
       <div className="card border-0 shadow-sm">
         <div className="table-responsive">
@@ -550,7 +813,8 @@ function FacilityRequisitions() {
                 <th>Item Name</th>
                 <th>Requested Qty</th>
                 <th>Facility Stock</th>
-                <th>Priority</th>
+                <th>Facility Status</th>
+                <th>Expiry Date</th>
                 <th>Status</th>
                 <th>Raised On</th>
                 <th className="text-center">Actions</th>
@@ -559,147 +823,156 @@ function FacilityRequisitions() {
             <tbody>
               {currentEntries.length === 0 ? (
                 <tr>
-                  <td colSpan="10" className="text-center py-4 text-muted">
+                  <td colSpan="11" className="text-center py-4 text-muted">
                     No requisitions found for {adminFacility} with the current filters.
                   </td>
                 </tr>
               ) : (
-                currentEntries.map((req) => (
-                  <tr key={req.id}>
-                    <td className="fw-medium">{req.id}</td>
-                    <td>{req.user}</td>
-                    <td>{req.department}</td>
-                    <td>{req.item}</td>
-                    <td>{req.qty}</td>
-                    <td>{req.facilityStock}</td>
-                    <td>
-                      <span className={`badge rounded-pill ${
-                        req.priority === 'Normal' 
-                          ? 'bg-secondary-subtle text-secondary-emphasis' 
-                          : req.priority === 'High' 
-                            ? 'bg-warning-subtle text-warning-emphasis' 
-                            : 'bg-danger-subtle text-danger-emphasis'
-                      } px-3 py-1`}>
-                        {req.priority}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`badge rounded-pill ${
-                        req.status === 'Pending' 
-                          ? 'bg-secondary-subtle text-secondary-emphasis' 
-                          : req.status === 'Processing' 
-                            ? 'bg-warning-subtle text-warning-emphasis' 
-                            : req.status === 'Delivered' 
-                              ? 'bg-info-subtle text-info-emphasis' 
-                              : req.status === 'Completed'
-                                ? 'bg-success-subtle text-success-emphasis'
-                                : 'bg-danger-subtle text-danger-emphasis'
-                      } px-3 py-1`}>
-                        {req.status}
-                      </span>
-                    </td>
-                    <td>{req.raisedOn}</td>
-                    <td className="text-center">
-                      <div className="d-flex justify-content-center gap-2 flex-wrap">
-                        {req.status === 'Pending' && req.facilityStock >= req.qty && (
+                currentEntries.map((req) => {
+                  const facilityStatus = getFacilityStatus(req);
+                  return (
+                    <tr key={req.id}>
+                      <td className="fw-medium">
+                        {req.id}
+                        {req.isBulk && <span className="badge bg-primary ms-2">BULK</span>}
+                      </td>
+                      <td>{req.user}</td>
+                      <td>{req.department}</td>
+                      <td>{req.item}</td>
+                      <td>{req.qty}</td>
+                      <td>{req.facilityStock}</td>
+                      <td>
+                        <span className={`badge rounded-pill ${facilityStatus.class} px-3 py-1`}>
+                          {facilityStatus.status}
+                        </span>
+                      </td>
+                      <td>{req.expiryDate || 'N/A'}</td>
+                      <td>
+                        <span className={`badge rounded-pill ${
+                          req.status === 'Pending' 
+                            ? 'bg-secondary-subtle text-secondary-emphasis' 
+                            : req.status === 'Processing' 
+                              ? 'bg-warning-subtle text-warning-emphasis' 
+                              : req.status === 'Delivered' 
+                                ? 'bg-info-subtle text-info-emphasis' 
+                                : req.status === 'Completed'
+                                  ? 'bg-success-subtle text-success-emphasis'
+                                  : 'bg-danger-subtle text-danger-emphasis'
+                        } px-3 py-1`}>
+                          {req.status}
+                        </span>
+                      </td>
+                      <td>{req.raisedOn}</td>
+                      <td className="text-center">
+                        <div className="d-flex justify-content-center gap-2 flex-wrap">
+                          {req.status === 'Pending' && req.facilityStock >= req.qty && (
+                            <button 
+                              className="btn btn-sm btn-success" 
+                              onClick={() => handleDeliver(req)}
+                              title="Deliver"
+                            >
+                              Deliver
+                            </button>
+                          )}
+                          {req.status === 'Pending' && req.facilityStock < req.qty && (
+                            <>
+                              <button 
+                                className="btn btn-sm btn-primary" 
+                                onClick={() => handleRaiseToWarehouse(req)}
+                                title="Raise to Warehouse"
+                              >
+                                Raise to Warehouse
+                              </button>
+                              <button 
+                                className="btn btn-sm btn-info" 
+                                onClick={() => handleAddToBulkList(req)}
+                                title="Add to Bulk Requisition List"
+                              >
+                                Add to Bulk
+                              </button>
+                            </>
+                          )}
+                          {req.status === 'Pending' && (
+                            <button 
+                              className="btn btn-sm btn-danger" 
+                              onClick={() => handleReject(req)}
+                              title="Reject"
+                            >
+                              Reject
+                            </button>
+                          )}
+                          {req.status === 'Delivered' && (
+                            <button 
+                              className="btn btn-sm btn-success" 
+                              onClick={() => markAsCompleted(req.id)}
+                              title="Mark as Completed"
+                            >
+                              Complete
+                            </button>
+                          )}
                           <button 
-                            className="btn btn-sm btn-success" 
-                            onClick={() => handleDeliver(req)}
-                            title="Deliver"
+                            className="btn btn-sm btn-outline-secondary" 
+                            onClick={() => handleViewDetail(req)}
+                            title="View Details"
                           >
-                            Deliver
+                            View
                           </button>
-                        )}
-                        {req.status === 'Pending' && req.facilityStock < req.qty && (
-                          <button 
-                            className="btn btn-sm btn-primary" 
-                            onClick={() => handleRaiseToWarehouse(req)}
-                            title="Raise to Warehouse"
-                          >
-                            Raise to Warehouse
-                          </button>
-                        )}
-                        {req.status === 'Pending' && (
-                          <button 
-                            className="btn btn-sm btn-danger" 
-                            onClick={() => handleReject(req)}
-                            title="Reject"
-                          >
-                            Reject
-                          </button>
-                        )}
-                        {req.status === 'Delivered' && (
-                          <button 
-                            className="btn btn-sm btn-success" 
-                            onClick={() => markAsCompleted(req.id)}
-                            title="Mark as Completed"
-                          >
-                            Complete
-                          </button>
-                        )}
-                        <button 
-                          className="btn btn-sm btn-outline-secondary" 
-                          onClick={() => handleViewDetail(req)}
-                          title="View Details"
-                        >
-                          View
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
-
-        
       </div>
+      
       {/* ✅ PAGINATION UI — Same as your earlier components */}
-        <div className="d-flex justify-content-end mt-3">
-          <nav>
-            <ul className="pagination mb-3">
-              <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                <button
-                  className="page-link"
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </button>
-              </li>
+      <div className="d-flex justify-content-end mt-3">
+        <nav>
+          <ul className="pagination mb-3">
+            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+            </li>
 
-              {[...Array(totalPages)].map((_, i) => {
-                const page = i + 1;
-                return (
-                  <li
-                    key={page}
-                    className={`page-item ${currentPage === page ? 'active' : ''}`}
+            {[...Array(totalPages)].map((_, i) => {
+              const page = i + 1;
+              return (
+                <li
+                  key={page}
+                  className={`page-item ${currentPage === page ? 'active' : ''}`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => handlePageChange(page)}
                   >
-                    <button
-                      className="page-link"
-                      onClick={() => handlePageChange(page)}
-                    >
-                      {page}
-                    </button>
-                  </li>
-                );
-              })}
+                    {page}
+                  </button>
+                </li>
+              );
+            })}
 
-              <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
-                <button
-                  className="page-link"
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages || totalPages === 0}
-                >
-                  Next
-                </button>
-              </li>
-            </ul>
-          </nav>
-        </div>
+            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                Next
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
 
-      {/* Modals (unchanged) */}
+      {/* Modals */}
       {/* Deliver Modal */}
       {showDeliverModal && selectedRequisition && (
         <div 
@@ -738,6 +1011,10 @@ function FacilityRequisitions() {
                 <div className="row mb-3">
                   <div className="col-5 fw-bold text-muted">Facility Available Stock:</div>
                   <div className="col-7">{selectedRequisition.facilityStock}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-5 fw-bold text-muted">Expiry Date:</div>
+                  <div className="col-7">{selectedRequisition.expiryDate || 'N/A'}</div>
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Deliver Qty</label>
@@ -787,6 +1064,7 @@ function FacilityRequisitions() {
           </div>
         </div>
       )}
+      
       {/* Raise to Warehouse Modal */}
       {showRaiseModal && selectedRequisition && (
         <div 
@@ -825,6 +1103,10 @@ function FacilityRequisitions() {
                 <div className="row mb-3">
                   <div className="col-5 fw-bold text-muted">Facility Available Qty:</div>
                   <div className="col-7">{selectedRequisition.facilityStock}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-5 fw-bold text-muted">Expiry Date:</div>
+                  <div className="col-7">{selectedRequisition.expiryDate || 'N/A'}</div>
                 </div>
                 <div className="mb-3">
                   <label className="form-label">Required Qty</label>
@@ -882,6 +1164,7 @@ function FacilityRequisitions() {
           </div>
         </div>
       )}
+      
       {/* Reject Modal */}
       {showRejectModal && selectedRequisition && (
         <div 
@@ -917,6 +1200,10 @@ function FacilityRequisitions() {
                   <div className="col-5 fw-bold text-muted">Requested Qty:</div>
                   <div className="col-7">{selectedRequisition.qty}</div>
                 </div>
+                <div className="row mb-3">
+                  <div className="col-5 fw-bold text-muted">Expiry Date:</div>
+                  <div className="col-7">{selectedRequisition.expiryDate || 'N/A'}</div>
+                </div>
                 <div className="mb-3">
                   <label className="form-label">Reason for Rejection <span className="text-danger">*</span></label>
                   <textarea 
@@ -951,6 +1238,7 @@ function FacilityRequisitions() {
           </div>
         </div>
       )}
+      
       {/* View Detail Modal */}
       {showViewModal && selectedRequisition && (
         <div 
@@ -974,7 +1262,10 @@ function FacilityRequisitions() {
                   <div className="col-md-6">
                     <div className="row mb-3">
                       <div className="col-5 fw-bold text-muted">Req ID:</div>
-                      <div className="col-7">{selectedRequisition.id}</div>
+                      <div className="col-7">
+                        {selectedRequisition.id}
+                        {selectedRequisition.isBulk && <span className="badge bg-primary ms-2">BULK</span>}
+                      </div>
                     </div>
                     <div className="row mb-3">
                       <div className="col-5 fw-bold text-muted">User Name:</div>
@@ -1010,9 +1301,65 @@ function FacilityRequisitions() {
                     </div>
                   </div>
                 </div>
+                
+                {selectedRequisition.isBulk && (
+                  <div className="mb-4">
+                    <h6 className="fw-bold mb-3">Bulk Items</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Item Name</th>
+                            <th>Quantity</th>
+                            <th>Priority</th>
+                            <th>Reason</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedRequisition.bulkItems.map((item, index) => (
+                            <tr key={index}>
+                              <td>{item.name}</td>
+                              <td>{item.qty}</td>
+                              <td>
+                                <span className={`badge rounded-pill ${
+                                  item.priority === 'Normal' 
+                                    ? 'bg-secondary-subtle text-secondary-emphasis' 
+                                    : item.priority === 'High' 
+                                      ? 'bg-warning-subtle text-warning-emphasis' 
+                                      : 'bg-danger-subtle text-danger-emphasis'
+                                } px-3 py-1`}>
+                                  {item.priority}
+                                </span>
+                              </td>
+                              <td>{item.reason}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="row mb-3">
                   <div className="col-5 fw-bold text-muted">Facility Stock at Request Time:</div>
                   <div className="col-7">{selectedRequisition.facilityStock}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-5 fw-bold text-muted">Expiry Date:</div>
+                  <div className="col-7">{selectedRequisition.expiryDate || 'N/A'}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-5 fw-bold text-muted">Facility Status:</div>
+                  <div className="col-7">
+                    {(() => {
+                      const facilityStatus = getFacilityStatus(selectedRequisition);
+                      return (
+                        <span className={`badge rounded-pill ${facilityStatus.class} px-3 py-1`}>
+                          {facilityStatus.status}
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
                 <div className="row mb-3">
                   <div className="col-5 fw-bold text-muted">Current Status:</div>
@@ -1072,7 +1419,209 @@ function FacilityRequisitions() {
           </div>
         </div>
       )}
+      
+      {/* Bulk Requisition Modal */}
+      {showBulkModal && (
+        <div 
+          className="modal fade show" 
+          tabIndex="-1" 
+          style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} 
+          onClick={closeBulkModal}
+        >
+          <div className="modal-dialog modal-dialog-centered modal-lg" onClick={e => e.stopPropagation()}>
+            <div className="modal-content">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title fw-bold">Bulk Requisition List</h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={closeBulkModal}
+                ></button>
+              </div>
+              <div className="modal-body p-4">
+                {bulkRequisitionList.length === 0 ? (
+                  <div className="text-center py-4">
+                    <i className="bi bi-cart-x fs-1 text-muted"></i>
+                    <p className="mt-3 text-muted">No items in bulk requisition list</p>
+                    <p className="text-muted">Add items from pending requisitions or suggestions</p>
+                  </div>
+                ) : (
+                  <div className="table-responsive">
+                    <table className="table table-hover">
+                      <thead>
+                        <tr>
+                          <th>Item Name</th>
+                          <th>Quantity</th>
+                          <th>Priority</th>
+                          <th>Reason</th>
+                          <th className="text-center">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bulkRequisitionList.map((item, index) => (
+                          <tr key={index}>
+                            <td>{item.name}</td>
+                            <td>
+                              <input 
+                                type="number" 
+                                className="form-control form-control-sm" 
+                                value={item.qty} 
+                                onChange={(e) => updateBulkItemQty(index, e.target.value)}
+                                min="1"
+                              />
+                            </td>
+                            <td>
+                              <select 
+                                className="form-select form-select-sm" 
+                                value={item.priority} 
+                                onChange={(e) => {
+                                  const updatedList = [...bulkRequisitionList];
+                                  updatedList[index] = {
+                                    ...updatedList[index],
+                                    priority: e.target.value
+                                  };
+                                  setBulkRequisitionList(updatedList);
+                                }}
+                              >
+                                <option value="Normal">Normal</option>
+                                <option value="High">High</option>
+                                <option value="Urgent">Urgent</option>
+                              </select>
+                            </td>
+                            <td>{item.reason}</td>
+                            <td className="text-center">
+                              <button 
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() => removeFromBulkList(index)}
+                                title="Remove from list"
+                              >
+                                <i className="bi bi-trash"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer border-0 pt-0">
+                <div className="d-flex flex-column flex-sm-row gap-2 w-100">
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-secondary w-100" 
+                    onClick={closeBulkModal}
+                  >
+                    {bulkRequisitionList.length === 0 ? 'Close' : 'Cancel'}
+                  </button>
+                  {bulkRequisitionList.length > 0 && (
+                    <button 
+                      type="button" 
+                      className="btn btn-primary w-100" 
+                      onClick={submitBulkRequisition}
+                    >
+                      Submit Bulk Requisition
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Suggestion Modal */}
+      {showSuggestionModal && suggestedRequisitions.length > 0 && (
+        <div 
+          className="modal fade show" 
+          tabIndex="-1" 
+          style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} 
+          onClick={closeSuggestionModal}
+        >
+          <div className="modal-dialog modal-dialog-centered modal-lg" onClick={e => e.stopPropagation()}>
+            <div className="modal-content">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title fw-bold">Requisition Suggestions</h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  onClick={closeSuggestionModal}
+                ></button>
+              </div>
+              <div className="modal-body p-4">
+                <p className="text-muted mb-4">The following items need your attention based on stock levels and expiry dates:</p>
+                
+                <div className="table-responsive">
+                  <table className="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>Item Name</th>
+                        <th>Reason</th>
+                        <th>Priority</th>
+                        <th>Suggested Qty</th>
+                        <th className="text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {suggestedRequisitions.map((item, index) => (
+                        <tr key={index}>
+                          <td>{item.item}</td>
+                          <td>{item.reason}</td>
+                          <td>
+                            <span className={`badge rounded-pill ${
+                              item.priority === 'Normal' 
+                                ? 'bg-secondary-subtle text-secondary-emphasis' 
+                                : item.priority === 'High' 
+                                  ? 'bg-warning-subtle text-warning-emphasis' 
+                                  : 'bg-danger-subtle text-danger-emphasis'
+                            } px-3 py-1`}>
+                              {item.priority}
+                            </span>
+                          </td>
+                          <td>{item.suggestedQty}</td>
+                          <td className="text-center">
+                            <button 
+                              className="btn btn-sm btn-primary"
+                              onClick={() => addSuggestedToBulk(item)}
+                              title="Add to Bulk Requisition"
+                            >
+                              Add to Bulk
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="modal-footer border-0 pt-0">
+                <div className="d-flex flex-column flex-sm-row gap-2 w-100">
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-secondary w-100" 
+                    onClick={closeSuggestionModal}
+                  >
+                    Close
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-primary w-100" 
+                    onClick={() => {
+                      suggestedRequisitions.forEach(item => addSuggestedToBulk(item));
+                      closeSuggestionModal();
+                      setShowBulkModal(true);
+                    }}
+                  >
+                    Add All to Bulk
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
 export default FacilityRequisitions;
