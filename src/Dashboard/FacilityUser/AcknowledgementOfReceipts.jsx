@@ -339,48 +339,6 @@ const AcknowledgementOfReceipts = () => {
 
       {/* Modal Backdrop */}
       {showDetailModal && <div className="modal-backdrop fade show"></div>}
-
-      {/* Information Section - Responsive */}
-      <div className="card border-0 shadow-sm mt-4">
-        <div className="card-body">
-          <h5 className="card-title mb-3">About Receipt Acknowledgement</h5>
-          <div className="row g-4">
-            {/* Confirmation Process Card */}
-            <div className="col-12 col-md-6">
-              <div className="card h-100 border-0" style={{ backgroundColor: '#e1f5fe' }}>
-                <div className="card-body">
-                  <div className="d-flex align-items-center mb-3">
-                    <div className="bg-primary bg-opacity-10 p-3 rounded-circle me-3 flex-shrink-0">
-                      <FaEye size={24} className="text-primary" />
-                    </div>
-                    <h5 className="card-title mb-0">View Receipt Details</h5>
-                  </div>
-                  <p className="card-text">
-                    Click the "View" button to see complete details of your receipt including item information, condition, notes, and any attached documents or photos.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Important Notes Card */}
-            <div className="col-12 col-md-6">
-              <div className="card h-100 border-0" style={{ backgroundColor: '#fff8e1' }}>
-                <div className="card-body">
-                  <div className="d-flex align-items-center mb-3">
-                    <div className="bg-warning bg-opacity-10 p-3 rounded-circle me-3 flex-shrink-0">
-                      <FaExclamationTriangle size={24} className="text-warning" />
-                    </div>
-                    <h5 className="card-title mb-0">Important Notes</h5>
-                  </div>
-                  <p className="card-text">
-                    Receipt details provide a complete record of your acknowledged items. This includes dispatch information, receipt confirmation, condition reports, and any supporting documentation.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
