@@ -1,22 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { FaSearch } from 'react-icons/fa';
-import axios from 'axios';
-import BaseUrl from '../../Api/BaseUrl';
 import axiosInstance from '../../Api/axiosInstance';
 
 const WarehouseRequisitions = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [showRejectModal, setShowRejectModal] = useState(false);
   const [showApproveModal, setShowApproveModal] = useState(false);
-  const [showPartialApproveModal, setShowPartialApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
   const [currentRequisition, setCurrentRequisition] = useState(null);
-  const [currentItem, setCurrentItem] = useState(null);
   const [rejectingRequisition, setRejectingRequisition] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
-  const [approveQty, setApproveQty] = useState('');
+  const [approveQuantities, setApproveQuantities] = useState({});
   const [remarks, setRemarks] = useState('');
-  const [partialApproveQty, setPartialApproveQty] = useState('');
-  const [partialRemarks, setPartialRemarks] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -28,24 +22,24 @@ const WarehouseRequisitions = () => {
     itemsPerPage: 10
   });
 
-  // Fetch requisitions from API
+  const userId = JSON.parse(localStorage.getItem("user"))?.id;
+
+  // Fetch requisitions
   const fetchRequisitions = async (page = 1) => {
     setLoading(true);
     try {
-      const response = await axios.get(`${BaseUrl}/requisitions?page=${page}`);
+      const response = await axiosInstance.get(`/requisitions?page=${page}`);
       if (response.data.success) {
-        // ✅ Use real items from API — no mock data
         const requisitionsData = response.data.data.map(req => ({
           ...req,
-          // Ensure items exist; if not, fallback to empty array
           items: Array.isArray(req.items) ? req.items : []
         }));
 
         setRequisitions(requisitionsData);
         setPagination({
           currentPage: page,
-          totalPages: Math.ceil(response.data.total / 10) || 1, // ✅ Use actual total from API
-          totalItems: response.data.total || response.data.data.length,
+          totalPages: Math.ceil(response.data.total / 10) || 1,
+          totalItems: response.data.total || 0,
           itemsPerPage: 10
         });
       } else {
@@ -64,33 +58,29 @@ const WarehouseRequisitions = () => {
 
   const StatusBadge = ({ status }) => {
     const statusColors = {
-      pending: 'bg-warning',
-      approved: 'bg-success',
-      rejected: 'bg-danger',
-      dispatched: 'bg-info',
-      'partially approved': 'bg-info'
+      pending: 'bg-warning text-white',
+      approved: 'bg-success text-white',
+      rejected: 'bg-danger text-white',
+      dispatched: 'bg-info text-white',
+      'partially approved': 'bg-primary text-white'
     };
     return (
-      <span className={`badge ${statusColors[status?.toLowerCase()] || 'bg-secondary'} text-dark`}>
+      <span className={`badge ${statusColors[status?.toLowerCase()] || 'bg-secondary text-white'}`}>
         {status || 'Unknown'}
       </span>
     );
   };
 
-  const openApproveModal = (req, item) => {
+  // Open modal for bulk approval (all items in requisition)
+  const openBulkApproveModal = (req) => {
+    const initialQuantities = {};
+    req.items.forEach(item => {
+      initialQuantities[item.item_id] = item.quantity || 0;
+    });
+    setApproveQuantities(initialQuantities);
     setCurrentRequisition(req);
-    setCurrentItem(item);
-    setApproveQty(item.quantity?.toString() || '0');
     setRemarks('');
     setShowApproveModal(true);
-  };
-
-  const openPartialApproveModal = (req, item) => {
-    setCurrentRequisition(req);
-    setCurrentItem(item);
-    setPartialApproveQty(item.quantity?.toString() || '0');
-    setPartialRemarks('');
-    setShowPartialApproveModal(true);
   };
 
   const openRejectModal = (req) => {
@@ -99,34 +89,32 @@ const WarehouseRequisitions = () => {
     setShowRejectModal(true);
   };
 
-  const userId = JSON.parse(localStorage.getItem("user"))?.id;
-
+  // Handle bulk approval
   const handleApproveSubmit = async () => {
-    if (!currentRequisition || !currentItem) return;
+    if (!currentRequisition) return;
 
     setLoading(true);
     try {
+      const items = currentRequisition.items.map(item => ({
+        item_id: item.item_id,
+        approved_quantity: parseInt(approveQuantities[item.item_id]) || 0
+      }));
+
       const payload = {
-        items: [
-          {
-            item_id: currentItem.item_id,
-            approved_quantity: parseInt(approveQty) || 0
-          }
-        ],
+        items,
         remarks: remarks || 'Approved without remarks',
-        userId: userId
+        userId
       };
 
       const response = await axiosInstance.patch(`/requisitions/${currentRequisition.id}/approve`, payload);
 
       if (response.data.success) {
-        setRequisitions(requisitions.map(req => {
+        setRequisitions(prev => prev.map(req => {
           if (req.id === currentRequisition.id) {
-            const updatedItems = req.items.map(item =>
-              item.item_id === currentItem.item_id
-                ? { ...item, approved_quantity: parseInt(approveQty) || 0 }
-                : item
-            );
+            const updatedItems = req.items.map(item => ({
+              ...item,
+              approved_quantity: parseInt(approveQuantities[item.item_id]) || 0
+            }));
             return { ...req, status: 'approved', items: updatedItems };
           }
           return req;
@@ -142,50 +130,6 @@ const WarehouseRequisitions = () => {
     }
   };
 
-  const handlePartialApproveSubmit = async () => {
-    if (!currentRequisition || !currentItem || !partialApproveQty || parseInt(partialApproveQty) <= 0) {
-      alert('Please enter a valid quantity');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const payload = {
-        items: [
-          {
-            item_id: currentItem.item_id,
-            approved_quantity: parseInt(partialApproveQty)
-          }
-        ],
-        remarks: partialRemarks || 'Partially approved without remarks'
-      };
-
-      const response = await axios.patch(`${BaseUrl}/requisitions/${currentRequisition.id}/approve`, payload);
-
-      if (response.data.success) {
-        setRequisitions(requisitions.map(req => {
-          if (req.id === currentRequisition.id) {
-            const updatedItems = req.items.map(item =>
-              item.item_id === currentItem.item_id
-                ? { ...item, approved_quantity: parseInt(partialApproveQty) }
-                : item
-            );
-            return { ...req, status: 'partially approved', items: updatedItems };
-          }
-          return req;
-        }));
-        setShowPartialApproveModal(false);
-      } else {
-        setError(response.data.message || 'Failed to partially approve requisition');
-      }
-    } catch (err) {
-      setError('Error partially approving requisition: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const user_Id = JSON.parse(localStorage.getItem("user"))?.id;
   const handleReject = async () => {
     if (!rejectingRequisition || !rejectionReason.trim()) {
       alert('Please provide a reason for rejection.');
@@ -196,21 +140,23 @@ const WarehouseRequisitions = () => {
     try {
       const payload = {
         remarks: rejectionReason,
-        user_Id: user_Id,
+        userId,
         items: rejectingRequisition.items.map(item => ({
           item_id: item.item_id,
           approved_quantity: 0
         }))
       };
 
-      const response = await axios.put(`${BaseUrl}/requisitions/${rejectingRequisition.id}/reject`, payload);
+      const response = await axiosInstance.put(`/requisitions/${rejectingRequisition.id}/reject`, payload);
 
       if (response.data.success) {
-        setRequisitions(requisitions.map(req =>
-          req.id === rejectingRequisition.id
-            ? { ...req, status: 'rejected' }
-            : req
-        ));
+        setRequisitions(prev =>
+          prev.map(req =>
+            req.id === rejectingRequisition.id
+              ? { ...req, status: 'rejected' }
+              : req
+          )
+        );
         setShowRejectModal(false);
       } else {
         setError(response.data.message || 'Failed to reject requisition');
@@ -259,7 +205,7 @@ const WarehouseRequisitions = () => {
           <input
             type="text"
             className="form-control"
-            placeholder="Search requisitions..."
+            placeholder="Search by ID or Facility..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -283,7 +229,7 @@ const WarehouseRequisitions = () => {
                     <h5 className={`card-title text-${status === 'Pending' ? 'warning' : status === 'Approved' ? 'success' : status === 'Rejected' ? 'danger' : 'info'} fw-bold mb-0`}>
                       {requisitions.filter(r => r.status?.toLowerCase() === status.toLowerCase()).length}
                     </h5>
-                    <p className="card-text text-muted">{status} Requests</p>
+                    <p className="card-text text-muted">{status} Requisitions</p>
                   </div>
                 </div>
               </div>
@@ -301,70 +247,71 @@ const WarehouseRequisitions = () => {
                 <tr>
                   <th>Req ID</th>
                   <th>Facility</th>
-                  <th>Item</th>
-                  <th>Qty</th>
+                  <th>Items</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRequisitions.length > 0 ? (
-                  filteredRequisitions.map((req, index) =>
-                    req.items && req.items.length > 0 ? (
-                      req.items.map((item, idx) => (
-                        <tr key={`${req.id}-${item.item_id || idx}`}>
-                          <td>{req.id}</td>
-                          <td>{req.facility_name || 'N/A'}</td>
-                          <td>{item.item_name || 'N/A'}</td>
-                          <td>{item.quantity || 0} {item.unit || ''}</td>
-                          <td><StatusBadge status={req.status} /></td>
-                          <td className="d-flex gap-1">
-                            {/* ✅ Show actions ONLY if status is 'pending' */}
-                            {req.status?.toLowerCase() === 'pending' && (
-                              <>
-                                <button
-                                  className="btn btn-sm btn-success"
-                                  onClick={() => openApproveModal(req, item)}
-                                  disabled={loading}
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  className="btn btn-sm btn-warning"
-                                  onClick={() => openPartialApproveModal(req, item)}
-                                  disabled={loading}
-                                >
-                                  Partial Approve
-                                </button>
-                                <button
-                                  className="btn btn-sm btn-danger"
-                                  onClick={() => openRejectModal(req)}
-                                  disabled={loading}
-                                >
-                                  Reject
-                                </button>
-                              </>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr key={req.id}>
-                        <td>{req.id}</td>
-                        <td>{req.facility_name || 'N/A'}</td>
-                        <td colSpan="2" className="text-muted">No items</td>
-                        <td><StatusBadge status={req.status} /></td>
-                        <td className="d-flex gap-1">
-                          {req.status?.toLowerCase() === 'pending' && (
-                            <span className="text-muted">No actions</span>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  )
+                  filteredRequisitions.map((req) => (
+                    <tr key={req.id}>
+                      <td>#{req.id}</td>
+                      <td>{req.facility_name || 'N/A'}</td>
+                      <td>
+                        {req.items.length > 0 ? (
+                          <ul className="mb-0 ps-3" style={{ maxHeight: '100px', overflowY: 'auto' }}>
+                            {req.items.map((item, idx) => (
+                              <li key={item.item_id || idx}>
+                                <strong>{item.item_name || 'Unnamed'}</strong>: {item.quantity || 0} {item.unit || ''}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-muted">No items</span>
+                        )}
+                      </td>
+                      <td><StatusBadge status={req.status} /></td>
+                      <td>
+                        {req.status?.toLowerCase() === 'pending' && req.items?.length > 0 ? (
+                          <div className="d-flex flex-wrap gap-1">
+                            {/* Individual Approval (for first item only as example, or you can skip this) */}
+                            <button
+                              className="btn btn-sm btn-success"
+                              onClick={() => openApproveModalForItem(req, req.items[0])}
+                              disabled={loading}
+                              title="Approve first item (example)"
+                            >
+                              Approve Item
+                            </button>
+                            {/* Bulk Approval — approve all items together */}
+                            <button
+                              className="btn btn-sm btn-primary"
+                              onClick={() => openBulkApproveModal(req)}
+                              disabled={loading}
+                            >
+                              Bulk Approve
+                            </button>
+                            {/* Reject entire requisition */}
+                            <button
+                              className="btn btn-sm btn-danger"
+                              onClick={() => openRejectModal(req)}
+                              disabled={loading}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        ) : req.status?.toLowerCase() === 'pending' ? (
+                          <span className="text-muted">No items to approve</span>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
                 ) : (
                   <tr>
-                    <td colSpan="6" className="text-center py-4 text-muted">
+                    <td colSpan="5" className="text-center py-4 text-muted">
                       {loading ? 'Loading...' : 'No requisitions found'}
                     </td>
                   </tr>
@@ -402,8 +349,8 @@ const WarehouseRequisitions = () => {
         </div>
       </div>
 
-      {/* Approve Modal */}
-      {showApproveModal && currentRequisition && currentItem && (
+      {/* Approve Modal (Bulk Only) */}
+      {showApproveModal && currentRequisition && (
         <div className="modal fade show d-block" tabIndex="-1" onClick={(e) => {
           if (e.target.classList.contains('modal')) setShowApproveModal(false);
         }}>
@@ -415,87 +362,45 @@ const WarehouseRequisitions = () => {
               </div>
               <div className="modal-body">
                 <p><strong>Requisition ID:</strong> #{currentRequisition.id}</p>
-                <p><strong>Facility Name:</strong> {currentRequisition.facility_name}</p>
-                <p><strong>Item Name:</strong> {currentItem.item_name}</p>
-                <p><strong>Requested Qty:</strong> {currentItem.quantity} {currentItem.unit}</p>
+                <p><strong>Facility:</strong> {currentRequisition.facility_name}</p>
+
+                <h6>Approve Quantities</h6>
+                {currentRequisition.items.map(item => (
+                  <div key={item.item_id} className="mb-2">
+                    <label>{item.item_name} ({item.quantity} {item.unit})</label>
+                    <input
+                      type="number"
+                      className="form-control"
+                      value={approveQuantities[item.item_id] || ''}
+                      onChange={(e) =>
+                        setApproveQuantities(prev => ({
+                          ...prev,
+                          [item.item_id]: e.target.value
+                        }))
+                      }
+                      min="0"
+                      max={item.quantity}
+                    />
+                  </div>
+                ))}
 
                 <div className="mb-3">
-                  <label className="form-label">Approve Qty</label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    value={approveQty}
-                    onChange={(e) => setApproveQty(e.target.value)}
-                    max={currentItem.quantity}
-                    min="1"
-                  />
-                  <small className="text-muted">Maximum: {currentItem.quantity} {currentItem.unit}</small>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Remarks</label>
+                  <label className="form-label">Remarks (Optional)</label>
                   <textarea
                     className="form-control"
-                    rows="3"
+                    rows="2"
                     value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
+                    placeholder="Add remarks..."
                   ></textarea>
                 </div>
               </div>
               <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setShowApproveModal(false)} disabled={loading}>Cancel</button>
-                <button className="btn btn-success" onClick={handleApproveSubmit} disabled={loading}>
-                  {loading ? 'Processing...' : 'Submit'}
+                <button className="btn btn-secondary" onClick={() => setShowApproveModal(false)} disabled={loading}>
+                  Cancel
                 </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Partial Approve Modal */}
-      {showPartialApproveModal && currentRequisition && currentItem && (
-        <div className="modal fade show d-block" tabIndex="-1" onClick={(e) => {
-          if (e.target.classList.contains('modal')) setShowPartialApproveModal(false);
-        }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title fw-bold">Partially Approve Requisition</h5>
-                <button type="button" className="btn-close" onClick={() => setShowPartialApproveModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <p><strong>Requisition ID:</strong> #{currentRequisition.id}</p>
-                <p><strong>Facility Name:</strong> {currentRequisition.facility_name}</p>
-                <p><strong>Item Name:</strong> {currentItem.item_name}</p>
-                <p><strong>Requested Qty:</strong> {currentItem.quantity} {currentItem.unit}</p>
-
-                <div className="mb-3">
-                  <label className="form-label">Approve Qty <span className="text-danger">*</span></label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    value={partialApproveQty}
-                    onChange={(e) => setPartialApproveQty(e.target.value)}
-                    max={currentItem.quantity}
-                    min="1"
-                  />
-                  <small className="text-muted">Maximum: {currentItem.quantity} {currentItem.unit}</small>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Remarks</label>
-                  <textarea
-                    className="form-control"
-                    rows="3"
-                    value={partialRemarks}
-                    onChange={(e) => setPartialRemarks(e.target.value)}
-                    placeholder="Reason for partial approval"
-                  ></textarea>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setShowPartialApproveModal(false)} disabled={loading}>Cancel</button>
-                <button className="btn btn-warning" onClick={handlePartialApproveSubmit} disabled={loading}>
-                  {loading ? 'Processing...' : 'Partially Approve'}
+                <button className="btn btn-success" onClick={handleApproveSubmit} disabled={loading}>
+                  {loading ? 'Processing...' : 'Approve'}
                 </button>
               </div>
             </div>
@@ -516,7 +421,7 @@ const WarehouseRequisitions = () => {
               </div>
               <div className="modal-body">
                 <p><strong>Requisition ID:</strong> #{rejectingRequisition.id}</p>
-                <p><strong>Facility Name:</strong> {rejectingRequisition.facility_name}</p>
+                <p><strong>Facility:</strong> {rejectingRequisition.facility_name}</p>
                 <div className="mb-3">
                   <label className="form-label">Reason for rejection <span className="text-danger">*</span></label>
                   <textarea
@@ -524,12 +429,15 @@ const WarehouseRequisitions = () => {
                     value={rejectionReason}
                     onChange={(e) => setRejectionReason(e.target.value)}
                     rows="3"
-                    placeholder="Please provide a reason for rejection"
+                    placeholder="Please provide a valid reason"
+                    required
                   ></textarea>
                 </div>
               </div>
               <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setShowRejectModal(false)} disabled={loading}>Cancel</button>
+                <button className="btn btn-secondary" onClick={() => setShowRejectModal(false)} disabled={loading}>
+                  Cancel
+                </button>
                 <button className="btn btn-danger" onClick={handleReject} disabled={loading}>
                   {loading ? 'Processing...' : 'Reject'}
                 </button>
@@ -539,8 +447,8 @@ const WarehouseRequisitions = () => {
         </div>
       )}
 
-      {/* Modal Backdrop */}
-      {(showApproveModal || showPartialApproveModal || showRejectModal) && (
+      {/* Backdrop */}
+      {(showApproveModal || showRejectModal) && (
         <div className="modal-backdrop fade show"></div>
       )}
     </div>
