@@ -691,7 +691,7 @@ const WarehouseRequisitions = () => {
       )}
 
       {/* Reject Modal */}
-      {showRejectModal && rejectingRequisition && (
+      {/* {showRejectModal && rejectingRequisition && (
         <div className="modal fade show d-block" tabIndex="-1" onClick={(e) => {
           if (e.target.classList.contains('modal')) setShowRejectModal(false);
         }}>
@@ -727,12 +727,8 @@ const WarehouseRequisitions = () => {
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
-      {/* Modal Backdrop */}
-      {(showApproveModal || showPartialApproveModal || showRejectModal || showBulkApproveModal) && (
-        <div className="modal-backdrop fade show"></div>
-      )}
     </div>
   );
 };
