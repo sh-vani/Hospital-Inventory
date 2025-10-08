@@ -175,11 +175,11 @@ useEffect(() => {
         path: "/facility/assets",
       },
 
-       {
-        name: "Good Receipt",
-        icon: faArchive,
-        path: "/facility/goodreceipt",
-      },
+      //  {
+      //   name: "Good Receipt",
+      //   icon: faArchive,
+      //   path: "/facility/goodreceipt",
+      // },
 
        {
         name: "Reports",

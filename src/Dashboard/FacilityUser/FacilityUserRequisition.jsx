@@ -461,7 +461,7 @@ const FacilityUserRequisition = () => {
     switch (status) {
       case 'Pending': return 'bg-warning text-dark';
       case 'Processing': return 'bg-info';
-      case 'Completed': return 'bg-success';
+      case 'Approved': return 'bg-success';
       case 'Cancelled': return 'bg-secondary';
       case 'Dispatched': return 'bg-primary';
       default: return 'bg-secondary';
@@ -619,7 +619,7 @@ const FacilityUserRequisition = () => {
                   <option value="Pending">Pending</option>
                   <option value="Processing">Processing</option>
                   <option value="Dispatched">Dispatched</option>
-                  <option value="Completed">Completed</option>
+                  <option value="Approved">Approved</option>
                   <option value="Cancelled">Cancelled</option>
                 </select>
               </div>
