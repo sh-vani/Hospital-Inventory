@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTrash, FaCheck, FaTimes, FaBox, FaCalendarAlt, FaMapMarkerAlt, FaClipboardList, FaHistory, FaEye, FaEdit } from 'react-icons/fa';
+import axios from 'axios';
+import BaseUrl from '../../Api/BaseUrl';
 
 const ReturnsRecalls = () => {
   // State for form inputs
@@ -7,6 +9,11 @@ const ReturnsRecalls = () => {
   const [items, setItems] = useState([{ id: 1, name: '', quantity: '', batchNumber: '' }]);
   const [quarantineLocation, setQuarantineLocation] = useState('');
   const [facility, setFacility] = useState('');
+  
+  // State for facilities
+  const [facilities, setFacilities] = useState([]);
+  const [loadingFacilities, setLoadingFacilities] = useState(false);
+  const [errorFacilities, setErrorFacilities] = useState(null);
   
   // State for return requests
   const [returnRequests, setReturnRequests] = useState([
@@ -67,6 +74,31 @@ const ReturnsRecalls = () => {
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [currentRequest, setCurrentRequest] = useState(null);
   const [newStatus, setNewStatus] = useState('');
+
+  // Fetch facilities from API
+  const fetchFacilities = async () => {
+    setLoadingFacilities(true);
+    setErrorFacilities(null);
+    
+    try {
+      const response = await axios.get(`${BaseUrl}/facilities`);
+      if (response.data.success) {
+        setFacilities(response.data.data);
+      } else {
+        setErrorFacilities('Failed to fetch facilities');
+      }
+    } catch (err) {
+      setErrorFacilities('Error fetching facilities: ' + err.message);
+      console.error('Error fetching facilities:', err);
+    } finally {
+      setLoadingFacilities(false);
+    }
+  };
+
+  // Fetch facilities on component mount
+  useEffect(() => {
+    fetchFacilities();
+  }, []);
 
   // Add new item row
   const addItemRow = () => {
@@ -315,14 +347,25 @@ const ReturnsRecalls = () => {
                   <div className="row">
                     <div className="col-md-6 mb-3">
                       <label className="form-label">Facility</label>
-                      <input 
-                        type="text" 
-                        className="form-control" 
-                        value={facility}
-                        onChange={(e) => setFacility(e.target.value)}
-                        placeholder="e.g., Main Hospital"
-                        required
-                      />
+                      {loadingFacilities ? (
+                        <div className="spinner-border spinner-border-sm text-primary" role="status">
+                          <span className="visually-hidden">Loading...</span>
+                        </div>
+                      ) : errorFacilities ? (
+                        <div className="alert alert-danger py-1">{errorFacilities}</div>
+                      ) : (
+                        <select 
+                          className="form-select" 
+                          value={facility} 
+                          onChange={(e) => setFacility(e.target.value)}
+                          required
+                        >
+                          <option value="">Select facility</option>
+                          {facilities.map(fac => (
+                            <option key={fac.id} value={fac.name}>{fac.name}</option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                     <div className="col-md-6 mb-3">
                       <label className="form-label">Return Reason</label>

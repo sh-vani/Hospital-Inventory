@@ -367,7 +367,7 @@ const FacilityUserRequisition = () => {
         })),
       };
       const response = await axiosInstance.post(
-        `${BaseUrl}/requisitions/bulk`,
+        `${BaseUrl}/requisitions`,
         payload
       );
       if (response.data.success) {
