@@ -124,7 +124,7 @@ const SuperAdminFacilities = () => {
       if (response.data.success) {
         // Filter users to only include warehouse_admin and facility_user roles
         const filteredUsers = response.data.data.filter(user => 
-          user.role === 'warehouse_admin' || user.role === 'facility_admin' 
+           user.role === 'facility_admin' 
         );
         setAdminUsers(filteredUsers);
       } else {
@@ -807,26 +807,21 @@ const SuperAdminFacilities = () => {
                     </div>
                   </div>
                 </div>
-                {currentFacility.assigned_To ? (
-                  <div className="mb-4">
-                    <h6 className="mb-2">Assigned Admin</h6>
-                    <div className="card bg-light">
-                      <div className="card-body">
-                        <p className="mb-1"><strong>Name:</strong> {currentFacility.admin_name || 'N/A'}</p>
-                        <p className="mb-0"><strong>ID:</strong> {currentFacility.assigned_To}</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mb-4">
-                    <h6 className="mb-2">Assigned Admin</h6>
-                    <div className="card bg-light">
-                      <div className="card-body">
-                        <p className="mb-0 text-muted">No admin assigned to this facility</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <div className="mb-4">
+  <h6 className="mb-2">Assigned Admin</h6>
+  <div className="card bg-light">
+    <div className="card-body">
+      {currentFacility.admin_name ? (
+        <>
+          <p className="mb-1"><strong>Name:</strong> {currentFacility.admin_name}</p>
+ 
+        </>
+      ) : (
+        <p className="mb-0 text-muted">Not assigned</p>
+      )}
+    </div>
+  </div>
+</div>
                 <div className="d-flex justify-content-end">
                   <button className="btn btn-outline-info me-2" onClick={() => openAssignAdminModal(currentFacility)}>
                     {currentFacility.assigned_To ? 
