@@ -355,77 +355,69 @@
 
 // export default FacilityAssets;
 
-
-
-
-
-
-
-
-
-
-
-
-
-import React, { useState } from 'react';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap-icons/font/bootstrap-icons.css';
-import { Modal, Form, Row, Col, Button, Alert } from 'react-bootstrap';
+import React, { useState } from "react";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
+import { Modal, Form, Row, Col, Button, Alert } from "react-bootstrap";
 
 const FacilityAssets = () => {
   // Enhanced assets data with more fields
   const [assets, setAssets] = useState([
     {
-      id: 'AST-1001',
-      name: 'Ventilator',
-      category: 'Medical',
-      manufacturer: 'Medtronic',
-      modelNumber: 'V-200',
-      serialNumber: 'SN987654321',
-      purchaseDate: '2022-05-15',
-      warrantyExpiry: '2027-05-15',
-      assignedTo: 'Dr. Agyemang',
-      location: 'ICU',
-      status: 'Active',
-      maintenanceSchedule: 'Quarterly',
-      notes: 'Used in critical care'
+      id: "AST-1001",
+      name: "Ventilator",
+      category: "Medical",
+      manufacturer: "Medtronic",
+      modelNumber: "V-200",
+      serialNumber: "SN987654321",
+      purchaseDate: "2022-05-15",
+      warrantyExpiry: "2027-05-15",
+      assignedTo: "Dr. Agyemang",
+      location: "ICU",
+      status: "Active",
+      maintenanceSchedule: "Quarterly",
+      notes: "Used in critical care",
     },
     {
-      id: 'AST-1002',
-      name: 'Ultrasound Machine',
-      category: 'Medical',
-      manufacturer: 'GE Healthcare',
-      modelNumber: 'LOGIQ E10',
-      serialNumber: 'SN112233445',
-      purchaseDate: '2021-11-10',
-      warrantyExpiry: '2026-11-10',
-      assignedTo: 'Radiology Dept',
-      location: 'Radiology Wing',
-      status: 'In Use',
-      maintenanceSchedule: 'Bi-Annual',
-      notes: 'High usage machine'
-    }
+      id: "AST-1002",
+      name: "Ultrasound Machine",
+      category: "Medical",
+      manufacturer: "GE Healthcare",
+      modelNumber: "LOGIQ E10",
+      serialNumber: "SN112233445",
+      purchaseDate: "2021-11-10",
+      warrantyExpiry: "2026-11-10",
+      assignedTo: "Radiology Dept",
+      location: "Radiology Wing",
+      status: "In Use",
+      maintenanceSchedule: "Bi-Annual",
+      notes: "High usage machine",
+    },
   ]);
 
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
-
+  // Existing state ke baad add karein
+  const [grnList, setGrnList] = useState([]); // Good Receipt Notes
+  const [showGrnModal, setShowGrnModal] = useState(false);
+  const [selectedGrn, setSelectedGrn] = useState(null);
+  const [verifiedAssets, setVerifiedAssets] = useState(new Set()); // For bulk verification
   // Enhanced new asset state
   const [newAsset, setNewAsset] = useState({
-    id: '',
-    name: '',
-    category: 'Medical',
-    manufacturer: '',
-    modelNumber: '',
-    serialNumber: '',
-    purchaseDate: '',
-    warrantyExpiry: '',
-    assignedTo: '',
-    location: '',
-    status: 'Available',
-    maintenanceSchedule: 'As Needed',
-    notes: ''
+    id: "",
+    name: "",
+    category: "Medical",
+    manufacturer: "",
+    modelNumber: "",
+    serialNumber: "",
+    purchaseDate: "",
+    warrantyExpiry: "",
+    assignedTo: "",
+    location: "",
+    status: "Available",
+    maintenanceSchedule: "As Needed",
+    notes: "",
   });
 
   // Pagination
@@ -439,32 +431,35 @@ const FacilityAssets = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const requiredFields = ['name', 'category', 'assignedTo', 'location'];
-    const missing = requiredFields.filter(field => !newAsset[field]?.trim());
+    const requiredFields = ["name", "category", "assignedTo", "location"];
+    const missing = requiredFields.filter((field) => !newAsset[field]?.trim());
     if (missing.length > 0) {
-      alert('Please fill in all required fields: Name, Category, Assigned To, and Location.');
+      alert(
+        "Please fill in all required fields: Name, Category, Assigned To, and Location."
+      );
       return;
     }
 
-    const assetId = newAsset.id || `AST-${Math.floor(1000 + Math.random() * 9000)}`;
+    const assetId =
+      newAsset.id || `AST-${Math.floor(1000 + Math.random() * 9000)}`;
     const assetToAdd = { ...newAsset, id: assetId };
     setAssets([...assets, assetToAdd]);
 
     // Reset form
     setNewAsset({
-      id: '',
-      name: '',
-      category: 'Medical',
-      manufacturer: '',
-      modelNumber: '',
-      serialNumber: '',
-      purchaseDate: '',
-      warrantyExpiry: '',
-      assignedTo: '',
-      location: '',
-      status: 'Available',
-      maintenanceSchedule: 'As Needed',
-      notes: ''
+      id: "",
+      name: "",
+      category: "Medical",
+      manufacturer: "",
+      modelNumber: "",
+      serialNumber: "",
+      purchaseDate: "",
+      warrantyExpiry: "",
+      assignedTo: "",
+      location: "",
+      status: "Available",
+      maintenanceSchedule: "As Needed",
+      notes: "",
     });
     setShowModal(false);
   };
@@ -473,19 +468,19 @@ const FacilityAssets = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setNewAsset({
-      id: '',
-      name: '',
-      category: 'Medical',
-      manufacturer: '',
-      modelNumber: '',
-      serialNumber: '',
-      purchaseDate: '',
-      warrantyExpiry: '',
-      assignedTo: '',
-      location: '',
-      status: 'Available',
-      maintenanceSchedule: 'As Needed',
-      notes: ''
+      id: "",
+      name: "",
+      category: "Medical",
+      manufacturer: "",
+      modelNumber: "",
+      serialNumber: "",
+      purchaseDate: "",
+      warrantyExpiry: "",
+      assignedTo: "",
+      location: "",
+      status: "Available",
+      maintenanceSchedule: "As Needed",
+      notes: "",
     });
   };
 
@@ -501,24 +496,27 @@ const FacilityAssets = () => {
 
   const getStatusClass = (status) => {
     switch (status) {
-      case 'Active':
-      case 'In Use':
-        return 'bg-success';
-      case 'Available':
-        return 'bg-info';
-      case 'Needs Repair':
-        return 'bg-warning';
-      case 'Decommissioned':
-        return 'bg-danger';
+      case "Active":
+      case "In Use":
+        return "bg-success";
+      case "Available":
+        return "bg-info";
+      case "Needs Repair":
+        return "bg-warning";
+      case "Decommissioned":
+        return "bg-danger";
       default:
-        return 'bg-secondary';
+        return "bg-secondary";
     }
   };
 
   // Pagination
   const totalPages = Math.ceil(assets.length / entriesPerPage);
   const indexOfLastEntry = currentPage * entriesPerPage;
-  const currentEntries = assets.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
+  const currentEntries = assets.slice(
+    indexOfLastEntry - entriesPerPage,
+    indexOfLastEntry
+  );
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
@@ -529,11 +527,24 @@ const FacilityAssets = () => {
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
         <div>
           <h3 className="mb-0">Assets</h3>
-          <p className="text-muted mb-0">Manage facility equipment and assets</p>
+          <p className="text-muted mb-0">
+            Manage facility equipment and assets
+          </p>
         </div>
-        <button className="btn btn-primary d-flex align-items-center" onClick={handleShowModal}>
-          <i className="bi bi-plus me-1"></i> Add New Asset
-        </button>
+        <div className="d-flex gap-2">
+          <button
+            className="btn btn-success"
+            onClick={() => setShowGrnModal(true)}
+          >
+            <i className="bi bi-box-arrow-in-right me-1"></i> Good Receipt (GRN)
+          </button>
+          <button
+            className="btn btn-primary d-flex align-items-center"
+            onClick={handleShowModal}
+          >
+            <i className="bi bi-plus me-1"></i> Add New Asset
+          </button>
+        </div>
       </div>
 
       <div className="card border-0 shadow-sm">
@@ -542,6 +553,24 @@ const FacilityAssets = () => {
             <table className="table table-hover mb-0">
               <thead className="table-light">
                 <tr>
+                  <th style={{ width: "40px" }}>
+                    <input
+                      type="checkbox"
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setVerifiedAssets(
+                            new Set(currentEntries.map((a) => a.id))
+                          );
+                        } else {
+                          setVerifiedAssets(new Set());
+                        }
+                      }}
+                      checked={
+                        verifiedAssets.size === currentEntries.length &&
+                        currentEntries.length > 0
+                      }
+                    />
+                  </th>
                   <th>Asset ID</th>
                   <th>Name</th>
                   <th>Category</th>
@@ -555,13 +584,29 @@ const FacilityAssets = () => {
                 {currentEntries.length > 0 ? (
                   currentEntries.map((asset) => (
                     <tr key={asset.id}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={verifiedAssets.has(asset.id)}
+                          onChange={(e) => {
+                            const newSet = new Set(verifiedAssets);
+                            if (e.target.checked) newSet.add(asset.id);
+                            else newSet.delete(asset.id);
+                            setVerifiedAssets(newSet);
+                          }}
+                        />
+                      </td>
                       <td className="fw-medium">{asset.id}</td>
                       <td>{asset.name}</td>
                       <td>{asset.category}</td>
                       <td>{asset.assignedTo}</td>
                       <td>{asset.location}</td>
                       <td>
-                        <span className={`badge ${getStatusClass(asset.status)} text-white`}>
+                        <span
+                          className={`badge ${getStatusClass(
+                            asset.status
+                          )} text-white`}
+                        >
                           {asset.status}
                         </span>
                       </td>
@@ -588,24 +633,50 @@ const FacilityAssets = () => {
           </div>
         </div>
       </div>
-
+      {verifiedAssets.size > 0 && (
+        <div className="mb-3">
+          <button
+            className="btn btn-success"
+            onClick={() => {
+              alert(`Verified ${verifiedAssets.size} assets`);
+              setVerifiedAssets(new Set());
+            }}
+          >
+            Verify Selected ({verifiedAssets.size})
+          </button>
+        </div>
+      )}
       {/* Pagination */}
       <div className="d-flex justify-content-end mt-3">
         <nav>
           <ul className="pagination mb-3">
-            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-              <button className="page-link" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
+            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
                 Previous
               </button>
             </li>
             {[...Array(totalPages)].map((_, i) => (
-              <li key={i + 1} className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}>
-                <button className="page-link" onClick={() => handlePageChange(i + 1)}>
+              <li
+                key={i + 1}
+                className={`page-item ${currentPage === i + 1 ? "active" : ""}`}
+              >
+                <button
+                  className="page-link"
+                  onClick={() => handlePageChange(i + 1)}
+                >
                   {i + 1}
                 </button>
               </li>
             ))}
-            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+            <li
+              className={`page-item ${
+                currentPage === totalPages || totalPages === 0 ? "disabled" : ""
+              }`}
+            >
               <button
                 className="page-link"
                 onClick={() => handlePageChange(currentPage + 1)}
@@ -619,7 +690,13 @@ const FacilityAssets = () => {
       </div>
 
       {/* Add New Asset Modal */}
-      <Modal show={showModal} onHide={handleCloseModal} size="lg" centered backdrop="static">
+      <Modal
+        show={showModal}
+        onHide={handleCloseModal}
+        size="lg"
+        centered
+        backdrop="static"
+      >
         <Modal.Header closeButton>
           <Modal.Title>Add New Asset</Modal.Title>
         </Modal.Header>
@@ -628,7 +705,9 @@ const FacilityAssets = () => {
             <Row className="mb-3">
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Asset ID <span className="text-muted">(Optional)</span></Form.Label>
+                  <Form.Label>
+                    Asset ID <span className="text-muted">(Optional)</span>
+                  </Form.Label>
                   <Form.Control
                     type="text"
                     placeholder="e.g., AST-1005"
@@ -640,7 +719,9 @@ const FacilityAssets = () => {
               </Col>
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Name <span className="text-danger">*</span></Form.Label>
+                  <Form.Label>
+                    Name <span className="text-danger">*</span>
+                  </Form.Label>
                   <Form.Control
                     type="text"
                     placeholder="e.g., Defibrillator"
@@ -656,7 +737,9 @@ const FacilityAssets = () => {
             <Row className="mb-3">
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Category <span className="text-danger">*</span></Form.Label>
+                  <Form.Label>
+                    Category <span className="text-danger">*</span>
+                  </Form.Label>
                   <Form.Select
                     name="category"
                     value={newAsset.category}
@@ -740,7 +823,9 @@ const FacilityAssets = () => {
             <Row className="mb-3">
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Assigned To <span className="text-danger">*</span></Form.Label>
+                  <Form.Label>
+                    Assigned To <span className="text-danger">*</span>
+                  </Form.Label>
                   <Form.Control
                     type="text"
                     placeholder="e.g., Dr. Mensah, ICU Team"
@@ -753,7 +838,9 @@ const FacilityAssets = () => {
               </Col>
               <Col md={6}>
                 <Form.Group>
-                  <Form.Label>Location <span className="text-danger">*</span></Form.Label>
+                  <Form.Label>
+                    Location <span className="text-danger">*</span>
+                  </Form.Label>
                   <Form.Control
                     type="text"
                     placeholder="e.g., Ward 3, Lab Room 2"
@@ -819,13 +906,22 @@ const FacilityAssets = () => {
           </Form>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseModal}>Cancel</Button>
-          <Button variant="primary" onClick={handleSubmit}>Add Asset</Button>
+          <Button variant="secondary" onClick={handleCloseModal}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleSubmit}>
+            Add Asset
+          </Button>
         </Modal.Footer>
       </Modal>
 
       {/* View Asset Modal */}
-      <Modal show={showViewModal} onHide={handleCloseViewModal} size="lg" centered>
+      <Modal
+        show={showViewModal}
+        onHide={handleCloseViewModal}
+        size="lg"
+        centered
+      >
         <Modal.Header closeButton>
           <Modal.Title>Asset Details</Modal.Title>
         </Modal.Header>
@@ -833,52 +929,143 @@ const FacilityAssets = () => {
           {selectedAsset && (
             <div className="row g-3">
               <Col md={6}>
-                <strong>Asset ID:</strong> <span className="text-muted">{selectedAsset.id}</span>
+                <strong>Asset ID:</strong>{" "}
+                <span className="text-muted">{selectedAsset.id}</span>
               </Col>
               <Col md={6}>
-                <strong>Name:</strong> <span className="text-muted">{selectedAsset.name}</span>
+                <strong>Name:</strong>{" "}
+                <span className="text-muted">{selectedAsset.name}</span>
               </Col>
               <Col md={6}>
-                <strong>Category:</strong> <span className="text-muted">{selectedAsset.category}</span>
+                <strong>Category:</strong>{" "}
+                <span className="text-muted">{selectedAsset.category}</span>
               </Col>
               <Col md={6}>
-                <strong>Manufacturer:</strong> <span className="text-muted">{selectedAsset.manufacturer || '—'}</span>
+                <strong>Manufacturer:</strong>{" "}
+                <span className="text-muted">
+                  {selectedAsset.manufacturer || "—"}
+                </span>
               </Col>
               <Col md={6}>
-                <strong>Model No.:</strong> <span className="text-muted">{selectedAsset.modelNumber || '—'}</span>
+                <strong>Model No.:</strong>{" "}
+                <span className="text-muted">
+                  {selectedAsset.modelNumber || "—"}
+                </span>
               </Col>
               <Col md={6}>
-                <strong>Serial No.:</strong> <span className="text-muted">{selectedAsset.serialNumber || '—'}</span>
+                <strong>Serial No.:</strong>{" "}
+                <span className="text-muted">
+                  {selectedAsset.serialNumber || "—"}
+                </span>
               </Col>
               <Col md={6}>
-                <strong>Purchase Date:</strong> <span className="text-muted">{selectedAsset.purchaseDate || '—'}</span>
+                <strong>Purchase Date:</strong>{" "}
+                <span className="text-muted">
+                  {selectedAsset.purchaseDate || "—"}
+                </span>
               </Col>
               <Col md={6}>
-                <strong>Warranty Expiry:</strong> <span className="text-muted">{selectedAsset.warrantyExpiry || '—'}</span>
+                <strong>Warranty Expiry:</strong>{" "}
+                <span className="text-muted">
+                  {selectedAsset.warrantyExpiry || "—"}
+                </span>
               </Col>
               <Col md={6}>
-                <strong>Assigned To:</strong> <span className="text-muted">{selectedAsset.assignedTo}</span>
+                <strong>Assigned To:</strong>{" "}
+                <span className="text-muted">{selectedAsset.assignedTo}</span>
               </Col>
               <Col md={6}>
-                <strong>Location:</strong> <span className="text-muted">{selectedAsset.location}</span>
+                <strong>Location:</strong>{" "}
+                <span className="text-muted">{selectedAsset.location}</span>
               </Col>
               <Col md={6}>
                 <strong>Status:</strong>
-                <span className={`badge ${getStatusClass(selectedAsset.status)} text-white ms-2`}>
+                <span
+                  className={`badge ${getStatusClass(
+                    selectedAsset.status
+                  )} text-white ms-2`}
+                >
                   {selectedAsset.status}
                 </span>
               </Col>
               <Col md={6}>
-                <strong>Maintenance:</strong> <span className="text-muted">{selectedAsset.maintenanceSchedule}</span>
+                <strong>Maintenance:</strong>{" "}
+                <span className="text-muted">
+                  {selectedAsset.maintenanceSchedule}
+                </span>
               </Col>
               <Col md={12}>
-                <strong>Notes:</strong> <span className="text-muted">{selectedAsset.notes || '—'}</span>
+                <strong>Notes:</strong>{" "}
+                <span className="text-muted">{selectedAsset.notes || "—"}</span>
               </Col>
             </div>
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseViewModal}>Close</Button>
+          <Button variant="secondary" onClick={handleCloseViewModal}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* ===== GOOD RECEIPT (GRN) MODAL ===== */}
+      <Modal
+        show={showGrnModal}
+        onHide={() => setShowGrnModal(false)}
+        size="lg"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Good Receipt Note (GRN)</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="text-muted">Verify assets received from warehouse</p>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Asset Name</th>
+                <th>Requested Qty</th>
+                <th>Delivered Qty</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Ventilator V-200</td>
+                <td>2</td>
+                <td>
+                  <Form.Control type="number" defaultValue="2" min="0" />
+                </td>
+                <td>
+                  <span className="badge bg-success text-white">Match</span>
+                </td>
+              </tr>
+              <tr>
+                <td>Ultrasound Machine</td>
+                <td>1</td>
+                <td>
+                  <Form.Control type="number" defaultValue="0" min="0" />
+                </td>
+                <td>
+                  <span className="badge bg-warning text-dark">Partial</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowGrnModal(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              alert("GRN verified and assets updated!");
+              setShowGrnModal(false);
+            }}
+          >
+            Verify & Accept
+          </Button>
         </Modal.Footer>
       </Modal>
     </div>

@@ -1,43 +1,41 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { FaPlus, FaEye, FaTrash, FaTimes } from 'react-icons/fa';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import BaseUrl from '../../Api/BaseUrl';
-import axiosInstance from '../../Api/axiosInstance';
-import Swal from 'sweetalert2';
+import React, { useState, useEffect, useMemo } from "react";
+import { FaPlus, FaEye, FaTrash, FaTimes } from "react-icons/fa";
+import "bootstrap/dist/css/bootstrap.min.css";
+import BaseUrl from "../../Api/BaseUrl";
+import axiosInstance from "../../Api/axiosInstance";
+import Swal from "sweetalert2";
 
 const FacilityUserRequisition = () => {
   // Form states
-  const [department, setDepartment] = useState('');
-  const [username, setUsername] = useState('');
-  const [requisitionType, setRequisitionType] = useState('individual');
+  const [department, setDepartment] = useState("");
+  const [username, setUsername] = useState("");
+  const [requisitionType, setRequisitionType] = useState("individual");
   const [showRequisitionModal, setShowRequisitionModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  
   // Filters
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [priorityFilter, setPriorityFilter] = useState('All');
-  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [priorityFilter, setPriorityFilter] = useState("All");
   // Modal states
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedRequisition, setSelectedRequisition] = useState(null);
   const [requisitionHistory, setRequisitionHistory] = useState([]);
-  
   // Individual requisition fields
-  const [selectedItem, setSelectedItem] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [priority, setPriority] = useState('Normal');
-  const [remarks, setRemarks] = useState('');
-  
+  const [selectedItem, setSelectedItem] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [priority, setPriority] = useState("Normal");
+  const [remarks, setRemarks] = useState("");
+  // ✅ Bulk Cart State
+  const [bulkCart, setBulkCart] = useState([]);
   // Bulk requisition fields
-  const [bulkItems, setBulkItems] = useState([{ item: '', quantity: '', priority: 'Normal' }]);
-  const [bulkRemarks, setBulkRemarks] = useState('');
-  
+  const [bulkItems, setBulkItems] = useState([
+    { item: "", quantity: "", priority: "Normal" },
+  ]);
+  const [bulkRemarks, setBulkRemarks] = useState("");
   // Facility items
   const [facilityItems, setFacilityItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(true);
-  
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 10;
@@ -45,10 +43,10 @@ const FacilityUserRequisition = () => {
   // Get user from localStorage
   const getUserFromStorage = () => {
     try {
-      const userStr = localStorage.getItem('user');
+      const userStr = localStorage.getItem("user");
       return userStr ? JSON.parse(userStr) : null;
     } catch (e) {
-      console.error('Failed to parse user from localStorage');
+      console.error("Failed to parse user from localStorage");
       return null;
     }
   };
@@ -63,101 +61,58 @@ const FacilityUserRequisition = () => {
     return diffDays > 0 && diffDays <= daysThreshold;
   };
 
-  // Auto-create requisitions for triggered items
-  const createAutoRequisitions = async (items, user) => {
-    const triggeredItems = [];
+  // ✅ RESTORED: getItemWarnings for modals & dropdowns
+  // ✅ Add this ABOVE getItemStatusBadge
+  const getItemWarnings = useMemo(() => {
+    return (item) => {
+      const warnings = [];
+      if (item.quantity === 0) warnings.push("OUT OF STOCK");
+      else if (item.quantity > 0 && item.quantity <= (item.reorder_level || 0))
+        warnings.push("LOW STOCK");
+      if (isNearExpiry(item.expiry_date, 30)) warnings.push("NEAR EXPIRY");
+      return warnings;
+    };
+  }, []);
 
-    items.forEach(item => {
-      // Out of Stock
-      if (item.quantity === 0) {
-        triggeredItems.push({
-          item_id: item.id,
-          quantity: item.reorder_level > 0 ? item.reorder_level : 10,
-          priority: 'High',
-          reason: 'Out of Stock'
-        });
-      }
-      // Low Stock
-      else if (item.quantity > 0 && item.quantity <= (item.reorder_level || 0)) {
-        const needed = (item.reorder_level || 10) - item.quantity;
-        if (needed > 0) {
-          triggeredItems.push({
-            item_id: item.id,
-            quantity: needed,
-            priority: 'High',
-            reason: 'Low Stock'
-          });
-        }
-      }
-      // Near Expiry
-      else if (isNearExpiry(item.expiry_date, 30)) {
-        triggeredItems.push({
-          item_id: item.id,
-          quantity: item.quantity,
-          priority: 'Urgent',
-          reason: 'Near Expiry'
-        });
-      }
-    });
+  // ✅ Status badge for main table
+  const getItemStatusBadge = useMemo(() => {
+    return (item) => {
+      if (item.quantity === 0) return { text: "OUT", variant: "danger" };
+      if (item.quantity > 0 && item.quantity <= (item.reorder_level || 0))
+        return { text: "LOW", variant: "warning" };
+      if (isNearExpiry(item.expiry_date, 30))
+        return { text: "EXPIRY", variant: "orange" };
+      return null;
+    };
+  }, []);
 
-    if (triggeredItems.length === 0) return;
-
-    try {
-      const payload = {
-        user_id: user.id,
-        facility_id: user.facility_id,
-        remarks: `Auto-generated: ${triggeredItems.map(i => i.reason).join(', ')}`,
-        items: triggeredItems.map(i => ({
-          item_id: i.item_id,
-          quantity: i.quantity,
-          priority: i.priority.toLowerCase()
-        }))
-      };
-
-      const response = await axiosInstance.post(`${BaseUrl}/requisitions/bulk`, payload);
-      
-      if (response.data.success) {
-        Swal.fire({
-          icon: 'info',
-          title: 'Auto-Requisition Created',
-          text: `${triggeredItems.length} item(s) automatically requisitioned due to stock/expiry alerts.`,
-          timer: 4000,
-          showConfirmButton: false
-        });
-        fetchRequisitionHistory(user.id);
-      }
-    } catch (error) {
-      console.error('Auto-requisition failed:', error);
-    }
-  };
-
-  // Fetch facility items
+  // Fetch facility items — WITHOUT auto-requisition
   const fetchFacilityItems = async (facilityId) => {
     try {
       setLoadingItems(true);
-      const response = await axiosInstance.get(`${BaseUrl}/inventory/${facilityId}`);
+      const response = await axiosInstance.get(
+        `${BaseUrl}/inventory/${facilityId}`
+      );
       let items = [];
       if (response.data.success) {
         if (Array.isArray(response.data.data)) {
           items = response.data.data;
-        } else if (response.data.data && typeof response.data.data === 'object') {
+        } else if (
+          response.data.data &&
+          typeof response.data.data === "object"
+        ) {
           items = [response.data.data];
         }
       }
       setFacilityItems(items);
-
-      // 🔥 AUTO-TRIGGER REQUISITIONS AFTER FETCHING ITEMS
-      const user = getUserFromStorage();
-      if (user && items.length > 0) {
-        createAutoRequisitions(items, user);
-      }
+      // 🔥 AUTO-REQUISITION CALL COMPLETELY REMOVED
     } catch (error) {
-      console.error('Failed to fetch facility items:', error);
+      console.error("Failed to fetch facility items:", error);
       setFacilityItems([]);
       Swal.fire({
-        icon: 'error',
-        title: 'Fetch Failed',
-        text: 'Failed to fetch facility items. Please try again later.'
+        icon: "error",
+        title: "Fetch Failed",
+        text: "Failed to fetch facility items. Please try again later.",
       });
     } finally {
       setLoadingItems(false);
@@ -167,16 +122,22 @@ const FacilityUserRequisition = () => {
   // Fetch requisition history
   const fetchRequisitionHistory = async (userId) => {
     try {
-      const response = await axiosInstance.get(`${BaseUrl}/requisitions/user/${userId}`);
+      const response = await axiosInstance.get(
+        `${BaseUrl}/requisitions/user/${userId}`
+      );
       if (response.data.success && Array.isArray(response.data.data)) {
         const formatted = response.data.data
-          .map(req => ({
+          .map((req) => ({
             id: req.id,
-            item_name: req.items?.length > 0 ? req.items[0].item_name : 'N/A',
-            status: (req.status || '').charAt(0).toUpperCase() + (req.status || '').slice(1),
-            priority: (req.priority || 'normal').charAt(0).toUpperCase() + (req.priority || 'normal').slice(1),
-            remarks: req.remarks || '',
-            items: Array.isArray(req.items) ? req.items : []
+            item_name: req.items?.length > 0 ? req.items[0].item_name : "N/A",
+            status:
+              (req.status || "").charAt(0).toUpperCase() +
+              (req.status || "").slice(1),
+            priority:
+              (req.priority || "normal").charAt(0).toUpperCase() +
+              (req.priority || "normal").slice(1),
+            remarks: req.remarks || "",
+            items: Array.isArray(req.items) ? req.items : [],
           }))
           .sort((a, b) => b.id - a.id);
         setRequisitionHistory(formatted);
@@ -184,7 +145,7 @@ const FacilityUserRequisition = () => {
         setRequisitionHistory([]);
       }
     } catch (error) {
-      console.error('Failed to fetch requisition history:', error);
+      console.error("Failed to fetch requisition history:", error);
       setRequisitionHistory([]);
     }
   };
@@ -193,90 +154,176 @@ const FacilityUserRequisition = () => {
   useEffect(() => {
     const user = getUserFromStorage();
     if (user) {
-      setDepartment(user.department || 'N/A');
-      setUsername(user.name || 'User');
+      setDepartment(user.department || "N/A");
+      setUsername(user.name || "User");
       const facilityId = user.facility_id;
       if (facilityId) {
         fetchFacilityItems(facilityId);
       } else {
-        console.error('Facility ID not found in user data');
+        console.error("Facility ID not found in user data");
         setLoadingItems(false);
       }
       if (user.id) {
         fetchRequisitionHistory(user.id);
       }
     } else {
-      console.error('User not found in localStorage');
+      console.error("User not found in localStorage");
       setLoadingItems(false);
     }
   }, []);
 
-  // Handle individual submission
-  const handleIndividualSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!selectedItem || !quantity || quantity <= 0) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Incomplete Form',
-        text: 'Please select an item and enter a valid quantity.'
-      });
+  // ✅ Add to Bulk Cart
+  const addToBulkCart = (item) => {
+    const existing = bulkCart.find((i) => i.item_id === item.id);
+    if (existing) {
+      Swal.fire(
+        "Already Added",
+        `${item.item_name} is already in your bulk list.`,
+        "info"
+      );
       return;
     }
+    setBulkCart((prev) => [
+      ...prev,
+      {
+        item_id: item.id,
+        item_name: item.item_name,
+        quantity: item.reorder_level > 0 ? item.reorder_level : 10,
+        priority:
+          item.quantity === 0
+            ? "High"
+            : isNearExpiry(item.expiry_date)
+            ? "Urgent"
+            : "Normal",
+        reason:
+          item.quantity === 0
+            ? "Out of Stock"
+            : item.quantity <= (item.reorder_level || 0)
+            ? "Low Stock"
+            : "Near Expiry",
+      },
+    ]);
+    Swal.fire({
+      icon: "success",
+      title: "Added!",
+      text: `${item.item_name} added to bulk list.`,
+      timer: 1500,
+      showConfirmButton: false,
+    });
+  };
 
+  // ✅ Submit Bulk Cart
+  const handleSubmitBulkCart = async () => {
+    if (bulkCart.length === 0) {
+      Swal.fire("Empty", "No items in bulk list.", "warning");
+      return;
+    }
     const user = getUserFromStorage();
-    if (!user || !user.facility_id || !user.id) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Session Error',
-        text: 'User data incomplete. Please log in again.'
-      });
+    if (!user?.id || !user?.facility_id) {
+      Swal.fire("Error", "User session invalid.", "error");
       return;
     }
-
     setLoading(true);
     try {
       const payload = {
         user_id: user.id,
         facility_id: user.facility_id,
-        remarks: remarks.trim() || '',
+        remarks: `Bulk requisition: ${bulkCart
+          .map((i) => i.reason)
+          .join(", ")}`,
+        items: bulkCart.map((i) => ({
+          item_id: i.item_id,
+          quantity: i.quantity,
+          priority: i.priority.toLowerCase(),
+        })),
+      };
+      const res = await axiosInstance.post(
+        `${BaseUrl}/requisitions/bulk`,
+        payload
+      );
+      if (res.data.success) {
+        setBulkCart([]);
+        fetchRequisitionHistory(user.id);
+        Swal.fire(
+          "Success",
+          "Bulk requisition sent to Facility Admin!",
+          "success"
+        );
+      } else throw new Error(res.data.message || "Unknown error");
+    } catch (err) {
+      Swal.fire("Error", err.message || "Submission failed.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle individual submission
+  const handleIndividualSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedItem || !quantity || quantity <= 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Incomplete Form",
+        text: "Please select an item and enter a valid quantity.",
+      });
+      return;
+    }
+    const user = getUserFromStorage();
+    if (!user || !user.facility_id || !user.id) {
+      Swal.fire({
+        icon: "error",
+        title: "Session Error",
+        text: "User data incomplete. Please log in again.",
+      });
+      return;
+    }
+    setLoading(true);
+    try {
+      const payload = {
+        user_id: user.id,
+        facility_id: user.facility_id,
+        remarks: remarks.trim() || "",
         items: [
           {
             item_id: parseInt(selectedItem),
             quantity: parseInt(quantity),
-            priority: priority.toLowerCase()
-          }
-        ]
+            priority: priority.toLowerCase(),
+          },
+        ],
       };
-
-      const response = await axiosInstance.post(`${BaseUrl}/requisitions`, payload);
-
+      const response = await axiosInstance.post(
+        `${BaseUrl}/requisitions`,
+        payload
+      );
       if (response.data.success) {
         setSuccess(true);
         fetchRequisitionHistory(user.id);
         resetIndividualForm();
         setShowRequisitionModal(false);
         Swal.fire({
-          icon: 'success',
-          title: 'Submitted!',
-          text: 'Your requisition has been submitted to Facility Admin.',
+          icon: "success",
+          title: "Submitted!",
+          text: "Your requisition has been submitted to Facility Admin.",
           timer: 3000,
-          showConfirmButton: false
+          showConfirmButton: false,
         });
       } else {
         Swal.fire({
-          icon: 'error',
-          title: 'Submission Failed',
-          text: 'Failed to submit requisition: ' + (response.data.message || 'Unknown error')
+          icon: "error",
+          title: "Submission Failed",
+          text:
+            "Failed to submit requisition: " +
+            (response.data.message || "Unknown error"),
         });
       }
     } catch (error) {
-      console.error('Submission error:', error);
-      const msg = error.response?.data?.message || 'Network error. Please try again.';
+      console.error("Submission error:", error);
+      const msg =
+        error.response?.data?.message || "Network error. Please try again.";
       Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: msg
+        icon: "error",
+        title: "Error",
+        text: msg,
       });
     } finally {
       setLoading(false);
@@ -287,71 +334,71 @@ const FacilityUserRequisition = () => {
   // Handle bulk submission
   const handleBulkSubmit = async (e) => {
     e.preventDefault();
-
-    const validItems = bulkItems.filter(item => 
-      item.item && item.quantity && parseInt(item.quantity) > 0
+    const validItems = bulkItems.filter(
+      (item) => item.item && item.quantity && parseInt(item.quantity) > 0
     );
-    
     if (validItems.length === 0) {
       Swal.fire({
-        icon: 'warning',
-        title: 'Incomplete Form',
-        text: 'Please add at least one valid item with quantity.'
+        icon: "warning",
+        title: "Incomplete Form",
+        text: "Please add at least one valid item with quantity.",
       });
       return;
     }
-
     const user = getUserFromStorage();
     if (!user || !user.facility_id || !user.id) {
       Swal.fire({
-        icon: 'error',
-        title: 'Session Error',
-        text: 'User data incomplete. Please log in again.'
+        icon: "error",
+        title: "Session Error",
+        text: "User data incomplete. Please log in again.",
       });
       return;
     }
-
     setLoading(true);
     try {
       const payload = {
         user_id: user.id,
         facility_id: user.facility_id,
-        remarks: bulkRemarks.trim() || '',
-        items: validItems.map(item => ({
+        remarks: bulkRemarks.trim() || "",
+        items: validItems.map((item) => ({
           item_id: parseInt(item.item),
           quantity: parseInt(item.quantity),
-          priority: item.priority.toLowerCase()
-        }))
+          priority: item.priority.toLowerCase(),
+        })),
       };
-
-      const response = await axiosInstance.post(`${BaseUrl}/requisitions/bulk`, payload);
-
+      const response = await axiosInstance.post(
+        `${BaseUrl}/requisitions/bulk`,
+        payload
+      );
       if (response.data.success) {
         setSuccess(true);
         fetchRequisitionHistory(user.id);
         resetBulkForm();
         setShowRequisitionModal(false);
         Swal.fire({
-          icon: 'success',
-          title: 'Submitted!',
-          text: 'Your bulk requisition has been submitted to Facility Admin.',
+          icon: "success",
+          title: "Submitted!",
+          text: "Your bulk requisition has been submitted to Facility Admin.",
           timer: 3000,
-          showConfirmButton: false
+          showConfirmButton: false,
         });
       } else {
         Swal.fire({
-          icon: 'error',
-          title: 'Submission Failed',
-          text: 'Failed to submit requisition: ' + (response.data.message || 'Unknown error')
+          icon: "error",
+          title: "Submission Failed",
+          text:
+            "Failed to submit requisition: " +
+            (response.data.message || "Unknown error"),
         });
       }
     } catch (error) {
-      console.error('Submission error:', error);
-      const msg = error.response?.data?.message || 'Network error. Please try again.';
+      console.error("Submission error:", error);
+      const msg =
+        error.response?.data?.message || "Network error. Please try again.";
       Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: msg
+        icon: "error",
+        title: "Error",
+        text: msg,
       });
     } finally {
       setLoading(false);
@@ -361,29 +408,29 @@ const FacilityUserRequisition = () => {
 
   // Reset forms
   const resetIndividualForm = () => {
-    setSelectedItem('');
-    setQuantity('');
-    setPriority('Normal');
-    setRemarks('');
+    setSelectedItem("");
+    setQuantity("");
+    setPriority("Normal");
+    setRemarks("");
   };
-
   const resetBulkForm = () => {
-    setBulkItems([{ item: '', quantity: '', priority: 'Normal' }]);
-    setBulkRemarks('');
+    setBulkItems([{ item: "", quantity: "", priority: "Normal" }]);
+    setBulkRemarks("");
   };
 
   // Bulk form handlers
   const addBulkItemRow = () => {
-    setBulkItems([...bulkItems, { item: '', quantity: '', priority: 'Normal' }]);
+    setBulkItems([
+      ...bulkItems,
+      { item: "", quantity: "", priority: "Normal" },
+    ]);
   };
-
   const removeBulkItemRow = (index) => {
     if (bulkItems.length === 1) return;
     const newItems = [...bulkItems];
     newItems.splice(index, 1);
     setBulkItems(newItems);
   };
-
   const updateBulkItem = (index, field, value) => {
     const newItems = [...bulkItems];
     newItems[index][field] = value;
@@ -393,47 +440,51 @@ const FacilityUserRequisition = () => {
   // Cancel requisition
   const handleCancelRequisition = async (id) => {
     const result = await Swal.fire({
-      title: 'Are you sure?',
+      title: "Are you sure?",
       text: "You won't be able to revert this!",
-      icon: 'warning',
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#6c757d',
-      confirmButtonText: 'Yes, cancel it!',
-      cancelButtonText: 'No, keep it'
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Yes, cancel it!",
+      cancelButtonText: "No, keep it",
     });
-
     if (!result.isConfirmed) return;
-
     setLoading(true);
     try {
-      const response = await axiosInstance.delete(`${BaseUrl}/requisitions/${id}`);
-
+      const response = await axiosInstance.delete(
+        `${BaseUrl}/requisitions/${id}`
+      );
       if (response.data.success) {
-        setRequisitionHistory(prev =>
-          prev.map(req => (req.id === id ? { ...req, status: 'Cancelled' } : req))
+        setRequisitionHistory((prev) =>
+          prev.map((req) =>
+            req.id === id ? { ...req, status: "Cancelled" } : req
+          )
         );
         Swal.fire({
-          icon: 'success',
-          title: 'Cancelled!',
-          text: 'Requisition has been cancelled.',
+          icon: "success",
+          title: "Cancelled!",
+          text: "Requisition has been cancelled.",
           timer: 2000,
-          showConfirmButton: false
+          showConfirmButton: false,
         });
       } else {
         Swal.fire({
-          icon: 'error',
-          title: 'Cancellation Failed',
-          text: 'Failed to cancel requisition: ' + (response.data.message || 'Unknown error')
+          icon: "error",
+          title: "Cancellation Failed",
+          text:
+            "Failed to cancel requisition: " +
+            (response.data.message || "Unknown error"),
         });
       }
     } catch (error) {
-      console.error('Cancellation error:', error);
-      const msg = error.response?.data?.message || 'Network error. Please try again.';
+      console.error("Cancellation error:", error);
+      const msg =
+        error.response?.data?.message || "Network error. Please try again.";
       Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: msg
+        icon: "error",
+        title: "Error",
+        text: msg,
       });
     } finally {
       setLoading(false);
@@ -449,7 +500,7 @@ const FacilityUserRequisition = () => {
   // Add item button
   const handleAddItem = () => {
     setShowRequisitionModal(true);
-    if (requisitionType === 'individual') {
+    if (requisitionType === "individual") {
       resetIndividualForm();
     } else {
       resetBulkForm();
@@ -459,43 +510,54 @@ const FacilityUserRequisition = () => {
   // Status badge
   const getStatusBadgeClass = (status) => {
     switch (status) {
-      case 'Pending': return 'bg-warning text-dark';
-      case 'Processing': return 'bg-info';
-      case 'Approved': return 'bg-success';
-      case 'Cancelled': return 'bg-secondary';
-      case 'Dispatched': return 'bg-primary';
-      default: return 'bg-secondary';
+      case "Pending":
+        return "bg-warning text-dark";
+      case "Processing":
+        return "bg-info";
+      case "Approved":
+        return "bg-success";
+      case "Cancelled":
+        return "bg-secondary";
+      case "Dispatched":
+        return "bg-primary";
+      default:
+        return "bg-secondary";
     }
   };
 
   // Priority badge
   const getPriorityBadgeClass = (priority) => {
     switch (priority) {
-      case 'Normal': return 'bg-success';
-      case 'High': return 'bg-warning text-dark';
-      case 'Urgent': return 'bg-danger';
-      default: return 'bg-secondary';
+      case "Normal":
+        return "bg-success";
+      case "High":
+        return "bg-warning text-dark";
+      case "Urgent":
+        return "bg-danger";
+      default:
+        return "bg-secondary";
     }
   };
 
   // Apply filters
-  const filteredRequisitions = requisitionHistory.filter(req => {
+  const filteredRequisitions = requisitionHistory.filter((req) => {
     const matchesSearch =
       req.id.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (req.item_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (req.remarks || '').toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus = statusFilter === 'All' || req.status === statusFilter;
-    const matchesPriority = priorityFilter === 'All' || req.priority === priorityFilter;
-
+      (req.item_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (req.remarks || "").toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "All" || req.status === statusFilter;
+    const matchesPriority =
+      priorityFilter === "All" || req.priority === priorityFilter;
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
   // Pagination logic
   const totalPages = Math.ceil(filteredRequisitions.length / entriesPerPage);
   const indexOfLastEntry = currentPage * entriesPerPage;
-  const currentEntries = filteredRequisitions.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
-
+  const currentEntries = filteredRequisitions.slice(
+    indexOfLastEntry - entriesPerPage,
+    indexOfLastEntry
+  );
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
@@ -507,34 +569,154 @@ const FacilityUserRequisition = () => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, priorityFilter]);
 
-  // Memoized helper for item warnings (for UI)
-  const getItemWarnings = useMemo(() => {
-    return (item) => {
-      const warnings = [];
-      if (item.quantity === 0) warnings.push('OUT OF STOCK');
-      else if (item.quantity > 0 && item.quantity <= (item.reorder_level || 0)) warnings.push('LOW STOCK');
-      if (isNearExpiry(item.expiry_date, 30)) warnings.push('NEAR EXPIRY');
-      return warnings;
-    };
-  }, []);
-
   return (
     <div className="">
       <div className="card shadow-sm border-0 mb-4">
-        <div className="card-header bg-white py-3">
-          <h3 className="fw-bold mb-0">Create Requisition</h3>
-          <p className="mb-0 text-muted">Submit requisition to Facility Admin</p>
+        {/* ✅ Bulk Cart Summary — TOP OF CARD */}
+        {bulkCart.length > 0 && (
+          <div className="alert alert-info mb-4">
+            <div className="d-flex justify-content-between align-items-center">
+              <strong>Bulk Requisition Cart:</strong> {bulkCart.length} items
+              <div>
+                <button
+                  className="btn btn-sm btn-outline-primary me-2"
+                  onClick={() => setBulkCart([])}
+                >
+                  Clear Cart
+                </button>
+                <button
+                  className="btn btn-sm btn-primary"
+                  onClick={handleSubmitBulkCart}
+                  disabled={loading}
+                >
+                  <FaPlus className="me-1" /> Submit Bulk to Warehouse
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ✅ Facility Inventory Reference Table */}
+        <div className="mt-4">
+          <h5 className="text-primary mb-3">
+            Facility Inventory (For Reference)
+          </h5>
+          <div className="table-responsive">
+            <table className="table table-bordered">
+              <thead className="table-light">
+                <tr>
+                  <th>Item</th>
+                  <th>Qty</th>
+                  <th>Expiry</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {facilityItems.length > 0 ? (
+                  facilityItems.map((item) => {
+                    const badge = getItemStatusBadge(item);
+                    const needsRequisition =
+                      item.quantity === 0 ||
+                      item.quantity <= (item.reorder_level || 0) ||
+                      isNearExpiry(item.expiry_date, 30);
+                    return (
+                      <tr key={item.id}>
+                        <td>{item.item_name}</td>
+                        <td>
+                          {item.quantity} {item.unit || "units"}
+                        </td>
+                        <td>
+                          {item.expiry_date
+                            ? new Date(item.expiry_date).toLocaleDateString()
+                            : "N/A"}
+                        </td>
+                        <td>
+                          {badge ? (
+                            <span
+                              className={`badge text-dark`}
+                              style={{
+                                backgroundColor:
+                                  badge.variant === "orange"
+                                    ? "#ff9f43"
+                                    : undefined,
+                              }}
+                            >
+                              {badge.text}
+                            </span>
+                          ) : (
+                            <span className="badge bg-success">OK</span>
+                          )}
+                        </td>
+                        <td>
+                          {needsRequisition ? (
+                            <>
+                              <button
+                                className="btn btn-sm btn-outline-primary me-1"
+                                onClick={() => addToBulkCart(item)}
+                              >
+                                Add to Bulk
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline-secondary"
+                                onClick={() => {
+                                  setRequisitionType("individual");
+                                  setSelectedItem(item.id.toString());
+                                  setQuantity(
+                                    item.reorder_level > 0
+                                      ? item.reorder_level.toString()
+                                      : "10"
+                                  );
+                                  setPriority(
+                                    item.quantity === 0
+                                      ? "High"
+                                      : isNearExpiry(item.expiry_date)
+                                      ? "Urgent"
+                                      : "Normal"
+                                  );
+                                  setShowRequisitionModal(true);
+                                }}
+                              >
+                                Raise Indiv.
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="5" className="text-center py-3">
+                      No items available
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
+        <div className="card-header bg-white py-3">
+          <h3 className="fw-bold mb-0">Create Requisition</h3>
+          <p className="mb-0 text-muted">
+            Submit requisition to Facility Admin
+          </p>
+        </div>
         <div className="card-body">
           <div className="row align-items-center mb-4">
             <div className="col-md-6">
               <div className="bg-light p-3 rounded">
-                <div className="text-muted small">Department: <strong>{department}</strong></div>
-                <div className="mt-1">User: <strong>{username}</strong></div>
+                <div className="text-muted small">
+                  Department: <strong>{department}</strong>
+                </div>
+                <div className="mt-1">
+                  User: <strong>{username}</strong>
+                </div>
               </div>
             </div>
-
             <div className="col-md-6">
               <div className="card bg-light border-0">
                 <div className="card-body">
@@ -547,12 +729,14 @@ const FacilityUserRequisition = () => {
                         name="requisitionType"
                         id="individual"
                         value="individual"
-                        checked={requisitionType === 'individual'}
-                        onChange={() => setRequisitionType('individual')}
+                        checked={requisitionType === "individual"}
+                        onChange={() => setRequisitionType("individual")}
                       />
                       <label className="form-check-label" htmlFor="individual">
                         <div className="fw-bold">Individual</div>
-                        <small className="text-muted">For daily usage items</small>
+                        <small className="text-muted">
+                          For daily usage items
+                        </small>
                       </label>
                     </div>
                     <div className="form-check">
@@ -562,12 +746,14 @@ const FacilityUserRequisition = () => {
                         name="requisitionType"
                         id="bulk"
                         value="bulk"
-                        checked={requisitionType === 'bulk'}
-                        onChange={() => setRequisitionType('bulk')}
+                        checked={requisitionType === "bulk"}
+                        onChange={() => setRequisitionType("bulk")}
                       />
                       <label className="form-check-label" htmlFor="bulk">
                         <div className="fw-bold">Bulk</div>
-                        <small className="text-muted">For large quantity orders</small>
+                        <small className="text-muted">
+                          For large quantity orders
+                        </small>
                       </label>
                     </div>
                   </div>
@@ -575,15 +761,22 @@ const FacilityUserRequisition = () => {
               </div>
             </div>
           </div>
-
           {/* Success alert */}
           {success && (
-            <div className="alert alert-success alert-dismissible fade show" role="alert">
-              <strong>Success!</strong> Your requisition has been submitted to Facility Admin.
-              <button type="button" className="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <div
+              className="alert alert-success alert-dismissible fade show"
+              role="alert"
+            >
+              <strong>Success!</strong> Your requisition has been submitted to
+              Facility Admin.
+              <button
+                type="button"
+                className="btn-close"
+                data-bs-dismiss="alert"
+                aria-label="Close"
+              ></button>
             </div>
           )}
-
           {/* Requisition History */}
           <div className="mt-4">
             <div className="d-flex justify-content-between align-items-center mb-3">
@@ -596,7 +789,6 @@ const FacilityUserRequisition = () => {
                 <FaPlus className="me-1" /> Create Requisition
               </button>
             </div>
-
             {/* Filters */}
             <div className="row mb-4 g-3">
               <div className="col-md-4">
@@ -608,7 +800,6 @@ const FacilityUserRequisition = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-
               <div className="col-md-3">
                 <select
                   className="form-select"
@@ -623,7 +814,6 @@ const FacilityUserRequisition = () => {
                   <option value="Cancelled">Cancelled</option>
                 </select>
               </div>
-
               <div className="col-md-3">
                 <select
                   className="form-select"
@@ -636,21 +826,19 @@ const FacilityUserRequisition = () => {
                   <option value="Urgent">Urgent</option>
                 </select>
               </div>
-
               <div className="col-md-2 d-flex align-items-end">
                 <button
                   className="btn btn-outline-secondary w-100"
                   onClick={() => {
-                    setSearchTerm('');
-                    setStatusFilter('All');
-                    setPriorityFilter('All');
+                    setSearchTerm("");
+                    setStatusFilter("All");
+                    setPriorityFilter("All");
                   }}
                 >
                   Clear Filters
                 </button>
               </div>
             </div>
-
             {/* Table */}
             <div className="table-responsive">
               <table className="table table-hover align-middle">
@@ -669,19 +857,30 @@ const FacilityUserRequisition = () => {
                     currentEntries.map((req) => (
                       <tr key={req.id}>
                         <td>#{req.id}</td>
-                        <td>{req.item_name || 'N/A'}</td>
+                        <td>{req.item_name || "N/A"}</td>
                         <td>
-                          <span className={`badge ${getStatusBadgeClass(req.status)}`}>
+                          <span
+                            className={`badge ${getStatusBadgeClass(
+                              req.status
+                            )}`}
+                          >
                             {req.status}
                           </span>
                         </td>
                         <td>
-                          <span className={`badge ${getPriorityBadgeClass(req.priority)}`}>
+                          <span
+                            className={`badge ${getPriorityBadgeClass(
+                              req.priority
+                            )}`}
+                          >
                             {req.priority}
                           </span>
                         </td>
-                        <td className="text-truncate" style={{ maxWidth: '200px' }}>
-                          {req.remarks || '-'}
+                        <td
+                          className="text-truncate"
+                          style={{ maxWidth: "200px" }}
+                        >
+                          {req.remarks || "-"}
                         </td>
                         <td>
                           <button
@@ -691,7 +890,7 @@ const FacilityUserRequisition = () => {
                           >
                             <FaEye />
                           </button>
-                          {req.status === 'Pending' && (
+                          {req.status === "Pending" && (
                             <button
                               className="btn btn-sm btn-outline-danger"
                               title="Cancel"
@@ -717,13 +916,16 @@ const FacilityUserRequisition = () => {
                 </tbody>
               </table>
             </div>
-
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="d-flex justify-content-end mt-3">
                 <nav>
                   <ul className="pagination mb-0">
-                    <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                    <li
+                      className={`page-item ${
+                        currentPage === 1 ? "disabled" : ""
+                      }`}
+                    >
                       <button
                         className="page-link"
                         onClick={() => handlePageChange(currentPage - 1)}
@@ -732,7 +934,6 @@ const FacilityUserRequisition = () => {
                         Previous
                       </button>
                     </li>
-
                     {[...Array(Math.min(5, totalPages))].map((_, i) => {
                       let page;
                       if (totalPages <= 5) {
@@ -749,7 +950,9 @@ const FacilityUserRequisition = () => {
                       return (
                         <li
                           key={page}
-                          className={`page-item ${currentPage === page ? 'active' : ''}`}
+                          className={`page-item ${
+                            currentPage === page ? "active" : ""
+                          }`}
                         >
                           <button
                             className="page-link"
@@ -760,15 +963,17 @@ const FacilityUserRequisition = () => {
                         </li>
                       );
                     })}
-
                     {totalPages > 5 && (
                       <li className="page-item disabled">
                         <span className="page-link">...</span>
                       </li>
                     )}
-
                     {totalPages > 5 && (
-                      <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                      <li
+                        className={`page-item ${
+                          currentPage === totalPages ? "disabled" : ""
+                        }`}
+                      >
                         <button
                           className="page-link"
                           onClick={() => handlePageChange(totalPages)}
@@ -777,12 +982,19 @@ const FacilityUserRequisition = () => {
                         </button>
                       </li>
                     )}
-
-                    <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+                    <li
+                      className={`page-item ${
+                        currentPage === totalPages || totalPages === 0
+                          ? "disabled"
+                          : ""
+                      }`}
+                    >
                       <button
                         className="page-link"
                         onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages || totalPages === 0}
+                        disabled={
+                          currentPage === totalPages || totalPages === 0
+                        }
                       >
                         Next
                       </button>
@@ -796,29 +1008,35 @@ const FacilityUserRequisition = () => {
       </div>
 
       {/* Create Requisition Modal */}
-      <div className={`modal fade ${showRequisitionModal ? 'show' : ''}`}
-        style={{ display: showRequisitionModal ? 'block' : 'none' }}>
+      <div
+        className={`modal fade ${showRequisitionModal ? "show" : ""}`}
+        style={{ display: showRequisitionModal ? "block" : "none" }}
+      >
         <div className="modal-dialog modal-dialog-centered modal-lg">
           <div className="modal-content">
             <div className="modal-header bg-light">
               <h5 className="modal-title">
-                {requisitionType === 'individual' ? 'Individual Requisition' : 'Bulk Requisition'}
+                {requisitionType === "individual"
+                  ? "Individual Requisition"
+                  : "Bulk Requisition"}
               </h5>
               <button
                 type="button"
                 className="btn-close"
                 onClick={() => {
                   setShowRequisitionModal(false);
-                  setPriority('Normal');
+                  setPriority("Normal");
                 }}
               ></button>
             </div>
             <div className="modal-body">
-              {requisitionType === 'individual' ? (
+              {requisitionType === "individual" ? (
                 <form onSubmit={handleIndividualSubmit}>
                   <div className="row">
                     <div className="col-md-6 mb-3">
-                      <label className="form-label">Item <span className="text-danger">*</span></label>
+                      <label className="form-label">
+                        Item <span className="text-danger">*</span>
+                      </label>
                       <select
                         className="form-select"
                         value={selectedItem}
@@ -829,13 +1047,16 @@ const FacilityUserRequisition = () => {
                         {loadingItems ? (
                           <option>Loading items...</option>
                         ) : facilityItems.length > 0 ? (
-                          facilityItems.map(item => {
+                          facilityItems.map((item) => {
                             const warnings = getItemWarnings(item);
                             return (
                               <option key={item.id} value={item.id}>
-                                {item.item_name} ({item.quantity} {item.unit || 'units'})
+                                {item.item_name} ({item.quantity}{" "}
+                                {item.unit || "units"})
                                 {warnings.length > 0 && (
-                                  <span className="text-danger ms-2">⚠️ {warnings.join(', ')}</span>
+                                  <span className="text-danger ms-2">
+                                    ⚠️ {warnings.join(", ")}
+                                  </span>
                                 )}
                               </option>
                             );
@@ -845,9 +1066,10 @@ const FacilityUserRequisition = () => {
                         )}
                       </select>
                     </div>
-
                     <div className="col-md-6 mb-3">
-                      <label className="form-label">Qty <span className="text-danger">*</span></label>
+                      <label className="form-label">
+                        Qty <span className="text-danger">*</span>
+                      </label>
                       <input
                         type="number"
                         className="form-control"
@@ -857,7 +1079,6 @@ const FacilityUserRequisition = () => {
                         required
                       />
                     </div>
-
                     <div className="col-md-6 mb-3">
                       <label className="form-label">Priority</label>
                       <select
@@ -870,7 +1091,6 @@ const FacilityUserRequisition = () => {
                         <option value="Urgent">Urgent</option>
                       </select>
                     </div>
-
                     <div className="col-12 mb-3">
                       <label className="form-label">Remarks</label>
                       <textarea
@@ -882,14 +1102,13 @@ const FacilityUserRequisition = () => {
                       ></textarea>
                     </div>
                   </div>
-
                   <div className="d-flex justify-content-end gap-2">
                     <button
                       type="button"
                       className="btn btn-secondary"
                       onClick={() => {
                         setShowRequisitionModal(false);
-                        setPriority('Normal');
+                        setPriority("Normal");
                       }}
                     >
                       Cancel
@@ -901,10 +1120,16 @@ const FacilityUserRequisition = () => {
                     >
                       {loading ? (
                         <>
-                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          <span
+                            className="spinner-border spinner-border-sm me-2"
+                            role="status"
+                            aria-hidden="true"
+                          ></span>
                           Submitting...
                         </>
-                      ) : 'Submit Requisition'}
+                      ) : (
+                        "Submit Requisition"
+                      )}
                     </button>
                   </div>
                 </form>
@@ -921,7 +1146,6 @@ const FacilityUserRequisition = () => {
                         <FaPlus className="me-1" /> Add Item
                       </button>
                     </div>
-                    
                     <div className="table-responsive">
                       <table className="table table-borderless">
                         <thead>
@@ -939,20 +1163,34 @@ const FacilityUserRequisition = () => {
                                 <select
                                   className="form-select form-select-sm"
                                   value={item.item}
-                                  onChange={(e) => updateBulkItem(index, 'item', e.target.value)}
+                                  onChange={(e) =>
+                                    updateBulkItem(
+                                      index,
+                                      "item",
+                                      e.target.value
+                                    )
+                                  }
                                   required
                                 >
                                   <option value="">Select item</option>
                                   {loadingItems ? (
                                     <option>Loading...</option>
                                   ) : facilityItems.length > 0 ? (
-                                    facilityItems.map(facilityItem => {
-                                      const warnings = getItemWarnings(facilityItem);
+                                    facilityItems.map((facilityItem) => {
+                                      const warnings =
+                                        getItemWarnings(facilityItem);
                                       return (
-                                        <option key={facilityItem.id} value={facilityItem.id}>
-                                          {facilityItem.item_name} ({facilityItem.quantity} {facilityItem.unit || 'units'})
+                                        <option
+                                          key={facilityItem.id}
+                                          value={facilityItem.id}
+                                        >
+                                          {facilityItem.item_name} (
+                                          {facilityItem.quantity}{" "}
+                                          {facilityItem.unit || "units"})
                                           {warnings.length > 0 && (
-                                            <span className="text-danger ms-2">⚠️ {warnings.join(', ')}</span>
+                                            <span className="text-danger ms-2">
+                                              ⚠️ {warnings.join(", ")}
+                                            </span>
                                           )}
                                         </option>
                                       );
@@ -968,7 +1206,13 @@ const FacilityUserRequisition = () => {
                                   className="form-control form-control-sm"
                                   min="1"
                                   value={item.quantity}
-                                  onChange={(e) => updateBulkItem(index, 'quantity', e.target.value)}
+                                  onChange={(e) =>
+                                    updateBulkItem(
+                                      index,
+                                      "quantity",
+                                      e.target.value
+                                    )
+                                  }
                                   required
                                 />
                               </td>
@@ -976,7 +1220,13 @@ const FacilityUserRequisition = () => {
                                 <select
                                   className="form-select form-select-sm"
                                   value={item.priority}
-                                  onChange={(e) => updateBulkItem(index, 'priority', e.target.value)}
+                                  onChange={(e) =>
+                                    updateBulkItem(
+                                      index,
+                                      "priority",
+                                      e.target.value
+                                    )
+                                  }
                                 >
                                   <option value="Normal">Normal</option>
                                   <option value="High">High</option>
@@ -1000,7 +1250,6 @@ const FacilityUserRequisition = () => {
                       </table>
                     </div>
                   </div>
-
                   <div className="mb-3">
                     <label className="form-label">Remarks</label>
                     <textarea
@@ -1011,7 +1260,6 @@ const FacilityUserRequisition = () => {
                       placeholder="Enter any additional notes..."
                     ></textarea>
                   </div>
-
                   <div className="d-flex justify-content-end gap-2">
                     <button
                       type="button"
@@ -1029,10 +1277,16 @@ const FacilityUserRequisition = () => {
                     >
                       {loading ? (
                         <>
-                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          <span
+                            className="spinner-border spinner-border-sm me-2"
+                            role="status"
+                            aria-hidden="true"
+                          ></span>
                           Submitting...
                         </>
-                      ) : 'Submit Bulk Requisition'}
+                      ) : (
+                        "Submit Bulk Requisition"
+                      )}
                     </button>
                   </div>
                 </form>
@@ -1043,8 +1297,10 @@ const FacilityUserRequisition = () => {
       </div>
 
       {/* Requisition Detail Modal */}
-      <div className={`modal fade ${showDetailModal ? 'show' : ''}`}
-        style={{ display: showDetailModal ? 'block' : 'none' }}>
+      <div
+        className={`modal fade ${showDetailModal ? "show" : ""}`}
+        style={{ display: showDetailModal ? "block" : "none" }}
+      >
         <div className="modal-dialog modal-dialog-centered modal-lg">
           <div className="modal-content">
             <div className="modal-header bg-light">
@@ -1073,7 +1329,11 @@ const FacilityUserRequisition = () => {
                       <div className="mb-3">
                         <strong>Status:</strong>
                         <div>
-                          <span className={`badge ${getStatusBadgeClass(selectedRequisition.status)}`}>
+                          <span
+                            className={`badge ${getStatusBadgeClass(
+                              selectedRequisition.status
+                            )}`}
+                          >
                             {selectedRequisition.status}
                           </span>
                         </div>
@@ -1081,7 +1341,11 @@ const FacilityUserRequisition = () => {
                       <div className="mb-3">
                         <strong>Priority:</strong>
                         <div>
-                          <span className={`badge ${getPriorityBadgeClass(selectedRequisition.priority)}`}>
+                          <span
+                            className={`badge ${getPriorityBadgeClass(
+                              selectedRequisition.priority
+                            )}`}
+                          >
                             {selectedRequisition.priority}
                           </span>
                         </div>
@@ -1090,11 +1354,10 @@ const FacilityUserRequisition = () => {
                     <div className="col-12">
                       <strong>Remarks:</strong>
                       <div className="bg-light p-2 rounded mt-1">
-                        {selectedRequisition.remarks || '-'}
+                        {selectedRequisition.remarks || "-"}
                       </div>
                     </div>
                   </div>
-
                   <h6 className="mt-4 mb-3">Items in this Requisition</h6>
                   {selectedRequisition.items?.length > 0 ? (
                     <div className="table-responsive">
@@ -1104,17 +1367,25 @@ const FacilityUserRequisition = () => {
                             <th>Item Name</th>
                             <th>Qty</th>
                             <th>Priority</th>
-                            {selectedRequisition.items[0].description && <th>Description</th>}
+                            {selectedRequisition.items[0].description && (
+                              <th>Description</th>
+                            )}
                           </tr>
                         </thead>
                         <tbody>
                           {selectedRequisition.items.map((item, idx) => (
                             <tr key={idx}>
-                              <td>{item.item_name || `Item ID: ${item.item_id}`}</td>
+                              <td>
+                                {item.item_name || `Item ID: ${item.item_id}`}
+                              </td>
                               <td>{item.quantity}</td>
                               <td>
-                                <span className={`badge ${getPriorityBadgeClass(item.priority || 'Normal')}`}>
-                                  {item.priority || 'Normal'}
+                                <span
+                                  className={`badge ${getPriorityBadgeClass(
+                                    item.priority || "Normal"
+                                  )}`}
+                                >
+                                  {item.priority || "Normal"}
                                 </span>
                               </td>
                               {item.description && <td>{item.description}</td>}

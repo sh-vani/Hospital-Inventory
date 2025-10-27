@@ -1,15 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
-  FaPlus, FaSearch, FaEdit, FaTimes, FaCheck, FaUser, FaUserMd, FaUserCog, FaHospital,
-  FaEnvelope, FaPhone, FaLock, FaKey, FaInfoCircle, FaUserCircle, FaTrash, FaBuilding, FaUsers, FaWarehouse
-} from 'react-icons/fa';
-import BaseUrl from '../../Api/BaseUrl';
-import axiosInstance from '../../Api/axiosInstance';
+  FaPlus,
+  FaSearch,
+  FaEdit,
+  FaTimes,
+  FaCheck,
+  FaUser,
+  FaUserMd,
+  FaUserCog,
+  FaHospital,
+  FaEnvelope,
+  FaPhone,
+  FaLock,
+  FaKey,
+  FaInfoCircle,
+  FaUserCircle,
+  FaTrash,
+  FaBuilding,
+  FaUsers,
+  FaWarehouse,
+} from "react-icons/fa";
+import BaseUrl from "../../Api/BaseUrl";
+import axiosInstance from "../../Api/axiosInstance";
 
 const SuperAdminUsers = () => {
   // Search
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -22,42 +39,42 @@ const SuperAdminUsers = () => {
 
   // New user form
   const [newUser, setNewUser] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    role: 'facility_user',
-    facility_id: '',
-    password: '',
-    confirmPassword: '',
+    name: "",
+    email: "",
+    phone: "",
+    role: "facility_user",
+    facility_id: "",
+    password: "",
+    confirmPassword: "",
   });
 
   // Edit user form
   const [editUser, setEditUser] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    role: 'facility_user',
-    facility_id: '',
-    department: '',
-    status: 'active'
+    name: "",
+    email: "",
+    phone: "",
+    role: "facility_user",
+    facility_id: "",
+    department: "",
+    status: "active",
   });
 
   // Status change
-  const [newStatus, setNewStatus] = useState('');
+  const [newStatus, setNewStatus] = useState("");
 
   // Users data
   const [users, setUsers] = useState([]);
-  
+
   // Facilities data
   const [facilities, setFacilities] = useState([]);
-  
+
   // User summary stats
   const [userSummary, setUserSummary] = useState({
     totalUsers: 0,
     facilityUsers: 0,
     warehouseAdmins: 0,
     facilityAdmins: 0,
-    superAdmins: 0
+    superAdmins: 0,
   });
 
   // Loading state
@@ -70,7 +87,7 @@ const SuperAdminUsers = () => {
     try {
       setLoading(true);
       const response = await axiosInstance.get(`${BaseUrl}/users`);
-      
+
       if (response.data.success) {
         let usersData = response.data.data;
         if (usersData && Array.isArray(usersData.users)) {
@@ -80,24 +97,32 @@ const SuperAdminUsers = () => {
         setUsers(safeUsers);
 
         const totalUsers = safeUsers.length;
-        const facilityUsers = safeUsers.filter(u => u.role === 'facility_user').length;
-        const warehouseAdmins = safeUsers.filter(u => u.role === 'warehouse_admin').length;
-        const facilityAdmins = safeUsers.filter(u => u.role === 'facility_admin').length;
-        const superAdmins = safeUsers.filter(u => u.role === 'super_admin').length;
-        
+        const facilityUsers = safeUsers.filter(
+          (u) => u.role === "facility_user"
+        ).length;
+        const warehouseAdmins = safeUsers.filter(
+          (u) => u.role === "warehouse_admin"
+        ).length;
+        const facilityAdmins = safeUsers.filter(
+          (u) => u.role === "facility_admin"
+        ).length;
+        const superAdmins = safeUsers.filter(
+          (u) => u.role === "super_admin"
+        ).length;
+
         setUserSummary({
           totalUsers,
           facilityUsers,
           warehouseAdmins,
           facilityAdmins,
-          superAdmins
+          superAdmins,
         });
         setError(null);
       } else {
-        setError('Failed to fetch users data');
+        setError("Failed to fetch users data");
       }
     } catch (err) {
-      setError('Failed to fetch users data');
+      setError("Failed to fetch users data");
       console.error(err);
     } finally {
       setLoading(false);
@@ -109,20 +134,26 @@ const SuperAdminUsers = () => {
     try {
       setFacilitiesLoading(true);
       const response = await axiosInstance.get(`${BaseUrl}/facilities`);
-      
+
       if (response.data.success) {
         const facilitiesData = response.data.data;
         setFacilities(facilitiesData);
-        
+
         if (facilitiesData.length > 0 && !newUser.facility_id) {
-          setNewUser(prev => ({ ...prev, facility_id: facilitiesData[0].id }));
-          setEditUser(prev => ({ ...prev, facility_id: facilitiesData[0].id }));
+          setNewUser((prev) => ({
+            ...prev,
+            facility_id: facilitiesData[0].id,
+          }));
+          setEditUser((prev) => ({
+            ...prev,
+            facility_id: facilitiesData[0].id,
+          }));
         }
       } else {
-        console.error('Failed to fetch facilities data');
+        console.error("Failed to fetch facilities data");
       }
     } catch (err) {
-      console.error('Failed to fetch facilities data:', err);
+      console.error("Failed to fetch facilities data:", err);
     } finally {
       setFacilitiesLoading(false);
     }
@@ -135,68 +166,71 @@ const SuperAdminUsers = () => {
 
   const StatusBadge = ({ status }) => {
     const map = {
-      'active': 'bg-success',
-      'inactive': 'bg-secondary',
-      'pending': 'bg-warning text-dark'
+      active: "bg-success",
+      inactive: "bg-secondary",
+      pending: "bg-warning text-dark",
     };
-    return <span className={`badge ${map[status] || 'bg-secondary'}`}>{status}</span>;
+    return (
+      <span className={`badge ${map[status] || "bg-secondary"}`}>{status}</span>
+    );
   };
 
   const openAddModal = () => {
     setNewUser({
-      name: '',
-      email: '',
-      phone: '',
-      role: 'facility_user',
-      facility_id: facilities.length > 0 ? facilities[0].id : '',
-      password: '',
-      confirmPassword: '',
+      name: "",
+      email: "",
+      phone: "",
+      role: "facility_user",
+      facility_id: facilities.length > 0 ? facilities[0].id : "",
+      password: "",
+      confirmPassword: "",
     });
     setShowAddModal(true);
   };
-  
-  const openViewModal = (user) => { 
-    setCurrentUser(user); 
-    setShowViewModal(true); 
+
+  const openViewModal = (user) => {
+    setCurrentUser(user);
+    setShowViewModal(true);
   };
-  
+
   const openEditModal = (user) => {
     setEditUser({
       name: user.name,
       email: user.email,
       phone: user.phone,
       role: user.role,
-      facility_id: user.facility_id || (facilities.length > 0 ? facilities[0].id : ''),
+      facility_id:
+        user.facility_id || (facilities.length > 0 ? facilities[0].id : ""),
       department: user.department,
-      status: user.status
+      status: user.status,
     });
     setCurrentUser(user);
     setShowEditModal(true);
   };
-  
+
   const openStatusModal = (user) => {
     setCurrentUser(user);
-    setNewStatus(user.status === 'active' ? 'inactive' : 'active');
+    setNewStatus(user.status === "active" ? "inactive" : "active");
     setShowStatusModal(true);
   };
 
   const handleAddUserChange = (e) => {
     const { name, value } = e.target;
-    setNewUser(prev => ({ ...prev, [name]: value }));
+    setNewUser((prev) => ({ ...prev, [name]: value }));
   };
-  
+
   const handleEditUserChange = (e) => {
     const { name, value } = e.target;
-    setEditUser(prev => ({ ...prev, [name]: value }));
+    setEditUser((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleAddUser = async () => {
     if (newUser.password !== newUser.confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
     if (newUser.password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError("Password must be at least 6 characters");
       return;
     }
 
@@ -204,7 +238,10 @@ const SuperAdminUsers = () => {
       const { confirmPassword, ...userData } = newUser;
 
       // Only include facility_id for facility-related roles
-      if (userData.role === 'facility_user' || userData.role === 'facility_admin') {
+      if (
+        userData.role === "facility_user" ||
+        userData.role === "facility_admin"
+      ) {
         if (!userData.facility_id && facilities.length > 0) {
           userData.facility_id = facilities[0].id;
         }
@@ -212,23 +249,23 @@ const SuperAdminUsers = () => {
         // Remove facility_id for non-facility roles
         delete userData.facility_id;
       }
-      
+
       const response = await axiosInstance.post(`${BaseUrl}/users`, userData);
-      
+
       if (response.data.success) {
         await fetchUsers();
         setShowAddModal(false);
         setError(null);
-        alert('User added successfully!');
+        alert("User added successfully!");
       } else {
-        setError(response.data.message || 'Failed to add user');
+        setError(response.data.message || "Failed to add user");
       }
     } catch (err) {
-      console.error('Failed to add user:', err);
+      console.error("Failed to add user:", err);
       if (err.response?.data?.message) {
         setError(err.response.data.message);
       } else {
-        setError('Failed to add user');
+        setError("Failed to add user");
       }
     }
   };
@@ -241,83 +278,96 @@ const SuperAdminUsers = () => {
         phone: editUser.phone,
         role: editUser.role,
         department: editUser.department,
-        status: editUser.status
+        status: editUser.status,
+        // ❌ facility_id intentionally removed — not editable
       };
 
-      // Only include facility_id if role is facility-related
-      if (editUser.role === 'facility_user' || editUser.role === 'facility_admin') {
-        payload.facility_id = editUser.facility_id;
-      }
+      const response = await axiosInstance.put(
+        `${BaseUrl}/users/${currentUser.id}`,
+        payload
+      );
 
-      const response = await axiosInstance.put(`${BaseUrl}/users/${currentUser.id}`, payload);
-      
       if (response.data.success) {
         await fetchUsers();
         setShowEditModal(false);
-        alert('User updated successfully!');
+        alert("User updated successfully!");
       } else {
-        setError('Failed to update user');
+        setError("Failed to update user");
       }
     } catch (err) {
-      console.error('Failed to update user:', err);
-      setError('Failed to update user');
+      console.error("Failed to update user:", err);
+      setError("Failed to update user");
     }
   };
 
   const handleChangeStatus = async () => {
     try {
-      const response = await axiosInstance.put(`${BaseUrl}/users/${currentUser.id}`, {
-        status: newStatus
-      });
-      
+      const response = await axiosInstance.put(
+        `${BaseUrl}/users/${currentUser.id}`,
+        {
+          status: newStatus,
+        }
+      );
+
       if (response.data.success) {
         await fetchUsers();
         setShowStatusModal(false);
-        alert(`User ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully!`);
+        alert(
+          `User ${
+            newStatus === "active" ? "activated" : "deactivated"
+          } successfully!`
+        );
       } else {
-        setError('Failed to update user status');
+        setError("Failed to update user status");
       }
     } catch (err) {
-      console.error('Failed to update user status:', err);
-      setError('Failed to update user status');
+      console.error("Failed to update user status:", err);
+      setError("Failed to update user status");
     }
   };
 
   const deleteUser = async (userId) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this user?");
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this user?"
+    );
 
     if (confirmDelete) {
       try {
-        const response = await axiosInstance.delete(`${BaseUrl}/users/${userId}`);
+        const response = await axiosInstance.delete(
+          `${BaseUrl}/users/${userId}`
+        );
 
         if (response.data.success) {
           alert("User deleted successfully!");
           await fetchUsers();
         } else {
-          setError('Failed to delete user');
+          setError("Failed to delete user");
         }
       } catch (error) {
         console.error("Delete failed:", error);
-        setError(error.response?.data?.message || "Something went wrong while deleting user!");
+        setError(
+          error.response?.data?.message ||
+            "Something went wrong while deleting user!"
+        );
       }
     }
   };
 
   const filtered = Array.isArray(users)
-  ? users.filter(u => {
-      const q = searchTerm.trim().toLowerCase();
-      if (!q) return true;
-      const facility = facilities.find(f => f.id === u.facility_id);
-      return (
-        u.id?.toString().toLowerCase().includes(q) ||
-        u.name?.toLowerCase().includes(q) ||
-        u.email?.toLowerCase().includes(q) ||
-        u.role?.toLowerCase().includes(q) ||
-        facility?.name?.toLowerCase().includes(q) ||
-        u.status?.toLowerCase().includes(q)
-      );
-    })
-  : [];
+    ? users.filter((u) => {
+        const q = searchTerm.trim().toLowerCase();
+        if (!q) return true;
+        const facility = facilities.find((f) => f.id === u.facility_id);
+        return (
+          u.id?.toString().toLowerCase().includes(q) ||
+          u.name?.toLowerCase().includes(q) ||
+          u.email?.toLowerCase().includes(q) ||
+          u.role?.toLowerCase().includes(q) ||
+          facility?.name?.toLowerCase().includes(q) ||
+          u.status?.toLowerCase().includes(q)
+        );
+      })
+    : [];
 
   return (
     <div className="container-fluid py-3">
@@ -329,21 +379,25 @@ const SuperAdminUsers = () => {
             <input
               type="text"
               className="form-control form-control-sm"
-              style={{height: "40px"}} 
+              style={{ height: "40px" }}
               placeholder="Search users..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <button className="btn btn-outline-secondary btn-sm" style={{height: "40px"}} type="button">
+            <button
+              className="btn btn-outline-secondary btn-sm"
+              style={{ height: "40px" }}
+              type="button"
+            >
               <FaSearch />
             </button>
           </div>
           <button
             className="btn btn-primary btn-sm d-inline-flex align-items-center py-1 px-2"
             onClick={openAddModal}
-            style={{height: "40px", width:"150px"}} 
+            style={{ height: "40px", width: "150px" }}
           >
-             Add New User
+            Add New User
           </button>
         </div>
       </div>
@@ -365,7 +419,9 @@ const SuperAdminUsers = () => {
               <div className="bg-primary bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaUsers className="text-primary fs-3" />
               </div>
-              <div className="text-primary fw-bold fs-4">{userSummary.totalUsers}</div>
+              <div className="text-primary fw-bold fs-4">
+                {userSummary.totalUsers}
+              </div>
               <div className="text-muted small">Total Users</div>
             </div>
           </div>
@@ -376,7 +432,9 @@ const SuperAdminUsers = () => {
               <div className="bg-info bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaUser className="text-info fs-3" />
               </div>
-              <div className="text-info fw-bold fs-4">{userSummary.facilityUsers}</div>
+              <div className="text-info fw-bold fs-4">
+                {userSummary.facilityUsers}
+              </div>
               <div className="text-muted small">Facility Users</div>
             </div>
           </div>
@@ -387,7 +445,9 @@ const SuperAdminUsers = () => {
               <div className="bg-warning bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaWarehouse className="text-warning fs-3" />
               </div>
-              <div className="text-warning fw-bold fs-4">{userSummary.warehouseAdmins}</div>
+              <div className="text-warning fw-bold fs-4">
+                {userSummary.warehouseAdmins}
+              </div>
               <div className="text-muted small">Warehouse Admins</div>
             </div>
           </div>
@@ -398,7 +458,9 @@ const SuperAdminUsers = () => {
               <div className="bg-success bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaBuilding className="text-success fs-3" />
               </div>
-              <div className="text-success fw-bold fs-4">{userSummary.facilityAdmins}</div>
+              <div className="text-success fw-bold fs-4">
+                {userSummary.facilityAdmins}
+              </div>
               <div className="text-muted small">Facility Admins</div>
             </div>
           </div>
@@ -409,7 +471,9 @@ const SuperAdminUsers = () => {
               <div className="bg-danger bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
                 <FaUserCog className="text-danger fs-3" />
               </div>
-              <div className="text-danger fw-bold fs-4">{userSummary.superAdmins}</div>
+              <div className="text-danger fw-bold fs-4">
+                {userSummary.superAdmins}
+              </div>
               <div className="text-muted small">Super Admins</div>
             </div>
           </div>
@@ -439,10 +503,12 @@ const SuperAdminUsers = () => {
               </thead>
               <tbody>
                 {filtered.map((user, index) => {
-                  const facility = facilities.find(f => f.id === user.facility_id);
+                  const facility = facilities.find(
+                    (f) => f.id === user.facility_id
+                  );
                   return (
                     <tr key={index}>
-                      <td className="fw-bold">{index+1}</td>
+                      <td className="fw-bold">{index + 1}</td>
                       <td>
                         <div className="d-flex align-items-center">
                           <div className="bg-secondary bg-opacity-10 p-2 rounded-circle me-2">
@@ -451,23 +517,34 @@ const SuperAdminUsers = () => {
                           {user.name}
                         </div>
                       </td>
-                      <td>{user.role || '—'}</td>
-                      <td>{facility ? facility.name : 'Unknown'}</td>
+                      <td>{user.role || "—"}</td>
+                      <td>{facility ? facility.name : "Unknown"}</td>
                       <td>{user.email}</td>
-                      <td><StatusBadge status={user.status} /></td>
+                      <td>
+                        <StatusBadge status={user.status} />
+                      </td>
                       <td>
                         <div className="btn-group" role="group">
-                          <button className="btn btn-sm btn-outline-primary" onClick={() => openViewModal(user)}>
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => openViewModal(user)}
+                          >
                             <FaInfoCircle />
                           </button>
-                          <button className="btn btn-sm btn-outline-primary" onClick={() => openEditModal(user)}>
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => openEditModal(user)}
+                          >
                             <FaEdit />
                           </button>
-                        
-                          <button className="btn btn-sm btn-outline-danger" onClick={() => deleteUser(user.id)}>
+
+                          <button
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => deleteUser(user.id)}
+                          >
                             <FaTrash />
                           </button>
-                        </div>  
+                        </div>
                       </td>
                     </tr>
                   );
@@ -481,7 +558,7 @@ const SuperAdminUsers = () => {
         <div className="card-body d-block d-md-none">
           <div className="row g-2">
             {filtered.map((u, i) => {
-              const facility = facilities.find(f => f.id === u.facility_id);
+              const facility = facilities.find((f) => f.id === u.facility_id);
               return (
                 <div className="col-12" key={i}>
                   <div className="card">
@@ -497,11 +574,11 @@ const SuperAdminUsers = () => {
                         </div>
                         <div className="col-6">
                           <div className="text-muted">Role</div>
-                          <div>{u.role || '—'}</div>
+                          <div>{u.role || "—"}</div>
                         </div>
                         <div className="col-6">
                           <div className="text-muted">Facility</div>
-                          <div>{facility ? facility.name : 'Unknown'}</div>
+                          <div>{facility ? facility.name : "Unknown"}</div>
                         </div>
                         <div className="col-6">
                           <div className="text-muted">Email</div>
@@ -513,26 +590,45 @@ const SuperAdminUsers = () => {
                         </div>
                         <div className="col-6">
                           <div className="text-muted">Last Login</div>
-                          <div>{u.last_login ? new Date(u.last_login).toLocaleDateString() : 'Never'}</div>
+                          <div>
+                            {u.last_login
+                              ? new Date(u.last_login).toLocaleDateString()
+                              : "Never"}
+                          </div>
                         </div>
                       </div>
                       <div className="d-flex gap-2 mt-3">
-                        <button className="btn btn-outline-primary w-100 btn-sm" onClick={() => openViewModal(u)}>
+                        <button
+                          className="btn btn-outline-primary w-100 btn-sm"
+                          onClick={() => openViewModal(u)}
+                        >
                           <FaInfoCircle className="me-1" /> Details
                         </button>
-                        <button className="btn btn-outline-primary w-100 btn-sm" onClick={() => openEditModal(u)}>
+                        <button
+                          className="btn btn-outline-primary w-100 btn-sm"
+                          onClick={() => openEditModal(u)}
+                        >
                           <FaEdit className="me-1" /> Edit
                         </button>
-                        {u.status === 'active' ? (
-                          <button className="btn btn-outline-danger w-100 btn-sm" onClick={() => openStatusModal(u)}>
+                        {u.status === "active" ? (
+                          <button
+                            className="btn btn-outline-danger w-100 btn-sm"
+                            onClick={() => openStatusModal(u)}
+                          >
                             <FaTimes className="me-1" /> Deactivate
                           </button>
                         ) : (
-                          <button className="btn btn-outline-success w-100 btn-sm" onClick={() => openStatusModal(u)}>
+                          <button
+                            className="btn btn-outline-success w-100 btn-sm"
+                            onClick={() => openStatusModal(u)}
+                          >
                             <FaCheck className="me-1" /> Activate
                           </button>
                         )}
-                        <button className="btn btn-outline-danger w-100 btn-sm" onClick={() => deleteUser(u.id)}>
+                        <button
+                          className="btn btn-outline-danger w-100 btn-sm"
+                          onClick={() => deleteUser(u.id)}
+                        >
                           <FaTrash className="me-1" /> Delete
                         </button>
                       </div>
@@ -543,7 +639,9 @@ const SuperAdminUsers = () => {
             })}
             {filtered.length === 0 && !loading && (
               <div className="col-12">
-                <div className="alert alert-light border text-center mb-0">No users found.</div>
+                <div className="alert alert-light border text-center mb-0">
+                  No users found.
+                </div>
               </div>
             )}
           </div>
@@ -557,26 +655,53 @@ const SuperAdminUsers = () => {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Add New User</h5>
-                <button type="button" className="btn-close" onClick={() => setShowAddModal(false)}></button>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowAddModal(false)}
+                ></button>
               </div>
               <div className="modal-body">
                 <form>
                   <div className="row g-3">
                     <div className="col-12 col-md-6">
                       <label className="form-label">Full Name</label>
-                      <input type="text" className="form-control" name="name" value={newUser.name} onChange={handleAddUserChange} />
+                      <input
+                        type="text"
+                        className="form-control"
+                        name="name"
+                        value={newUser.name}
+                        onChange={handleAddUserChange}
+                      />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Email Address</label>
-                      <input type="email" className="form-control" name="email" value={newUser.email} onChange={handleAddUserChange} />
+                      <input
+                        type="email"
+                        className="form-control"
+                        name="email"
+                        value={newUser.email}
+                        onChange={handleAddUserChange}
+                      />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Phone Number</label>
-                      <input type="text" className="form-control" name="phone" value={newUser.phone} onChange={handleAddUserChange} />
+                      <input
+                        type="text"
+                        className="form-control"
+                        name="phone"
+                        value={newUser.phone}
+                        onChange={handleAddUserChange}
+                      />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Role</label>
-                      <select className="form-select" name="role" value={newUser.role} onChange={handleAddUserChange}>
+                      <select
+                        className="form-select"
+                        name="role"
+                        value={newUser.role}
+                        onChange={handleAddUserChange}
+                      >
                         <option value="facility_admin">Facility Admin</option>
                         <option value="facility_user">Facility User</option>
                         <option value="warehouse_admin">Warehouse Admin</option>
@@ -589,42 +714,78 @@ const SuperAdminUsers = () => {
                           <option>Loading facilities...</option>
                         </div>
                       ) : (
-                        <select 
-                          className="form-select" 
-                          name="facility_id" 
-                          value={newUser.facility_id} 
+                        <select
+                          className="form-select"
+                          name="facility_id"
+                          value={newUser.facility_id}
                           onChange={handleAddUserChange}
-                          disabled={newUser.role === 'super_admin' || newUser.role === 'warehouse_admin'}
+                          disabled={
+                            newUser.role === "super_admin" ||
+                            newUser.role === "warehouse_admin"
+                          }
                         >
                           {facilities.map((facility) => (
-                            <option key={facility.id} value={facility.id}>{facility.name}</option>
+                            <option key={facility.id} value={facility.id}>
+                              {facility.name}
+                            </option>
                           ))}
                         </select>
                       )}
-                      {(newUser.role === 'super_admin' || newUser.role === 'warehouse_admin') && (
-                        <small className="text-muted">Facility not applicable for this role.</small>
+                      {(newUser.role === "super_admin" ||
+                        newUser.role === "warehouse_admin") && (
+                        <small className="text-muted">
+                          Facility not applicable for this role.
+                        </small>
                       )}
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Password</label>
                       <div className="input-group">
-                        <input type="password" className="form-control" name="password" value={newUser.password} onChange={handleAddUserChange} />
-                        <span className="input-group-text"><FaLock /></span>
+                        <input
+                          type="password"
+                          className="form-control"
+                          name="password"
+                          value={newUser.password}
+                          onChange={handleAddUserChange}
+                        />
+                        <span className="input-group-text">
+                          <FaLock />
+                        </span>
                       </div>
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Confirm Password</label>
                       <div className="input-group">
-                        <input type="password" className="form-control" name="confirmPassword" value={newUser.confirmPassword} onChange={handleAddUserChange} />
-                        <span className="input-group-text"><FaKey /></span>
+                        <input
+                          type="password"
+                          className="form-control"
+                          name="confirmPassword"
+                          value={newUser.confirmPassword}
+                          onChange={handleAddUserChange}
+                        />
+                        <span className="input-group-text">
+                          <FaKey />
+                        </span>
                       </div>
                     </div>
                   </div>
                 </form>
               </div>
               <div className="modal-footer d-flex gap-2">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-                <button type="button" className="btn btn-primary" onClick={handleAddUser}>Add User</button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowAddModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleAddUser}
+                >
+                  Add User
+                </button>
               </div>
             </div>
           </div>
@@ -637,13 +798,22 @@ const SuperAdminUsers = () => {
           <div className="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">User Details: {currentUser.name}</h5>
-                <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
+                <h5 className="modal-title">
+                  User Details: {currentUser.name}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowViewModal(false)}
+                ></button>
               </div>
               <div className="modal-body">
                 <div className="text-center mb-4">
                   <div className="bg-primary bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
-                    <FaUserCircle className="text-primary" style={{ fontSize: '3rem' }} />
+                    <FaUserCircle
+                      className="text-primary"
+                      style={{ fontSize: "3rem" }}
+                    />
                   </div>
                   <h4 className="fw-bold">{currentUser.name}</h4>
                   <p className="text-muted">{currentUser.email}</p>
@@ -661,7 +831,9 @@ const SuperAdminUsers = () => {
                       <FaUserCog className="text-primary me-2" />
                       <div>
                         <h6 className="mb-0">Role</h6>
-                        <p className="text-muted mb-0">{currentUser.role || '—'}</p>
+                        <p className="text-muted mb-0">
+                          {currentUser.role || "—"}
+                        </p>
                       </div>
                     </div>
                     <div className="d-flex align-items-center mb-2">
@@ -669,7 +841,7 @@ const SuperAdminUsers = () => {
                       <div>
                         <h6 className="mb-0">Facility</h6>
                         <p className="text-muted mb-0">
-                          {currentUser.facility_name || 'Unknown'}
+                          {currentUser.facility_name || "Unknown"}
                         </p>
                       </div>
                     </div>
@@ -693,7 +865,9 @@ const SuperAdminUsers = () => {
                       <FaCheck className="text-primary me-2" />
                       <div>
                         <h6 className="mb-0">Status</h6>
-                        <p className="mb-0"><StatusBadge status={currentUser.status} /></p>
+                        <p className="mb-0">
+                          <StatusBadge status={currentUser.status} />
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -701,18 +875,28 @@ const SuperAdminUsers = () => {
                 <div className="row g-3">
                   <div className="col-12 col-md-6">
                     <h6 className="mb-0">Department</h6>
-                    <p className="text-muted mb-0">{currentUser.department || 'Not specified'}</p>
+                    <p className="text-muted mb-0">
+                      {currentUser.department || "Not specified"}
+                    </p>
                   </div>
                   <div className="col-12 col-md-6">
                     <h6 className="mb-0">Join Date</h6>
                     <p className="text-muted mb-0">
-                      {new Date(currentUser.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {new Date(currentUser.created_at).toLocaleDateString(
+                        "en-GB",
+                        { day: "numeric", month: "short", year: "numeric" }
+                      )}
                     </p>
                   </div>
                   <div className="col-12 col-md-6">
                     <h6 className="mb-0">Last Login</h6>
                     <p className="text-muted mb-0">
-                      {currentUser.last_login ? new Date(currentUser.last_login).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Never'}
+                      {currentUser.last_login
+                        ? new Date(currentUser.last_login).toLocaleDateString(
+                            "en-GB",
+                            { day: "numeric", month: "short", year: "numeric" }
+                          )
+                        : "Never"}
                     </p>
                   </div>
                 </div>
@@ -729,26 +913,53 @@ const SuperAdminUsers = () => {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Edit User: {currentUser.name}</h5>
-                <button type="button" className="btn-close" onClick={() => setShowEditModal(false)}></button>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowEditModal(false)}
+                ></button>
               </div>
               <div className="modal-body">
                 <form>
                   <div className="row g-3">
                     <div className="col-12 col-md-6">
                       <label className="form-label">Full Name</label>
-                      <input type="text" className="form-control" name="name" value={editUser.name} onChange={handleEditUserChange} />
+                      <input
+                        type="text"
+                        className="form-control"
+                        name="name"
+                        value={editUser.name}
+                        onChange={handleEditUserChange}
+                      />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Email Address</label>
-                      <input type="email" className="form-control" name="email" value={editUser.email} onChange={handleEditUserChange} />
+                      <input
+                        type="email"
+                        className="form-control"
+                        name="email"
+                        value={editUser.email}
+                        onChange={handleEditUserChange}
+                      />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Phone Number</label>
-                      <input type="text" className="form-control" name="phone" value={editUser.phone} onChange={handleEditUserChange} />
+                      <input
+                        type="text"
+                        className="form-control"
+                        name="phone"
+                        value={editUser.phone}
+                        onChange={handleEditUserChange}
+                      />
                     </div>
                     <div className="col-12 col-md-6">
                       <label className="form-label">Role</label>
-                      <select className="form-select" name="role" value={editUser.role} onChange={handleEditUserChange}>
+                      <select
+                        className="form-select"
+                        name="role"
+                        value={editUser.role}
+                        onChange={handleEditUserChange}
+                      >
                         <option value="super_admin">Super Admin</option>
                         <option value="facility_admin">Facility Admin</option>
                         <option value="facility_user">Facility User</option>
@@ -762,26 +973,30 @@ const SuperAdminUsers = () => {
                           <option>Loading facilities...</option>
                         </div>
                       ) : (
-                        <select 
-                          className="form-select" 
-                          name="facility_id" 
-                          value={editUser.facility_id} 
+                        <select
+                          className="form-select"
+                          name="facility_id"
+                          value={editUser.facility_id}
                           onChange={handleEditUserChange}
-                          disabled={editUser.role === 'super_admin' || editUser.role === 'warehouse_admin'}
-                        >
-                          {facilities.map((facility) => (
-                            <option key={facility.id} value={facility.id}>{facility.name}</option>
-                          ))}
-                        </select>
+                          disabled={true} // 👈 hamesha disable
+                        ></select>
                       )}
-                      {(editUser.role === 'super_admin' || editUser.role === 'warehouse_admin') && (
-                        <small className="text-muted">Facility not applicable for this role.</small>
+                      {(editUser.role === "super_admin" ||
+                        editUser.role === "warehouse_admin") && (
+                        <small className="text-muted">
+                          Facility not applicable for this role.
+                        </small>
                       )}
                     </div>
-               
+
                     <div className="col-12 col-md-6">
                       <label className="form-label">Status</label>
-                      <select className="form-select" name="status" value={editUser.status} onChange={handleEditUserChange}>
+                      <select
+                        className="form-select"
+                        name="status"
+                        value={editUser.status}
+                        onChange={handleEditUserChange}
+                      >
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
                       </select>
@@ -790,8 +1005,20 @@ const SuperAdminUsers = () => {
                 </form>
               </div>
               <div className="modal-footer d-flex gap-2">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
-                <button type="button" className="btn btn-primary" onClick={handleEditUser}>Save Changes</button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowEditModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleEditUser}
+                >
+                  Save Changes
+                </button>
               </div>
             </div>
           </div>
@@ -805,36 +1032,78 @@ const SuperAdminUsers = () => {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">
-                  {currentUser.status === 'active' ? 'Deactivate User' : 'Activate User'}
+                  {currentUser.status === "active"
+                    ? "Deactivate User"
+                    : "Activate User"}
                 </h5>
-                <button type="button" className="btn-close" onClick={() => setShowStatusModal(false)}></button>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setShowStatusModal(false)}
+                ></button>
               </div>
               <div className="modal-body">
                 <div className="text-center">
-                  <div className={`bg-${currentUser.status === 'active' ? 'danger' : 'success'} bg-opacity-10 p-3 rounded-circle d-inline-block mb-3`}>
-                    {currentUser.status === 'active'
-                      ? <FaTimes className="text-danger" style={{ fontSize: '2rem' }} />
-                      : <FaCheck className="text-success" style={{ fontSize: '2rem' }} />
-                    }
+                  <div
+                    className={`bg-${
+                      currentUser.status === "active" ? "danger" : "success"
+                    } bg-opacity-10 p-3 rounded-circle d-inline-block mb-3`}
+                  >
+                    {currentUser.status === "active" ? (
+                      <FaTimes
+                        className="text-danger"
+                        style={{ fontSize: "2rem" }}
+                      />
+                    ) : (
+                      <FaCheck
+                        className="text-success"
+                        style={{ fontSize: "2rem" }}
+                      />
+                    )}
                   </div>
                   <h4 className="fw-bold">
-                    {currentUser.status === 'active' ? 'Deactivate User?' : 'Activate User?'}
+                    {currentUser.status === "active"
+                      ? "Deactivate User?"
+                      : "Activate User?"}
                   </h4>
                   <p className="text-muted">
-                    Are you sure you want to {currentUser.status === 'active' ? 'deactivate' : 'activate'} <strong>{currentUser.name}</strong>?
+                    Are you sure you want to{" "}
+                    {currentUser.status === "active"
+                      ? "deactivate"
+                      : "activate"}{" "}
+                    <strong>{currentUser.name}</strong>?
                   </p>
                   <p className="text-muted">
-                    {currentUser.status === 'active'
-                      ? 'The user will not be able to access the system until reactivated.'
-                      : 'The user will regain access to the system with their current credentials.'}
+                    {currentUser.status === "active"
+                      ? "The user will not be able to access the system until reactivated."
+                      : "The user will regain access to the system with their current credentials."}
                   </p>
                 </div>
               </div>
               <div className="modal-footer d-flex gap-2">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowStatusModal(false)}>Cancel</button>
-                <button type="button" className={`btn ${currentUser.status === 'active' ? 'btn-danger' : 'btn-success'}`} onClick={handleChangeStatus}>
-                  {currentUser.status === 'active' ? <FaTimes className="me-2" /> : <FaCheck className="me-2" />}
-                  {currentUser.status === 'active' ? 'Deactivate' : 'Activate'} User
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowStatusModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${
+                    currentUser.status === "active"
+                      ? "btn-danger"
+                      : "btn-success"
+                  }`}
+                  onClick={handleChangeStatus}
+                >
+                  {currentUser.status === "active" ? (
+                    <FaTimes className="me-2" />
+                  ) : (
+                    <FaCheck className="me-2" />
+                  )}
+                  {currentUser.status === "active" ? "Deactivate" : "Activate"}{" "}
+                  User
                 </button>
               </div>
             </div>
@@ -843,7 +1112,9 @@ const SuperAdminUsers = () => {
       )}
 
       {/* Modal Backdrop */}
-      {(showAddModal || showViewModal || showEditModal || showStatusModal) && <div className="modal-backdrop show"></div>}
+      {(showAddModal || showViewModal || showEditModal || showStatusModal) && (
+        <div className="modal-backdrop show"></div>
+      )}
     </div>
   );
 };
