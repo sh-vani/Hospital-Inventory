@@ -14,266 +14,6 @@ import BaseUrl from "../../Api/BaseUrl";
 import axiosInstance from "../../Api/axiosInstance";
 
 const WarehouseInventory = () => {
-  // === DUMMY DATA ===
-  const dummyInventory = [
-    {
-      id: 1,
-      item_code: "ITM001",
-      item_name: "Paracetamol 500mg",
-      category: "Medicine",
-      description: "Pain relief medication",
-      unit: "tablets",
-      quantity: 120,
-      reorder_level: 50,
-      item_cost: 2.5,
-      expiry_date: "2024-12-31",
-      facility_name: "Central Warehouse",
-      updated_at: "2023-10-15T10:30:00Z",
-    },
-    {
-      id: 2,
-      item_code: "ITM002",
-      item_name: "Face Masks",
-      category: "PPE",
-      description: "Disposable face masks",
-      unit: "pieces",
-      quantity: 25,
-      reorder_level: 100,
-      item_cost: 0.5,
-      expiry_date: "2025-06-30",
-      facility_name: "Central Warehouse",
-      updated_at: "2023-10-10T14:20:00Z",
-    },
-    {
-      id: 3,
-      item_code: "ITM003",
-      item_name: "Hand Sanitizer",
-      category: "Sanitizer",
-      description: "Alcohol-based hand sanitizer",
-      unit: "bottles",
-      quantity: 0,
-      reorder_level: 30,
-      item_cost: 3.75,
-      expiry_date: "2024-11-15",
-      facility_name: "Central Warehouse",
-      updated_at: "2023-10-05T09:15:00Z",
-    },
-    {
-      id: 4,
-      item_code: "ITM004",
-      item_name: "Gloves",
-      category: "PPE",
-      description: "Disposable latex gloves",
-      unit: "pairs",
-      quantity: 200,
-      reorder_level: 150,
-      item_cost: 1.25,
-      expiry_date: "2024-10-20",
-      facility_name: "Central Warehouse",
-      updated_at: "2023-10-12T16:45:00Z",
-    },
-    {
-      id: 5,
-      item_code: "ITM005",
-      item_name: "Thermometer",
-      category: "Equipment",
-      description: "Digital thermometer",
-      unit: "pieces",
-      quantity: 15,
-      reorder_level: 10,
-      item_cost: 12.99,
-      expiry_date: null,
-      facility_name: "Central Warehouse",
-      updated_at: "2023-10-08T11:30:00Z",
-    },
-    {
-      id: 6,
-      item_code: "ITM006",
-      item_name: "Ibuprofen 400mg",
-      category: "Medicine",
-      description: "Anti-inflammatory medication",
-      unit: "tablets",
-      quantity: 75,
-      reorder_level: 80,
-      item_cost: 3.2,
-      expiry_date: "2024-11-05",
-      facility_name: "Central Warehouse",
-      updated_at: "2023-10-14T13:20:00Z",
-    },
-    {
-      id: 7,
-      item_code: "ITM007",
-      item_name: "Surgical Gowns",
-      category: "PPE",
-      description: "Disposable surgical gowns",
-      unit: "pieces",
-      quantity: 45,
-      reorder_level: 60,
-      item_cost: 5.5,
-      expiry_date: "2025-03-15",
-      facility_name: "Central Warehouse",
-      updated_at: "2023-10-11T15:10:00Z",
-    },
-    {
-      id: 8,
-      item_code: "ITM008",
-      item_name: "Antiseptic Solution",
-      category: "Sanitizer",
-      description: "Chlorhexidine antiseptic solution",
-      unit: "bottles",
-      quantity: 30,
-      reorder_level: 25,
-      item_cost: 4.75,
-      expiry_date: "2024-10-25",
-      facility_name: "Central Warehouse",
-      updated_at: "2023-10-09T10:05:00Z",
-    },
-    {
-      id: 9,
-      item_code: "ITM009",
-      item_name: "Syringes",
-      category: "Equipment",
-      description: "Disposable syringes 5ml",
-      unit: "pieces",
-      quantity: 0,
-      reorder_level: 100,
-      item_cost: 0.75,
-      expiry_date: "2025-01-20",
-      facility_name: "Central Warehouse",
-      updated_at: "2023-10-07T14:30:00Z",
-    },
-    {
-      id: 10,
-      item_code: "ITM010",
-      item_name: "Oxygen Mask",
-      category: "Equipment",
-      description: "Adult oxygen mask",
-      unit: "pieces",
-      quantity: 35,
-      reorder_level: 20,
-      item_cost: 8.25,
-      expiry_date: "2024-12-10",
-      facility_name: "Central Warehouse",
-      updated_at: "2023-10-13T12:15:00Z",
-    },
-    {
-      id: 11,
-      item_code: "ITM011",
-      item_name: "Vitamin C Tablets",
-      category: "Medicine",
-      description: "Vitamin C 1000mg tablets",
-      unit: "tablets",
-      quantity: 150,
-      reorder_level: 100,
-      item_cost: 5.99,
-      expiry_date: "2024-11-30",
-      facility_name: "Central Warehouse",
-      updated_at: "2023-10-14T09:45:00Z",
-    },
-    {
-      id: 12,
-      item_code: "ITM012",
-      item_name: "Blood Pressure Monitor",
-      category: "Equipment",
-      description: "Digital blood pressure monitor",
-      unit: "pieces",
-      quantity: 8,
-      reorder_level: 5,
-      item_cost: 45.99,
-      expiry_date: null,
-      facility_name: "Central Warehouse",
-      updated_at: "2023-10-12T11:20:00Z",
-    },
-  ];
-
-  const dummyPendingRequests = [
-    {
-      id: 1,
-      facility_name: "City General Hospital",
-      item_count: 15,
-      request_date: "2023-10-15T08:30:00Z",
-    },
-    {
-      id: 2,
-      facility_name: "Community Health Center",
-      item_count: 8,
-      request_date: "2023-10-14T14:15:00Z",
-    },
-    {
-      id: 3,
-      facility_name: "District Medical Facility",
-      item_count: 22,
-      request_date: "2023-10-13T10:45:00Z",
-    },
-    {
-      id: 4,
-      facility_name: "Regional Hospital",
-      item_count: 12,
-      request_date: "2023-10-12T16:30:00Z",
-    },
-    {
-      id: 5,
-      facility_name: "Urgent Care Clinic",
-      item_count: 5,
-      request_date: "2023-10-11T09:20:00Z",
-    },
-  ];
-
-  const dummyMovements = [
-    {
-      id: 1,
-      date: "2023-10-15T10:30:00Z",
-      type: "stock_in",
-      quantity: 50,
-      from_to: "Supplier A",
-      reference: "PO-2023-1050",
-    },
-    {
-      id: 2,
-      date: "2023-10-14T14:20:00Z",
-      type: "dispatch",
-      quantity: -20,
-      from_to: "City General Hospital",
-      reference: "REQ-2023-0876",
-    },
-    {
-      id: 3,
-      date: "2023-10-13T09:15:00Z",
-      type: "transfer",
-      quantity: -15,
-      from_to: "Community Health Center",
-      reference: "TRF-2023-0042",
-    },
-    {
-      id: 4,
-      date: "2023-10-12T11:30:00Z",
-      type: "adjustment",
-      quantity: -5,
-      from_to: "Inventory Adjustment",
-      reference: "ADJ-2023-0015",
-    },
-    {
-      id: 5,
-      date: "2023-10-11T16:45:00Z",
-      type: "stock_in",
-      quantity: 100,
-      from_to: "Supplier B",
-      reference: "PO-2023-1042",
-    },
-  ];
-
-  // Dummy facilities data
-  const dummyFacilities = [
-    { id: 1, name: "Central Warehouse" },
-    { id: 2, name: "City General Hospital" },
-    { id: 3, name: "Community Health Center" },
-    { id: 4, name: "District Medical Facility" },
-    { id: 5, name: "Regional Hospital" },
-    { id: 6, name: "Urgent Care Clinic" },
-    { id: 7, name: "Specialized Care Center" },
-    { id: 8, name: "Mobile Health Unit" },
-  ];
-
   // === STATE ===
   const [inventory, setInventory] = useState([]);
   const [lowStockItems, setLowStockItems] = useState([]);
@@ -307,6 +47,7 @@ const WarehouseInventory = () => {
   });
   const [movements, setMovements] = useState([]);
   const [movementsLoading, setMovementsLoading] = useState(false);
+  const [addingItem, setAddingItem] = useState(false);
 
   // Hover state for stats cards
   const [hoveredCard, setHoveredCard] = useState(null);
@@ -315,7 +56,7 @@ const WarehouseInventory = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Ref for document click handlerh9
+  // Ref for document click handler
   const hoverRef = useRef(null);
 
   // === FETCH INVENTORY DATA ===
@@ -323,10 +64,13 @@ const WarehouseInventory = () => {
     const fetchInventoryData = async () => {
       try {
         setLoading(true);
+        setError(null);
 
-        // Simulate API call with dummy data
-        setTimeout(() => {
-          const inventoryData = dummyInventory;
+        // Fetch inventory data from API
+        const inventoryResponse = await axiosInstance.get(`${BaseUrl}/inventory`);
+        
+        if (inventoryResponse.data && inventoryResponse.data.data) {
+          const inventoryData = inventoryResponse.data.data;
           setInventory(inventoryData);
 
           // Categorize items
@@ -348,17 +92,34 @@ const WarehouseInventory = () => {
           setLowStockItems(lowStock);
           setOutOfStockItems(outOfStock);
           setNearExpiryItems(nearExpiry);
+        }
 
-          // Set pending requests
-          setPendingRequests(dummyPendingRequests);
+        // Fetch pending requests from API
+        try {
+          const requestsResponse = await axiosInstance.get(`${BaseUrl}/pending-requests`);
+          if (requestsResponse.data && requestsResponse.data.data) {
+            setPendingRequests(requestsResponse.data.data);
+          }
+        } catch (err) {
+          console.error("Error fetching pending requests:", err);
+          setPendingRequests([]);
+        }
 
-          // Set facilities
-          setFacilities(dummyFacilities);
+        // Fetch facilities from API
+        try {
+          const facilitiesResponse = await axiosInstance.get(`${BaseUrl}/facilities`);
+          if (facilitiesResponse.data && facilitiesResponse.data.data) {
+            setFacilities(facilitiesResponse.data.data);
+          }
+        } catch (err) {
+          console.error("Error fetching facilities:", err);
+          setFacilities([]);
+        }
 
-          setLoading(false);
-        }, 1000); // Simulate network delay
+        setLoading(false);
       } catch (err) {
-        setError("Error fetching data: " + err.message);
+        console.error("Error fetching inventory data:", err);
+        setError("Error fetching data: " + (err.response?.data?.message || err.message));
         setLoading(false);
       }
     };
@@ -384,17 +145,26 @@ const WarehouseInventory = () => {
   const fetchMovements = async (itemId) => {
     try {
       setMovementsLoading(true);
+      setError(null);
 
-      // Simulate API call with dummy data
-      setTimeout(() => {
-        setMovements(dummyMovements);
-        setMovementsLoading(false);
-      }, 500); // Simulate network delay
-    } catch (err) {
-      setError("Error fetching movements: " + err.message);
+      // Fetch movements from API
+      const response = await axiosInstance.get(`${BaseUrl}/inventory/${itemId}/movements`);
+      
+      if (response.data && response.data.data) {
+        setMovements(response.data.data);
+      } else {
+        setMovements([]);
+      }
+      
       setMovementsLoading(false);
+    } catch (err) {
+      console.error("Error fetching movements:", err);
+      setError("Error fetching movements: " + (err.response?.data?.message || err.message));
+      setMovementsLoading(false);
+      setMovements([]);
     }
   };
+
   // Calculate days until expiry
   const daysUntilExpiry = (expiryDate) => {
     if (!expiryDate) return null;
@@ -403,6 +173,7 @@ const WarehouseInventory = () => {
     const diffTime = expiry - today;
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
+
   // === FILTER LOGIC ===
   const filteredInventory = inventory.filter((item) => {
     const q = searchTerm.trim().toLowerCase();
@@ -511,8 +282,22 @@ const WarehouseInventory = () => {
   // === ACTION HANDLERS ===
   const handleSaveEdit = async () => {
     try {
-      // Simulate API call
-      setTimeout(() => {
+      // Prepare the payload for update
+      const payload = {
+        item_name: editForm.item_name,
+        category: editForm.category,
+        description: editForm.description,
+        unit: editForm.unit,
+        quantity: parseInt(editForm.quantity),
+        reorder_level: parseInt(editForm.reorder_level),
+        item_cost: parseFloat(editForm.item_cost),
+        expiry_date: editForm.expiry_date || null
+      };
+
+      // Make the API call to update the item
+      const response = await axiosInstance.put(`${BaseUrl}/inventory/${currentItem.id}`, payload);
+      
+      if (response.data && response.data.success) {
         // Find the selected facility name based on the facility_id
         const selectedFacility = facilities.find(
           (f) => f.id === parseInt(editForm.facility_id)
@@ -534,11 +319,15 @@ const WarehouseInventory = () => {
 
         alert(`Item ${currentItem.item_code} updated successfully`);
         setShowEditModal(false);
-      }, 500); // Simulate network delay
+      } else {
+        alert(response.data.message || "Failed to update item");
+      }
     } catch (err) {
-      alert("Error updating item: " + err.message);
+      console.error("Error updating item:", err);
+      alert("Error updating item: " + (err.response?.data?.message || err.message));
     }
   };
+
   // === EXPORT TO CSV ===
   const handleExportCSV = () => {
     const headers = [
@@ -590,17 +379,38 @@ const WarehouseInventory = () => {
     link.click();
     document.body.removeChild(link);
   };
+
+  // Updated handleAddItem function with API integration
   const handleAddItem = async () => {
     try {
-      // Simulate API call
-      setTimeout(() => {
+      setAddingItem(true);
+      
+      // Prepare the payload according to the API requirements
+      const payload = {
+        item_code: addForm.item_code,
+        item_name: addForm.item_name,
+        category: addForm.category,
+        description: addForm.description,
+        unit: addForm.unit,
+        quantity: parseInt(addForm.quantity),
+        reorder_level: parseInt(addForm.reorder_level),
+        item_cost: parseFloat(addForm.item_cost),
+        expiry_date: addForm.expiry_date || null,
+        facility_id: parseInt(addForm.facility_id)
+      };
+
+      // Make the API call to add the item
+      const response = await axiosInstance.post(`${BaseUrl}/inventory`, payload);
+      
+      if (response.data && response.data.success) {
         // Find the selected facility name
         const selectedFacility = facilities.find(
           (f) => f.id === parseInt(addForm.facility_id)
         );
 
+        // Create a new item object with the response data
         const newItem = {
-          id: inventory.length + 1,
+          id: response.data.data.id || inventory.length + 1,
           ...addForm,
           facility_name: selectedFacility
             ? selectedFacility.name
@@ -608,12 +418,22 @@ const WarehouseInventory = () => {
           updated_at: new Date().toISOString(),
         };
 
+        // Update the local state with the new item
         setInventory((prevInventory) => [...prevInventory, newItem]);
+        
+        // Show success message
         alert(`Item ${addForm.item_code} added successfully`);
         setShowAddModal(false);
-      }, 500); // Simulate network delay
+      } else {
+        // Handle API error response
+        alert(response.data.message || "Failed to add item");
+      }
     } catch (err) {
-      alert("Error adding item: " + err.message);
+      console.error("Error adding item:", err);
+      // Show error message
+      alert("Error adding item: " + (err.response?.data?.message || err.message));
+    } finally {
+      setAddingItem(false);
     }
   };
 
@@ -768,6 +588,7 @@ const WarehouseInventory = () => {
       </nav>
     );
   };
+
   // Calculate Total Warehouse Net Worth
   const totalNetWorth = inventory
     .reduce((sum, item) => {
@@ -776,6 +597,7 @@ const WarehouseInventory = () => {
       return sum + qty * cost;
     }, 0)
     .toFixed(2);
+
   return (
     <div className="container-fluid py-3">
       {/* ===== Top Toolbar ===== */}
@@ -1297,7 +1119,7 @@ const WarehouseInventory = () => {
                         onChange={handleInputChange}
                       />
                     </div>
-                    <div className="col-md-6">
+                    {/* <div className="col-md-6">
                       <label className="form-label">Facility</label>
                       <select
                         className="form-select"
@@ -1312,7 +1134,7 @@ const WarehouseInventory = () => {
                           </option>
                         ))}
                       </select>
-                    </div>
+                    </div> */}
                   </div>
                 </form>
               </div>
@@ -1472,8 +1294,19 @@ const WarehouseInventory = () => {
                 >
                   Cancel
                 </button>
-                <button className="btn btn-primary" onClick={handleAddItem}>
-                  Add Item
+                <button 
+                  className="btn btn-primary" 
+                  onClick={handleAddItem}
+                  disabled={addingItem}
+                >
+                  {addingItem ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Adding...
+                    </>
+                  ) : (
+                    "Add Item"
+                  )}
                 </button>
               </div>
             </div>
@@ -1530,8 +1363,8 @@ const WarehouseInventory = () => {
                             </td>
                           </tr>
                         ) : (
-                          movements.map((movement, index) => (
-                            <tr key={index}>
+                          movements.map((movement) => (
+                            <tr key={movement.id}>
                               <td>
                                 {new Date(movement.date).toLocaleDateString()}
                               </td>

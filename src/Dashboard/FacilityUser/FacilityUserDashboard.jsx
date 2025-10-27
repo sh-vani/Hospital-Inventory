@@ -19,9 +19,11 @@ const FacilityUserDashboard = () => {
     available_items: 0
   });
 
-  // Temporary placeholders for pending/delivered
+  // Requisitions data
+  const [requisitions, setRequisitions] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
-  const [deliveredItems, setDeliveredItems] = useState([]);
+  const [approvedRequests, setApprovedRequests] = useState([]);
+  const [loadingRequisitions, setLoadingRequisitions] = useState(false);
 
   // ✅ Extract user info from localStorage
   useEffect(() => {
@@ -87,6 +89,45 @@ const FacilityUserDashboard = () => {
     fetchDashboardData();
   }, [user]);
 
+  // ✅ Fetch requisitions data
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchRequisitions = async () => {
+      try {
+        setLoadingRequisitions(true);
+        const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+        const response = await axios.get(
+          `${BaseUrl}/requisitions/user/${user.id}`,
+          { headers }
+        );
+
+        if (response.data?.success) {
+          const requisitionsData = response.data.data || [];
+          setRequisitions(requisitionsData);
+          
+          // Filter pending requests
+          const pending = requisitionsData.filter(req => req.status === 'pending');
+          setPendingRequests(pending);
+          
+          // Filter approved requests
+          const approved = requisitionsData.filter(req => req.status === 'approved');
+          setApprovedRequests(approved);
+        } else {
+          console.error('Failed to load requisitions:', response.data.message);
+        }
+      } catch (err) {
+        console.error('Requisitions fetch error:', err);
+      } finally {
+        setLoadingRequisitions(false);
+      }
+    };
+
+    fetchRequisitions();
+  }, [user]);
+
   // ✅ Helper for date format
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
@@ -107,7 +148,18 @@ const FacilityUserDashboard = () => {
       case 'approved': return <span className="badge bg-primary">Approved</span>;
       case 'delivered': return <span className="badge bg-success">Delivered</span>;
       case 'rejected': return <span className="badge bg-danger">Rejected</span>;
+      case 'dispatched': return <span className="badge bg-secondary">Dispatched</span>;
       default: return <span className="badge bg-secondary">{status || 'N/A'}</span>;
+    }
+  };
+
+  // ✅ Priority badge
+  const getPriorityBadge = (priority) => {
+    switch (priority) {
+      case 'urgent': return <span className="badge bg-danger">Urgent</span>;
+      case 'high': return <span className="badge bg-warning text-dark">High</span>;
+      case 'normal': return <span className="badge bg-info">Normal</span>;
+      default: return <span className="badge bg-secondary">{priority || 'N/A'}</span>;
     }
   };
 
@@ -211,61 +263,119 @@ const FacilityUserDashboard = () => {
                 </h5>
               </div>
               <div className="card-body">
-                {pendingRequests.length === 0 ? (
+                {loadingRequisitions ? (
+                  <div className="text-center py-4">
+                    <div className="spinner-border spinner-border-sm text-primary" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
+                ) : pendingRequests.length === 0 ? (
                   <p className="text-center text-muted py-4">
                     <FaClock className="me-2" /> No pending requests
                   </p>
                 ) : (
-                  <div className="row">
-                    {pendingRequests.map((req) => (
-                      <div className="col-md-4 mb-3" key={req.id}>
-                        <div className="card border h-100">
-                          <div className="card-body">
-                            <div className="d-flex justify-content-between align-items-start mb-2">
-                              <h6 className="mb-0">{req.item || 'Unknown Item'}</h6>
-                              {getStatusBadge(req.status)}
-                            </div>
-                            <small className="text-muted">
-                              Qty: {req.quantity} | Raised: {formatDate(req.created_at)}
-                            </small>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="table-responsive">
+                    <table className="table table-hover">
+                      <thead>
+                        <tr>
+                          <th>Requisition ID</th>
+                          <th>Items</th>
+                          <th>Priority</th>
+                          <th>Remarks</th>
+                          <th>Created At</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pendingRequests.map((req) => (
+                          <tr key={req.id}>
+                            <td>#{req.id}</td>
+                            <td>
+                              {req.items && req.items.length > 0 ? (
+                                <div>
+                                  {req.items.map((item, index) => (
+                                    <div key={item.id}>
+                                      {item.item_name} ({item.quantity} {item.unit})
+                                      {index < req.items.length - 1 && <hr className="my-1" />}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                'No items'
+                              )}
+                            </td>
+                            <td>{getPriorityBadge(req.priority)}</td>
+                            <td>{req.remarks || '-'}</td>
+                            <td>{formatDate(req.created_at)}</td>
+                            <td>{getStatusBadge(req.status)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Recently Delivered Items */}
+            {/* Approved Requests */}
             <div className="card border-0 shadow-sm mb-4">
               <div className="card-header bg-white border-0 pt-4 pb-2">
                 <h5 className="fw-bold d-flex align-items-center">
-                  <FaBox className="me-2 text-success" /> Recently Delivered Items
+                  <FaCheck className="me-2 text-success" /> Approved Requests
                 </h5>
               </div>
               <div className="card-body">
-                {deliveredItems.length === 0 ? (
+                {loadingRequisitions ? (
+                  <div className="text-center py-4">
+                    <div className="spinner-border spinner-border-sm text-primary" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
+                ) : approvedRequests.length === 0 ? (
                   <p className="text-center text-muted py-4">
-                    <FaBox className="me-2" /> No items delivered recently
+                    <FaCheck className="me-2" /> No approved requests
                   </p>
                 ) : (
-                  <div className="row">
-                    {deliveredItems.map((item) => (
-                      <div className="col-md-4 mb-3" key={item.id}>
-                        <div className="card border h-100">
-                          <div className="card-body">
-                            <div className="d-flex justify-content-between align-items-start mb-2">
-                              <h6 className="mb-0">{item.item || 'Item'}</h6>
-                              <span className="badge bg-success">Delivered</span>
-                            </div>
-                            <small className="text-muted">
-                              Qty: {item.quantity} | {formatDate(item.delivered_at)}
-                            </small>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="table-responsive">
+                    <table className="table table-hover">
+                      <thead>
+                        <tr>
+                          <th>Requisition ID</th>
+                          <th>Items</th>
+                          <th>Priority</th>
+                          <th>Remarks</th>
+                          <th>Created At</th>
+                          <th>Approved At</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {approvedRequests.map((req) => (
+                          <tr key={req.id}>
+                            <td>#{req.id}</td>
+                            <td>
+                              {req.items && req.items.length > 0 ? (
+                                <div>
+                                  {req.items.map((item, index) => (
+                                    <div key={item.id}>
+                                      {item.item_name} ({item.quantity} {item.unit})
+                                      {index < req.items.length - 1 && <hr className="my-1" />}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                'No items'
+                              )}
+                            </td>
+                            <td>{getPriorityBadge(req.priority)}</td>
+                            <td>{req.remarks || '-'}</td>
+                            <td>{formatDate(req.created_at)}</td>
+                            <td>{req.approved_at ? formatDate(req.approved_at) : '-'}</td>
+                            <td>{getStatusBadge(req.status)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
@@ -277,4 +387,4 @@ const FacilityUserDashboard = () => {
   );
 };
 
-export default FacilityUserDashboard;
+export default FacilityUserDashboard; 
