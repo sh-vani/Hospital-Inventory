@@ -285,7 +285,7 @@ const FacilityUserMyRequests = () => {
         return 'bg-warning text-dark';
       case 'Dispatched':
         return 'bg-info';
-      case 'Completed':
+      case 'Approved':
         return 'bg-success';
       case 'Rejected':
         return 'bg-danger';
@@ -301,7 +301,7 @@ const FacilityUserMyRequests = () => {
         return <FaClock className="me-1" />;
       case 'Dispatched':
         return <FaPaperPlane className="me-1" />;
-      case 'Completed':
+      case 'Approved':
         return <FaCheck className="me-1" />;
       case 'Rejected':
         return <FaTimes className="me-1" />;
@@ -312,21 +312,21 @@ const FacilityUserMyRequests = () => {
 
   // Function to get step status (for timeline)
   const getStepStatus = (currentStatus, stepStatus) => {
-    const statusOrder = ['Pending', 'Dispatched', 'Completed'];
+    const statusOrder = ['Pending', 'Dispatched', 'Approved'];
     const currentIdx = statusOrder.indexOf(currentStatus);
     const stepIdx = statusOrder.indexOf(stepStatus);
 
-    if (stepIdx < currentIdx) return 'completed';
+    if (stepIdx < currentIdx) return 'Approved';
     if (stepIdx === currentIdx) return 'current';
     return 'upcoming';
   };
 
   return (
-    <div className="container-fluid py-4 px-3 px-md-4">
+    <div className="">
       {/* Header Section - Fixed background color */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 bg-white p-3 rounded">
         <div className="mb-3 mb-md-0">
-          <h1 className="h3 mb-1">My Requests</h1>
+          <h3 className="fw-bold mb-1">My Requests</h3>
           <p className="text-muted mb-0">Track and manage your requisition requests</p>
         </div>
         <div className="d-flex align-items-center">
@@ -497,15 +497,15 @@ const FacilityUserMyRequests = () => {
                   <div className="d-flex flex-column flex-md-row justify-content-between position-relative">
                     <div className="timeline-line position-absolute top-0 bottom-0 start-50 translate-middle-x"></div>
 
-                    {['Pending', 'Dispatched', 'Completed'].map((status, index) => {
+                    {['Pending', 'Dispatched', 'Approved'].map((status, index) => {
                       const stepStatus = getStepStatus(selectedRequest.status, status);
                       return (
                         <div key={status} className="text-center mb-4 flex-grow-1">
-                          <div className={`timeline-step rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 ${stepStatus === 'completed' ? 'bg-success' :
+                          <div className={`timeline-step rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2 ${stepStatus === 'Approved' ? 'bg-success' :
                               stepStatus === 'current' ? 'bg-primary' :
                                 'bg-light border'
                             }`} style={{ width: '40px', height: '40px' }}>
-                            {stepStatus === 'completed' ? (
+                            {stepStatus === 'Approved' ? (
                               <FaCheck className="text-white" />
                             ) : stepStatus === 'current' ? (
                               <span className="text-white fw-bold">{index + 1}</span>
@@ -513,7 +513,7 @@ const FacilityUserMyRequests = () => {
                               <span className="text-muted">{index + 1}</span>
                             )}
                           </div>
-                          <div className={`fw-bold ${stepStatus === 'completed' || stepStatus === 'current' ? 'text-primary' : 'text-muted'
+                          <div className={`fw-bold ${stepStatus === 'Approved' || stepStatus === 'current' ? 'text-primary' : 'text-muted'
                             }`}>
                             {status}
                           </div>

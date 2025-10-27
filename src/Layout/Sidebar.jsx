@@ -175,11 +175,11 @@ useEffect(() => {
         path: "/facility/assets",
       },
 
-       {
-        name: "Good Receipt",
-        icon: faArchive,
-        path: "/facility/goodreceipt",
-      },
+      //  {
+      //   name: "Good Receipt",
+      //   icon: faArchive,
+      //   path: "/facility/goodreceipt",
+      // },
 
        {
         name: "Reports",
@@ -203,11 +203,11 @@ useEffect(() => {
         icon: faUsers,
         path: "/facility/users",
       },
-      {
-        name: "Settings",
-        icon: faGear,
-        path: "/facility/settings",
-      },
+      // {
+      //   name: "Settings",
+      //   icon: faGear,
+      //   path: "/facility/settings",
+      // },
     ],
 
     "facility_user": [

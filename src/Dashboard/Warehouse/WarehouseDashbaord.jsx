@@ -9,15 +9,21 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  BarChart,
+  Bar
 } from "recharts";
 import {
   FaPills,
   FaExclamationTriangle,
   FaFileImport,
+  FaChartLine
 } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import BaseUrl from "../../Api/BaseUrl";
 
 const WarehouseDashboard = () => {
+  const navigate = useNavigate();
+  
   const [kpiData, setKpiData] = useState({
     totalStock: "0",
     lowStock: "0",
@@ -25,6 +31,7 @@ const WarehouseDashboard = () => {
   });
   
   const [dispatchData, setDispatchData] = useState([]);
+  const [consumptionData, setConsumptionData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -44,7 +51,6 @@ const WarehouseDashboard = () => {
           });
           
           // For now, we'll keep the mock dispatch data since the API doesn't provide monthly dispatch data
-          // If you have this data from another endpoint, you can update this section
           setDispatchData([
             { month: "Jan", dispatched: 120 },
             { month: "Feb", dispatched: 95 },
@@ -57,6 +63,46 @@ const WarehouseDashboard = () => {
             { month: "Sep", dispatched: 210 },
             { month: "Oct", dispatched: 230 },
           ]);
+          
+          // Mock consumption data for facilities
+          setConsumptionData([
+            { 
+              facility: "City General Hospital", 
+              "Surgical Gloves": 45, 
+              "Face Masks": 120, 
+              "Syringes": 85 
+            },
+            { 
+              facility: "Community Health Center", 
+              "Surgical Gloves": 30, 
+              "Face Masks": 90, 
+              "Syringes": 65 
+            },
+            { 
+              facility: "District Medical Facility", 
+              "Surgical Gloves": 60, 
+              "Face Masks": 150, 
+              "Syringes": 110 
+            },
+            { 
+              facility: "Rural Health Clinic", 
+              "Surgical Gloves": 25, 
+              "Face Masks": 70, 
+              "Syringes": 45 
+            },
+            { 
+              facility: "Emergency Medical Center", 
+              "Surgical Gloves": 75, 
+              "Face Masks": 180, 
+              "Syringes": 130 
+            },
+            { 
+              facility: "Pediatric Hospital", 
+              "Surgical Gloves": 40, 
+              "Face Masks": 100, 
+              "Syringes": 70 
+            }
+          ]);
         }
         setLoading(false);
       } catch (err) {
@@ -67,6 +113,10 @@ const WarehouseDashboard = () => {
 
     fetchData();
   }, []);
+
+  const handlePendingReqsClick = () => {
+    navigate("/warehouse/requisitions");
+  };
 
   if (loading) {
     return (
@@ -125,14 +175,15 @@ const WarehouseDashboard = () => {
             value: kpiData.pendingReqs,
             bg: "secondary",
             color: "text-secondary",
+            onClick: handlePendingReqsClick,
+            clickable: true
           },
         ].map((item, idx) => (
           <div className="col-12 col-md-4" key={idx}>
             <div
-              className="card border-0 shadow-sm text-center bg-light"
+              className={`card border-0 shadow-sm text-center bg-light ${item.clickable ? 'cursor-pointer' : ''}`}
               style={{
                 borderRadius: "12px",
-                cursor: "pointer",
                 transition: "all 0.3s ease",
               }}
               onMouseEnter={(e) => {
@@ -145,6 +196,7 @@ const WarehouseDashboard = () => {
                 e.currentTarget.style.boxShadow =
                   "0 2px 10px rgba(0,0,0,0.05)";
               }}
+              onClick={item.onClick}
             >
               {/* Icon Section */}
               <div
@@ -171,42 +223,89 @@ const WarehouseDashboard = () => {
               {/* Value & Label */}
               <div className="p-4">
                 <h4 className={`fw-bold ${item.color} mb-1`}>{item.value}</h4>
-                <small className="text-muted">{item.label}</small>
+                <small className="text-muted">
+                  {item.label}
+                  {item.clickable && <span className="ms-1">(Click to view)</span>}
+                </small>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Monthly Dispatch Chart */}
-      <div className="card border-0 shadow-sm">
-        <div className="card-header bg-white border-0 pt-3">
-          <h5 className="mb-0 fw-bold">Items Dispatched Monthly</h5>
+      {/* Charts Row */}
+      <div className="row g-4 mb-4">
+        {/* Monthly Dispatch Chart */}
+        <div className="col-12 col-lg-6">
+          <div className="card border-0 shadow-sm h-100">
+            <div className="card-header bg-white border-0 pt-3">
+              <h5 className="mb-0 fw-bold">Items Dispatched Monthly</h5>
+            </div>
+            <div className="card-body" style={{ height: 350 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={dispatchData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                    }}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="dispatched"
+                    stroke="#3498db"
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
-        <div className="card-body" style={{ height: 350 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={dispatchData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip
-                contentStyle={{
-                  borderRadius: "8px",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                }}
-              />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="dispatched"
-                stroke="#3498db"
-                strokeWidth={2}
-                dot={{ r: 4 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+
+        {/* Consumption Trend Chart */}
+        <div className="col-12 col-lg-6">
+          <div className="card border-0 shadow-sm h-100">
+            <div className="card-header bg-white border-0 pt-3 d-flex align-items-center">
+              <FaChartLine className="me-2 text-primary" />
+              <h5 className="mb-0 fw-bold">Facility Consumption Trend</h5>
+            </div>
+            <div className="card-body" style={{ height: 350 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={consumptionData}
+                  margin={{
+                    top: 20,
+                    right: 30,
+                    left: 20,
+                    bottom: 50,
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis dataKey="facility" angle={-45} textAnchor="end" height={70} />
+                  <YAxis />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                    }}
+                  />
+                  <Legend />
+                  <Bar dataKey="Surgical Gloves" fill="#8884d8" name="Surgical Gloves" />
+                  <Bar dataKey="Face Masks" fill="#82ca9d" name="Face Masks" />
+                  <Bar dataKey="Syringes" fill="#ffc658" name="Syringes" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
       </div>
+
+
     </div>
   );
 };
