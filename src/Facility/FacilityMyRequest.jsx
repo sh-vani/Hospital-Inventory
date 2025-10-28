@@ -1,5 +1,7 @@
 // src/App.jsx
 import { useState, useEffect } from 'react';
+import axios from 'axios';
+import BaseUrl from "../Api/BaseUrl"
 
 function FacilityMyRequest() {
   // Current user (hardcoded for this example)
@@ -7,167 +9,10 @@ function FacilityMyRequest() {
   // User's facility (hardcoded for this example)
   const userFacility = 'Kumasi Branch Hospital';
   
-  // Updated initial requisitions data with flat structure
-  const initialRequisitions = [
-    {
-      id: 'REQ-2025-101',
-      facility: 'Kumasi Branch Hospital',
-      user: 'Dr. Amoah',
-      department: 'OPD',
-      item: 'Paracetamol 500mg',
-      qty: 10,
-      facilityStock: 15,
-      priority: 'Normal',
-      status: 'Pending',
-      raisedOn: '27-Sep-2025',
-      statusTimeline: [
-        { status: 'Raised by User', timestamp: '27-Sep-2025 10:00' },
-        { status: 'Seen by Facility Admin', timestamp: '27-Sep-2025 10:30' }
-      ],
-      remarksLog: []
-    },
-    {
-      id: 'REQ-2025-102',
-      facility: 'Kumasi Branch Hospital',
-      user: 'Dr. Amoah',
-      department: 'Emergency',
-      item: 'Surgical Gloves (L)',
-      qty: 20,
-      facilityStock: 15,
-      priority: 'High',
-      status: 'Delivered',
-      raisedOn: '26-Sep-2025',
-      statusTimeline: [
-        { status: 'Raised by User', timestamp: '26-Sep-2025 09:15' },
-        { status: 'Seen by Facility Admin', timestamp: '26-Sep-2025 09:45' },
-        { status: 'Delivered', timestamp: '26-Sep-2025 10:30' }
-      ],
-      remarksLog: [
-        { user: 'Facility Admin', remark: 'Delivered from available stock', timestamp: '26-Sep-2025 10:30' }
-      ]
-    },
-    {
-      id: 'REQ-2025-103',
-      facility: 'Kumasi Branch Hospital',
-      user: 'Dr. Amoah',
-      department: 'Pediatrics',
-      item: 'Children\'s Paracetamol',
-      qty: 15,
-      facilityStock: 0,
-      priority: 'Urgent',
-      status: 'Processing',
-      raisedOn: '25-Sep-2025',
-      statusTimeline: [
-        { status: 'Raised by User', timestamp: '25-Sep-2025 11:20' },
-        { status: 'Seen by Facility Admin', timestamp: '25-Sep-2025 11:50' },
-        { status: 'Raised to Warehouse', timestamp: '25-Sep-2025 12:30' }
-      ],
-      remarksLog: [
-        { user: 'Facility Admin', remark: 'Urgent request, no stock available', timestamp: '25-Sep-2025 12:30' }
-      ]
-    },
-    {
-      id: 'REQ-2025-104',
-      facility: 'Kumasi Branch Hospital',
-      user: 'Dr. Amoah',
-      department: 'OPD',
-      item: 'Cough Syrup',
-      qty: 12,
-      facilityStock: 8,
-      priority: 'Normal',
-      status: 'Delivered',
-      raisedOn: '24-Sep-2025',
-      statusTimeline: [
-        { status: 'Raised by User', timestamp: '24-Sep-2025 14:10' },
-        { status: 'Seen by Facility Admin', timestamp: '24-Sep-2025 14:40' },
-        { status: 'Delivered', timestamp: '24-Sep-2025 15:20' }
-      ],
-      remarksLog: [
-        { user: 'Facility Admin', remark: 'Delivered from available stock', timestamp: '24-Sep-2025 15:20' }
-      ]
-    },
-    {
-      id: 'REQ-2025-105',
-      facility: 'Kumasi Branch Hospital',
-      user: 'Dr. Amoah',
-      department: 'Surgery',
-      item: 'Surgical Masks',
-      qty: 50,
-      facilityStock: 100,
-      priority: 'Normal',
-      status: 'Completed',
-      raisedOn: '23-Sep-2025',
-      statusTimeline: [
-        { status: 'Raised by User', timestamp: '23-Sep-2025 09:30' },
-        { status: 'Seen by Facility Admin', timestamp: '23-Sep-2025 10:00' },
-        { status: 'Delivered', timestamp: '23-Sep-2025 10:45' },
-        { status: 'Completed', timestamp: '23-Sep-2025 11:30' }
-      ],
-      remarksLog: [
-        { user: 'Facility Admin', remark: 'Delivered from available stock', timestamp: '23-Sep-2025 10:45' }
-      ]
-    },
-    {
-      id: 'REQ-2025-106',
-      facility: 'Kumasi Branch Hospital',
-      user: 'Dr. Amoah',
-      department: 'OPD',
-      item: 'Ibuprofen 400mg',
-      qty: 7,
-      facilityStock: 50,
-      priority: 'Normal',
-      status: 'Approved',
-      raisedOn: '22-Sep-2025',
-      statusTimeline: [
-        { status: 'Raised by User', timestamp: '22-Sep-2025 13:15' },
-        { status: 'Seen by Facility Admin', timestamp: '22-Sep-2025 13:45' },
-        { status: 'Delivered', timestamp: '22-Sep-2025 14:30' },
-        { status: 'Approved by User', timestamp: '22-Sep-2025 15:20' }
-      ],
-      remarksLog: [
-        { user: 'Facility Admin', remark: 'Delivered from available stock', timestamp: '22-Sep-2025 14:30' },
-        { user: 'Dr. Amoah', remark: 'Items received in good condition', timestamp: '22-Sep-2025 15:20' }
-      ]
-    },
-    {
-      id: 'REQ-2025-107',
-      facility: 'Kumasi Branch Hospital',
-      user: 'Dr. Amoah',
-      department: 'OPD',
-      item: 'Antibiotic Ointment',
-      qty: 5,
-      facilityStock: 0,
-      priority: 'High',
-      status: 'Rejected',
-      raisedOn: '21-Sep-2025',
-      statusTimeline: [
-        { status: 'Raised by User', timestamp: '21-Sep-2025 11:05' },
-        { status: 'Seen by Facility Admin', timestamp: '21-Sep-2025 11:35' },
-        { status: 'Rejected', timestamp: '21-Sep-2025 12:15' }
-      ],
-      remarksLog: [
-        { user: 'Facility Admin', remark: 'Duplicate request', timestamp: '21-Sep-2025 12:15' }
-      ]
-    },
-    // Add more mock data to test pagination
-    ...Array.from({ length: 5 }, (_, i) => ({
-      id: `REQ-2025-${108 + i}`,
-      facility: 'Kumasi Branch Hospital',
-      user: 'Dr. Amoah',
-      department: 'Dept',
-      item: `Item ${i + 1}`,
-      qty: 5,
-      facilityStock: i % 2 === 0 ? 10 : 0,
-      priority: 'Normal',
-      status: i % 3 === 0 ? 'Delivered' : 'Pending',
-      raisedOn: '20-Sep-2025',
-      statusTimeline: [{ status: 'Raised by User', timestamp: '20-Sep-2025 10:00' }],
-      remarksLog: []
-    }))
-  ];
-  
   // State management
-  const [requisitions, setRequisitions] = useState(initialRequisitions);
+  const [requisitions, setRequisitions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showDisapproveModal, setShowDisapproveModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -179,6 +24,104 @@ function FacilityMyRequest() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 10;
+
+  // Fetch requisitions from API
+  useEffect(() => {
+    const fetchRequisitions = async () => {
+      try {
+        // Get user info from local storage
+        const userStr = localStorage.getItem('user');
+        if (!userStr) {
+          setError('User information not found in local storage');
+          setLoading(false);
+          return;
+        }
+        
+        const user = JSON.parse(userStr);
+        // 从用户对象中获取 facility_id
+        const facilityId = user.facility_id;
+        
+        if (!facilityId) {
+          setError('Facility ID not found in user information');
+          setLoading(false);
+          return;
+        }
+
+        // Make API call
+        const response = await axios.get(`${BaseUrl}/requisitions/facility/${facilityId}`);
+        
+        if (response.data && response.data.success && response.data.data) {
+          // Transform API response to match the current data structure
+          const transformedData = response.data.data.map(req => {
+            // For simplicity, we'll create a separate requisition entry for each item
+            // In a real application, you might want to handle this differently
+            return req.items && req.items.length > 0 ? req.items.map(item => {
+              // Create status timeline based on the status and timestamps
+              const statusTimeline = [
+                { status: 'Raised by User', timestamp: formatDate(req.created_at) }
+              ];
+              
+              if (req.approved_at) {
+                statusTimeline.push({ status: 'Approved', timestamp: formatDate(req.approved_at) });
+              }
+              
+              if (req.delivered_at) {
+                statusTimeline.push({ status: 'Delivered', timestamp: formatDate(req.delivered_at) });
+              }
+              
+              if (req.rejected_at) {
+                statusTimeline.push({ status: 'Rejected', timestamp: formatDate(req.rejected_at) });
+              }
+              
+              // Create remarks log if remarks exist
+              const remarksLog = req.remarks ? [
+                { 
+                  user: req.user_name, 
+                  remark: req.remarks, 
+                  timestamp: formatDate(req.created_at) 
+                }
+              ] : [];
+              
+              return {
+                id: `REQ-${req.id}`,
+                facility: req.facility_name,
+                user: req.user_name,
+                department: 'Department', // This info is not in the API response
+                item: item.item_name || 'Unknown Item',
+                qty: item.quantity || 0,
+                facilityStock: item.available_quantity || 0,
+                priority: req.priority || 'Normal',
+                status: req.status || 'Pending',
+                raisedOn: formatDate(req.created_at),
+                statusTimeline,
+                remarksLog
+              };
+            }) : [];
+          }).flat(); // Flatten the array of arrays
+          
+          setRequisitions(transformedData);
+        } else {
+          setError('Failed to fetch requisitions');
+        }
+      } catch (err) {
+        setError('Error fetching requisitions: ' + err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRequisitions();
+  }, []);
+
+  // Helper function to format date
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', { 
+      day: '2-digit', 
+      month: 'short', 
+      year: 'numeric' 
+    });
+  };
 
   // Filter requisitions based on current user and search term
   const filteredRequisitions = requisitions.filter(req => {
@@ -312,6 +255,28 @@ function FacilityMyRequest() {
     setSelectedRequisition(null);
   };
 
+  if (loading) {
+    return (
+      <div className="container-fluid py-4 px-3 px-md-4">
+        <div className="d-flex justify-content-center align-items-center" style={{ height: '80vh' }}>
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container-fluid py-4 px-3 px-md-4">
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container-fluid py-4 px-3 px-md-4">
       {/* Header */}
@@ -394,24 +359,6 @@ function FacilityMyRequest() {
                     <td>{req.raisedOn}</td>
                     <td className="text-center">
                       <div className="d-flex justify-content-center gap-2 flex-wrap">
-                        {/* {req.status === 'Delivered' && (
-                          <>
-                            <button 
-                              className="btn btn-sm btn-success" 
-                              onClick={() => handleApprove(req)}
-                              title="Approve"
-                            >
-                              Approve
-                            </button>
-                            <button 
-                              className="btn btn-sm btn-warning" 
-                              onClick={() => handleDisapprove(req)}
-                              title="Disapprove"
-                            >
-                              Disapprove
-                            </button>
-                          </>
-                        )} */}
                         <button 
                           className="btn btn-sm btn-outline-secondary" 
                           onClick={() => handleViewDetail(req)}
@@ -473,145 +420,6 @@ function FacilityMyRequest() {
         </nav>
       </div>
 
-      {/* Approve Modal */}
-      {showApproveModal && selectedRequisition && (
-        <div 
-          className="modal fade show" 
-          tabIndex="-1" 
-          style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} 
-          onClick={closeApproveModal}
-        >
-          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
-            <div className="modal-content">
-              <div className="modal-header border-0 pb-0">
-                <h5 className="modal-title fw-bold">Approve Requisition</h5>
-                <button 
-                  type="button" 
-                  className="btn-close" 
-                  onClick={closeApproveModal}
-                ></button>
-              </div>
-              <div className="modal-body p-4">
-                <div className="row mb-3">
-                  <div className="col-5 fw-bold text-muted">Req ID:</div>
-                  <div className="col-7">{selectedRequisition.id}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-5 fw-bold text-muted">Item Name:</div>
-                  <div className="col-7">{selectedRequisition.item}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-5 fw-bold text-muted">Requested Qty:</div>
-                  <div className="col-7">{selectedRequisition.qty}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-5 fw-bold text-muted">Delivered Qty:</div>
-                  <div className="col-7">{selectedRequisition.qty}</div>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Remarks</label>
-                  <textarea 
-                    className="form-control" 
-                    value={approveRemarks} 
-                    onChange={(e) => setApproveRemarks(e.target.value)} 
-                    rows="2"
-                    placeholder="Optional remarks"
-                  ></textarea>
-                </div>
-              </div>
-              <div className="modal-footer border-0 pt-0">
-                <div className="d-flex flex-column flex-sm-row gap-2 w-100">
-                  <button 
-                    type="button" 
-                    className="btn btn-outline-secondary w-100" 
-                    onClick={closeApproveModal}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="button" 
-                    className="btn btn-success w-100" 
-                    onClick={submitApprove}
-                  >
-                    Approve
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Disapprove Modal */}
-      {showDisapproveModal && selectedRequisition && (
-        <div 
-          className="modal fade show" 
-          tabIndex="-1" 
-          style={{ display: 'block', backgroundColor: 'rgba(0,0,0,0.5)' }} 
-          onClick={closeDisapproveModal}
-        >
-          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
-            <div className="modal-content">
-              <div className="modal-header border-0 pb-0">
-                <h5 className="modal-title fw-bold">Disapprove Requisition</h5>
-                <button 
-                  type="button" 
-                  className="btn-close" 
-                  onClick={closeDisapproveModal}
-                ></button>
-              </div>
-              <div className="modal-body p-4">
-                <div className="row mb-3">
-                  <div className="col-5 fw-bold text-muted">Req ID:</div>
-                  <div className="col-7">{selectedRequisition.id}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-5 fw-bold text-muted">Item Name:</div>
-                  <div className="col-7">{selectedRequisition.item}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-5 fw-bold text-muted">Requested Qty:</div>
-                  <div className="col-7">{selectedRequisition.qty}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-5 fw-bold text-muted">Delivered Qty:</div>
-                  <div className="col-7">{selectedRequisition.qty}</div>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Reason for Disapproval <span className="text-danger">*</span></label>
-                  <textarea 
-                    className="form-control" 
-                    value={disapproveReason} 
-                    onChange={(e) => setDisapproveReason(e.target.value)} 
-                    rows="3"
-                    placeholder="Please provide a reason for disapproval"
-                    required
-                  ></textarea>
-                </div>
-              </div>
-              <div className="modal-footer border-0 pt-0">
-                <div className="d-flex flex-column flex-sm-row gap-2 w-100">
-                  <button 
-                    type="button" 
-                    className="btn btn-outline-secondary w-100" 
-                    onClick={closeDisapproveModal}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="button" 
-                    className="btn btn-warning w-100" 
-                    onClick={submitDisapprove}
-                  >
-                    Disapprove
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
       {/* View Detail Modal */}
       {showViewModal && selectedRequisition && (
         <div 
