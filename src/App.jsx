@@ -56,6 +56,9 @@ import AcknowledgementOfReceipts from "./Dashboard/FacilityUser/AcknowledgementO
 import ReturnsRecalls from "./Dashboard/Warehouse/ReturnsRecalls";
 
 
+import WarehouseReturn from "./Dashboard/Warehouse/WarehouseReturn";
+import FacilityReturns from "./Facility/FacilityReturns";
+
 function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -112,6 +115,7 @@ function App() {
                   <Route path="/facility/departmentsCategories" element={<FacilityDepartmentsCategories/>}/>'
                   <Route path="/facility/usersRoles" element={<FacilityUsersRoles/>}/>'
                   <Route path="/facility/goodreceipt" element={<GoodReceipt/>}/>'
+                  <Route path="/facility/returns" element={<FacilityReturns/>}/>'
                    <Route path="/profile" element={<Profile/>}/>
                 {/* SuperAdmin */}
                    <Route path="/superadmin/dashboard"element={<SuperAdminDashboard/>}/>
@@ -124,6 +128,7 @@ function App() {
                    <Route path="/superadmin/users"element={<SuperAdminUsers/>}/>
                    <Route path="/superadmin/assets"element={<SuperAdminAssets/>}/>
                    <Route path="/superadmin/role"element={<SuperAdminRoles/>}/>
+
                  {/* Facility User */}
                   <Route path="/user/dashboard" element={<FacilityUserDashboard/>}/>'
                   <Route path="/user/requisitions" element={<FacilityUserRequisition/>}/>'
@@ -140,7 +145,8 @@ function App() {
                  <Route path="/warehouse/dispatches"element={<WarehouseDispatches/>}/>   
                  <Route path="/warehouse/settings"element={<WarehouseSettings/>}/>   
                  <Route path="/warehouse/requisitions"element={<WarehouseRequisitions/>}/> 
-                 <Route path="/warehouse/returnsRecalls"element={<ReturnsRecalls/>}/>     
+                 <Route path="/warehouse/returnsRecalls"element={<ReturnsRecalls/>}/>   
+                 <Route path="/warehouse/returns"element={<WarehouseReturn/>}/>   
               </Routes>
             </div>
           </div>

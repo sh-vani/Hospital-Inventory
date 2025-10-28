@@ -137,6 +137,11 @@ useEffect(() => {
         path: "/warehouse/returnsRecalls",
       },
       {
+        name: " Returns ",
+        icon: faRotateLeft,
+        path: "/warehouse/returns",
+      },
+      {
         name: "Assets",
         icon: faArchive,
         path: "/warehouse/assets",
@@ -175,11 +180,11 @@ useEffect(() => {
         path: "/facility/assets",
       },
 
-      //  {
-      //   name: "Good Receipt",
-      //   icon: faArchive,
-      //   path: "/facility/goodreceipt",
-      // },
+       {
+        name: "Returns",
+        icon: faArchive,
+        path: "/facility/returns",
+      },
 
        {
         name: "Reports",

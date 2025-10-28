@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FaClipboardList, FaPlus, FaTrash, FaEye } from "react-icons/fa";
-import axios from "axios";
-import BaseUrl from "../../Api/BaseUrl";
+
 
 const FacilityReturns = () => {
   const [inventoryItems, setInventoryItems] = useState([]);

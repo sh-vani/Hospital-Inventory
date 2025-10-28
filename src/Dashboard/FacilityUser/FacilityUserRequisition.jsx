@@ -596,108 +596,7 @@ const FacilityUserRequisition = () => {
           </div>
         )}
 
-        {/* ✅ Facility Inventory Reference Table */}
-        <div className="mt-4">
-          <h5 className="text-primary mb-3">
-            Facility Inventory (For Reference)
-          </h5>
-          <div className="table-responsive">
-            <table className="table table-bordered">
-              <thead className="table-light">
-                <tr>
-                  <th>Item</th>
-                  <th>Qty</th>
-                  <th>Expiry</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {facilityItems.length > 0 ? (
-                  facilityItems.map((item) => {
-                    const badge = getItemStatusBadge(item);
-                    const needsRequisition =
-                      item.quantity === 0 ||
-                      item.quantity <= (item.reorder_level || 0) ||
-                      isNearExpiry(item.expiry_date, 30);
-                    return (
-                      <tr key={item.id}>
-                        <td>{item.item_name}</td>
-                        <td>
-                          {item.quantity} {item.unit || "units"}
-                        </td>
-                        <td>
-                          {item.expiry_date
-                            ? new Date(item.expiry_date).toLocaleDateString()
-                            : "N/A"}
-                        </td>
-                        <td>
-                          {badge ? (
-                            <span
-                              className={`badge text-dark`}
-                              style={{
-                                backgroundColor:
-                                  badge.variant === "orange"
-                                    ? "#ff9f43"
-                                    : undefined,
-                              }}
-                            >
-                              {badge.text}
-                            </span>
-                          ) : (
-                            <span className="badge bg-success">OK</span>
-                          )}
-                        </td>
-                        <td>
-                          {needsRequisition ? (
-                            <>
-                              <button
-                                className="btn btn-sm btn-outline-primary me-1"
-                                onClick={() => addToBulkCart(item)}
-                              >
-                                Add to Bulk
-                              </button>
-                              <button
-                                className="btn btn-sm btn-outline-secondary"
-                                onClick={() => {
-                                  setRequisitionType("individual");
-                                  setSelectedItem(item.id.toString());
-                                  setQuantity(
-                                    item.reorder_level > 0
-                                      ? item.reorder_level.toString()
-                                      : "10"
-                                  );
-                                  setPriority(
-                                    item.quantity === 0
-                                      ? "High"
-                                      : isNearExpiry(item.expiry_date)
-                                      ? "Urgent"
-                                      : "Normal"
-                                  );
-                                  setShowRequisitionModal(true);
-                                }}
-                              >
-                                Raise Indiv.
-                              </button>
-                            </>
-                          ) : (
-                            <span className="text-muted">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan="5" className="text-center py-3">
-                      No items available
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+ 
 
         <div className="card-header bg-white py-3">
           <h3 className="fw-bold mb-0">Create Requisition</h3>
@@ -839,83 +738,93 @@ const FacilityUserRequisition = () => {
                 </button>
               </div>
             </div>
-            {/* Table */}
-            <div className="table-responsive">
-              <table className="table table-hover align-middle">
-                <thead className="table-light">
-                  <tr>
-                    <th>Req ID</th>
-                    <th>Item Name</th>
-                    <th>Status</th>
-                    <th>Priority</th>
-                    <th>Remarks</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentEntries.length > 0 ? (
-                    currentEntries.map((req) => (
-                      <tr key={req.id}>
-                        <td>#{req.id}</td>
-                        <td>{req.item_name || "N/A"}</td>
-                        <td>
-                          <span
-                            className={`badge ${getStatusBadgeClass(
-                              req.status
-                            )}`}
-                          >
-                            {req.status}
-                          </span>
-                        </td>
-                        <td>
-                          <span
-                            className={`badge ${getPriorityBadgeClass(
-                              req.priority
-                            )}`}
-                          >
-                            {req.priority}
-                          </span>
-                        </td>
-                        <td
-                          className="text-truncate"
-                          style={{ maxWidth: "200px" }}
-                        >
-                          {req.remarks || "-"}
-                        </td>
-                        <td>
-                          <button
-                            className="btn btn-sm btn-outline-primary me-2"
-                            title="View Details"
-                            onClick={() => handleViewDetail(req)}
-                          >
-                            <FaEye />
-                          </button>
-                          {req.status === "Pending" && (
-                            <button
-                              className="btn btn-sm btn-outline-danger"
-                              title="Cancel"
-                              onClick={() => handleCancelRequisition(req.id)}
-                              disabled={loading}
-                            >
-                              <FaTrash />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="6" className="text-center py-5">
-                        <div className="text-muted">
-                          <FaEye size={24} className="mb-2" />
-                          <p className="mb-0">No requisitions found.</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+        {/* Table */}
+<div className="table-responsive">
+  <table className="table table-hover align-middle">
+    <thead className="table-light">
+      <tr>
+        <th>Req ID</th>
+        <th>Item Name</th>
+        <th>Qty</th> {/* ✅ New Column */}
+        <th>Status</th>
+        <th>Priority</th>
+        <th>Remarks</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+  {currentEntries.length > 0 ? (
+    currentEntries.map((req) => {
+      const items = req.items || [];
+      const itemCount = items.length;
+
+      // ✅ Total requested quantity (sum of all items)
+      const totalQty = items.reduce(
+        (sum, item) => sum + (parseInt(item.quantity) || 0),
+        0
+      );
+
+      // ✅ All item names (comma-separated)
+      const allItemNames =
+        itemCount === 0
+          ? "N/A"
+          : items.map((item) => item.item_name || `Item ID: ${item.item_id}`).join(", ");
+
+      return (
+        <tr key={req.id}>
+          <td>#{req.id}</td>
+          <td className="text-truncate" style={{ maxWidth: "250px" }}>
+            {allItemNames}
+          </td>
+          <td>{totalQty || "-"}</td>
+          <td>
+            <span className={`badge ${getStatusBadgeClass(req.status)}`}>
+              {req.status}
+            </span>
+          </td>
+          <td>
+            <span className={`badge ${getPriorityBadgeClass(req.priority)}`}>
+              {req.priority}
+            </span>
+          </td>
+          <td className="text-truncate" style={{ maxWidth: "200px" }}>
+            {req.remarks || "-"}
+          </td>
+          <td>
+            <button
+              className="btn btn-sm btn-outline-primary me-2"
+              title="View Details"
+              onClick={() => handleViewDetail(req)}
+            >
+              <FaEye />
+            </button>
+            {req.status === "Pending" && (
+              <button
+                className="btn btn-sm btn-outline-danger"
+                title="Cancel"
+                onClick={() => handleCancelRequisition(req.id)}
+                disabled={loading}
+              >
+                <FaTrash />
+              </button>
+            )}
+          </td>
+        </tr>
+      );
+    })
+  ) : (
+    <tr>
+      <td colSpan="7" className="text-center py-5">
+        <div className="text-muted">
+          <FaEye size={24} className="mb-2" />
+          <p className="mb-0">No requisitions found.</p>
+        </div>
+      </td>
+    </tr>
+  )}
+</tbody>
+  </table>
+</div>
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="d-flex justify-content-end mt-3">
