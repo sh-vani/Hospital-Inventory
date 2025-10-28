@@ -22,7 +22,8 @@ const WarehouseDispatches = () => {
     facility_id: '',
     requisition_id: '',
     remarks: '',
-    user_id: '1' // Default user ID
+    user_id: '1', // Default user ID
+    user_name: '' // NEW: Store user name
   });
   // State for current document type
   const [currentDocumentType, setCurrentDocumentType] = useState('');
@@ -40,11 +41,68 @@ const WarehouseDispatches = () => {
   
   // Mock data for dispatches
   const [dispatches, setDispatches] = useState([]);
+  // State for facilities
+  const [facilities, setFacilities] = useState([]);
+  const [facilitiesLoading, setFacilitiesLoading] = useState(false);
+  
+  // State for requisitions
+  const [requisitions, setRequisitions] = useState([]);
+  const [requisitionsLoading, setRequisitionsLoading] = useState(false);
+  // State for approved facilities (unique facility names from approved requisitions)
+  const [approvedFacilities, setApprovedFacilities] = useState([]);
 
   // Fetch dispatches on component mount
   useEffect(() => {
     fetchDispatches();
+    fetchFacilities();
+    fetchRequisitions();
   }, []);
+
+  // Function to fetch facilities
+  const fetchFacilities = async () => {
+    setFacilitiesLoading(true);
+    try {
+      const response = await axios.get(`${BaseUrl}/facilities`);
+      if (response.data.success) {
+        setFacilities(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching facilities:', error);
+      alert('Failed to fetch facilities. Please try again.');
+    } finally {
+      setFacilitiesLoading(false);
+    }
+  };
+
+  // Function to fetch requisitions
+  const fetchRequisitions = async () => {
+    setRequisitionsLoading(true);
+    try {
+      const response = await axios.get(`${BaseUrl}/requisitions`);
+      if (response.data.success) {
+        setRequisitions(response.data.data);
+        
+        // Filter approved requisitions and extract unique facility names
+        const approvedReqs = response.data.data.filter(req => req.status === 'approved');
+        const uniqueFacilities = [...new Map(approvedReqs.map(item => 
+          [item.facility_name, { 
+            id: item.id, 
+            name: item.facility_name, 
+            facility_id: item.facility_id,
+            user_id: item.user_id,
+            user_name: item.user_name // NEW: Store user name
+          }]
+        )).values()];
+        
+        setApprovedFacilities(uniqueFacilities);
+      }
+    } catch (error) {
+      console.error('Error fetching requisitions:', error);
+      alert('Failed to fetch requisitions. Please try again.');
+    } finally {
+      setRequisitionsLoading(false);
+    }
+  };
 
   // Function to fetch dispatches
   const fetchDispatches = async (page = 1) => {
@@ -85,7 +143,8 @@ const WarehouseDispatches = () => {
       facility_id: '',
       requisition_id: '',
       remarks: '',
-      user_id: '1'
+      user_id: '1',
+      user_name: '' // NEW: Reset user name
     });
     setShowCreateModal(true);
   };
@@ -109,10 +168,38 @@ const WarehouseDispatches = () => {
     });
   };
 
+  // Handler for facility selection from approved requisitions
+  const handleApprovedFacilityChange = (e) => {
+    const selectedFacilityId = e.target.value;
+    
+    if (selectedFacilityId) {
+      // Find the selected facility from approved facilities
+      const selectedFacility = approvedFacilities.find(f => f.id.toString() === selectedFacilityId);
+      
+      if (selectedFacility) {
+        setNewDispatch({
+          ...newDispatch,
+          requisition_id: selectedFacility.id,
+          facility_id: selectedFacility.facility_id,
+          user_id: selectedFacility.user_id,
+          user_name: selectedFacility.user_name // NEW: Set user name
+        });
+      }
+    } else {
+      setNewDispatch({
+        ...newDispatch,
+        requisition_id: '',
+        facility_id: '',
+        user_id: '1',
+        user_name: '' // NEW: Reset user name
+      });
+    }
+  };
+
   // Action handlers
   const handleCreateDispatch = async () => {
     if (!newDispatch.facility_id || !newDispatch.requisition_id) {
-      alert('Please fill Facility ID and Requisition ID fields.');
+      alert('Please select a Facility from approved requisitions.');
       return;
     }
 
@@ -141,7 +228,7 @@ const WarehouseDispatches = () => {
     }
   };
 
-  // FIXED: Updated handleMarkDelivered function with the correct API endpoint
+  // Updated handleMarkDelivered function with the correct API endpoint
   const handleMarkDelivered = async () => {
     if (!currentDispatch) return;
     
@@ -347,40 +434,59 @@ const WarehouseDispatches = () => {
                 <form>
                   <div className="row mb-3">
                     <div className="col-md-6">
-                      <label className="form-label fw-medium">Facility ID <span className="text-danger">*</span></label>
-                      <input
-                        type="text"
-                        className="form-control form-control-lg"
+                      <label className="form-label fw-medium">Facility <span className="text-danger">*</span></label>
+                      <select
+                        className="form-select form-control-lg"
                         name="facility_id"
                         value={newDispatch.facility_id}
                         onChange={handleInputChange}
-                        placeholder="e.g. 1"
                         required
-                      />
+                      >
+                        <option value="">Select a facility</option>
+                        {facilitiesLoading ? (
+                          <option disabled>Loading facilities...</option>
+                        ) : (
+                          facilities.map(facility => (
+                            <option key={facility.id} value={facility.id}>
+                              {facility.name}
+                            </option>
+                          ))
+                        )}
+                      </select>
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label fw-medium">Requisition ID <span className="text-danger">*</span></label>
-                      <input
-                        type="text"
-                        className="form-control form-control-lg"
-                        name="requisition_id"
+                      <label className="form-label fw-medium">Approved Requisition <span className="text-danger">*</span></label>
+                      <select
+                        className="form-select form-control-lg"
                         value={newDispatch.requisition_id}
-                        onChange={handleInputChange}
-                        placeholder="e.g. 1"
+                        onChange={handleApprovedFacilityChange}
                         required
-                      />
+                      >
+                        <option value="">Select an approved requisition</option>
+                        {requisitionsLoading ? (
+                          <option disabled>Loading requisitions...</option>
+                        ) : (
+                          approvedFacilities.map(facility => (
+                            <option key={facility.id} value={facility.id}>
+                              {facility.name}
+                            </option>
+                          ))
+                        )}
+                      </select>
                     </div>
                   </div>
                   <div className="row mb-3">
                     <div className="col-md-6">
-                      <label className="form-label fw-medium">User ID</label>
+                      {/* MODIFIED: Display user name instead of user ID */}
+                      <label className="form-label fw-medium">User Name</label>
                       <input
                         type="text"
                         className="form-control form-control-lg"
-                        name="user_id"
-                        value={newDispatch.user_id}
+                        name="user_name"
+                        value={newDispatch.user_name}
                         onChange={handleInputChange}
-                        placeholder="e.g. 1"
+                        placeholder="User name will be auto-selected"
+                        readOnly
                       />
                     </div>
                     <div className="col-md-6">
@@ -450,7 +556,8 @@ const WarehouseDispatches = () => {
                     <p><strong>Dispatch ID:</strong> #{currentDispatch.id}</p>
                     <p><strong>Tracking Number:</strong> {currentDispatch.tracking_number}</p>
                     <p><strong>Facility ID:</strong> {currentDispatch.facility_id}</p>
-                    <p><strong>User ID:</strong> {currentDispatch.dispatched_by || currentDispatch.user_id}</p>
+                    {/* MODIFIED: Display user name instead of user ID */}
+                    <p><strong>User Name:</strong> {currentDispatch.user_name || currentDispatch.dispatched_by_name || 'N/A'}</p>
                   </div>
                   <div className="col-md-6">
                     <p><strong>Requisition ID:</strong> {currentDispatch.requisition_id}</p>
