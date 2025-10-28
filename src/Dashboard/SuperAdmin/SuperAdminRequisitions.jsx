@@ -26,15 +26,31 @@ const SuperAdminRequisitions = () => {
     itemsPerPage: 10
   });
 
-  // === FETCH REQUISITIONS ===
   const fetchRequisitions = async (status = 'pending', page = 1) => {
     try {
       setLoading(true);
       setError(null);
       const response = await axiosInstance.get(`${BaseUrl}/requisitions?page=${page}&limit=10&status=${status}`);
+      
       if (response.data.success) {
-        setRequisitions(response.data.data);
-        setPagination(response.data.data);
+        // ✅ Step 1: total_quantity calculate करें
+        const requisitionsWithTotal = response.data.data.map(req => ({
+          ...req,
+          total_quantity: req.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+        }));
+  
+        // ✅ Step 2: pagination data अलग से set करें
+        // अगर आपका API `total` भेजता है (जैसे: { data: [...], total: 45, success: true })
+        const totalItems = response.data.total || requisitionsWithTotal.length;
+        const totalPages = Math.ceil(totalItems / 10);
+  
+        setRequisitions(requisitionsWithTotal);
+        setPagination({
+          currentPage: page,
+          totalPages: totalPages,
+          totalItems: totalItems,
+          itemsPerPage: 10
+        });
       } else {
         setError('Failed to fetch requisitions');
       }

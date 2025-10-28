@@ -33,7 +33,7 @@ const SuperAdminUsers = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
-
+  const [loggedInUser, setLoggedInUser] = useState(null);
   // Current user
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -162,8 +162,18 @@ const SuperAdminUsers = () => {
   useEffect(() => {
     fetchUsers();
     fetchFacilities();
+    fetchLoggedInUser();
   }, []);
-
+  const fetchLoggedInUser = async () => {
+    try {
+      const response = await axiosInstance.get(`${BaseUrl}/me`);
+      if (response.data.success) {
+        setLoggedInUser(response.data.data); // assume response.data.data has { id, name, role, ... }
+      }
+    } catch (err) {
+      console.error("Failed to fetch logged-in user", err);
+    }
+  };
   const StatusBadge = ({ status }) => {
     const map = {
       active: "bg-success",
@@ -531,12 +541,14 @@ const SuperAdminUsers = () => {
                           >
                             <FaInfoCircle />
                           </button>
-                          <button
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={() => openEditModal(user)}
-                          >
-                            <FaEdit />
-                          </button>
+                          {!(loggedInUser?.role === "super_admin" && user.role === "super_admin") && (
+  <button
+    className="btn btn-sm btn-outline-primary"
+    onClick={() => openEditModal(user)}
+  >
+    <FaEdit />
+  </button>
+)}
 
                           <button
                             className="btn btn-sm btn-outline-danger"
@@ -604,12 +616,14 @@ const SuperAdminUsers = () => {
                         >
                           <FaInfoCircle className="me-1" /> Details
                         </button>
-                        <button
-                          className="btn btn-outline-primary w-100 btn-sm"
-                          onClick={() => openEditModal(u)}
-                        >
-                          <FaEdit className="me-1" /> Edit
-                        </button>
+                        {!(loggedInUser?.role === "super_admin" && u.role === "super_admin") && (
+  <button
+    className="btn btn-outline-primary w-100 btn-sm"
+    onClick={() => openEditModal(u)}
+  >
+    <FaEdit className="me-1" /> Edit
+  </button>
+)}
                         {u.status === "active" ? (
                           <button
                             className="btn btn-outline-danger w-100 btn-sm"

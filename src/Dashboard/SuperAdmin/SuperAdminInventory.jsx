@@ -46,7 +46,7 @@ const SuperAdminInventory = () => {
       reorder_level: "",
       item_cost: "",
       expiry_date: "",
-      facility_name: "Central Warehouse",
+      facility_id: "", 
     },
   ]);
   const [movements, setMovements] = useState([]);
@@ -260,7 +260,7 @@ const SuperAdminInventory = () => {
       reorder_level: item.reorder_level,
       item_cost: item.item_cost,
       expiry_date: item.expiry_date,
-      facility_name: item.facility_name || "",
+      facility_id: item.facility_id || "", 
     });
     setShowEditModal(true);
   };
@@ -283,7 +283,7 @@ const SuperAdminInventory = () => {
         reorder_level: "",
         item_cost: "",
         expiry_date: "",
-        facility_name: "Central Warehouse",
+        facility_id: "",
       },
     ]);
     setShowBulkModal(true);
@@ -323,7 +323,7 @@ const SuperAdminInventory = () => {
         reorder_level: "",
         item_cost: "",
         expiry_date: "",
-        facility_name: "Central Warehouse",
+        facility_id: "", // ✅
       },
     ]);
   };
@@ -415,7 +415,7 @@ const SuperAdminInventory = () => {
   };
   const handleBulkAdd = async () => {
     try {
-      // Validate required fields (optional but recommended)
+      // Validate required fields
       const invalidItems = bulkItems.filter(
         (item) =>
           !item.item_code ||
@@ -426,30 +426,37 @@ const SuperAdminInventory = () => {
           item.reorder_level === "" ||
           item.item_cost === ""
       );
-
       if (invalidItems.length > 0) {
         alert("Please fill all required fields in all rows.");
         return;
       }
-
-      // Send bulk items to backend
-      const response = await axiosInstance.post(`${BaseUrl}/inventory`, {
-        items: bulkItems, // Backend should accept an array under "items" key
-      });
-
+  
+      // ✅ Format data types
+      const formattedBulkItems = bulkItems.map(item => ({
+        item_code: item.item_code,
+        item_name: item.item_name,
+        category: item.category,
+        description: item.description,
+        unit: item.unit,
+        quantity: parseInt(item.quantity, 10) || 0,
+        reorder_level: parseInt(item.reorder_level, 10) || 0,
+        item_cost: parseFloat(item.item_cost) || 0,
+        expiry_date: item.expiry_date || null,
+        facility_id: item.facility_id ? parseInt(item.facility_id, 10) : null,
+      }));
+  
+      // ✅ Send DIRECT ARRAY — no "items" wrapper
+      const response = await axiosInstance.post(`${BaseUrl}/inventory`, formattedBulkItems);
+  
       if (response.data.success) {
-        // Optionally, refresh full inventory list
-        // OR append new items to existing state (if backend returns created items)
-        const newItems =
-          response.data.data ||
-          bulkItems.map((item, i) => ({
-            ...item,
-            id: Date.now() + i, // temporary ID if backend doesn't return IDs
-            updated_at: new Date().toISOString(),
-          }));
-
+        // Update local state with new items
+        const newItems = response.data.data || formattedBulkItems.map((item, i) => ({
+          ...item,
+          id: Date.now() + i,
+          updated_at: new Date().toISOString(),
+          facility_name: facilities.find(f => f.id === item.facility_id)?.name || "Central Warehouse",
+        }));
         setInventory((prev) => [...prev, ...newItems]);
-
         alert(`${bulkItems.length} item(s) added successfully!`);
         setShowBulkModal(false);
       } else {
@@ -1135,22 +1142,19 @@ const SuperAdminInventory = () => {
                     </div>
                     <div className="col-md-6">
                       <label className="form-label">Facility</label>
-                      <select
-                        className="form-control"
-                        name="facility_name"
-                        value={editForm.facility_name || "Central Warehouse"}
-                        onChange={handleInputChange}
-                      >
-                        {facilitiesLoading ? (
-                          <option>Loading facilities...</option>
-                        ) : (
-                          facilities.map((facility) => (
-                            <option key={facility.id} value={facility.name}>
-                              {facility.name}
-                            </option>
-                          ))
-                        )}
-                      </select>
+                  <select
+  className="form-control"
+  name="facility_id" // ✅
+  value={editForm.facility_id || ""}
+  onChange={handleInputChange}
+>
+  <option value="">-- Select Facility --</option>
+  {facilities.map((facility) => (
+    <option key={facility.id} value={facility.id}> {/* ✅ ID as value */}
+      {facility.name}
+    </option>
+  ))}
+</select>
                     </div>
                   </div>
                 </form>
@@ -1438,30 +1442,20 @@ const SuperAdminInventory = () => {
                             />
                           </td>
                           <td>
-                            <select
-                              className="form-control"
-                              value={item.facility_name || "Central Warehouse"}
-                              onChange={(e) =>
-                                handleBulkItemChange(
-                                  index,
-                                  "facility_name",
-                                  e.target.value
-                                )
-                              }
-                            >
-                              {facilitiesLoading ? (
-                                <option>Loading facilities...</option>
-                              ) : (
-                                facilities.map((facility) => (
-                                  <option
-                                    key={facility.id}
-                                    value={facility.name}
-                                  >
-                                    {facility.name}
-                                  </option>
-                                ))
-                              )}
-                            </select>
+                          <select
+  className="form-control"
+  value={item.facility_id || ""}
+  onChange={(e) =>
+    handleBulkItemChange(index, "facility_id", e.target.value)
+  }
+>
+  <option value="">-- Select Facility --</option>
+  {facilities.map((facility) => (
+    <option key={facility.id} value={facility.id}> {/* ✅ send ID */}
+      {facility.name}
+    </option>
+  ))}
+</select>
                           </td>
                           <td>
                             <button
