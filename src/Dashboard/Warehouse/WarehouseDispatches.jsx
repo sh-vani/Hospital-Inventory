@@ -267,7 +267,7 @@ const WarehouseDispatches = () => {
   // Filter dispatches by search term
   const filteredDispatches = dispatches.filter(dispatch =>
     dispatch.id?.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
-    dispatch.facility?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    dispatch.facility_name?.toLowerCase().includes(searchTerm.toLowerCase()) || // Changed from facility to facility_name
     dispatch.tracking_number?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -367,7 +367,7 @@ const WarehouseDispatches = () => {
                     <tr>
                       <th>Dispatch ID</th>
                       <th>Tracking Number</th>
-                      <th>Facility ID</th>
+                      <th>Facility Name</th> {/* Changed from Facility ID to Facility Name */}
                       <th>Requisition ID</th>
                       <th>Status</th>
                       <th>Actions</th>
@@ -378,7 +378,7 @@ const WarehouseDispatches = () => {
                       <tr key={dispatch.id}>
                         <td><span className="fw-bold">#{i+1}</span></td>
                         <td>{dispatch.tracking_number}</td>
-                        <td>{dispatch.facility_id}</td>
+                        <td>{dispatch.facility_name}</td> {/* Changed from facility_id to facility_name */}
                         <td>{dispatch.requisition_id}</td>
                         <td><StatusBadge status={dispatch.status} /></td>
                         <td>
@@ -555,7 +555,7 @@ const WarehouseDispatches = () => {
                   <div className="col-md-6">
                     <p><strong>Dispatch ID:</strong> #{currentDispatch.id}</p>
                     <p><strong>Tracking Number:</strong> {currentDispatch.tracking_number}</p>
-                    <p><strong>Facility ID:</strong> {currentDispatch.facility_id}</p>
+                    <p><strong>Facility Name:</strong> {currentDispatch.facility_name}</p> {/* Changed from Facility ID to Facility Name */}
                     {/* MODIFIED: Display user name instead of user ID */}
                     <p><strong>User Name:</strong> {currentDispatch.user_name || currentDispatch.dispatched_by_name || 'N/A'}</p>
                   </div>
@@ -576,12 +576,12 @@ const WarehouseDispatches = () => {
                   </div>
                 </div>
                 
-                {currentDispatch.facility_name && (
+                {currentDispatch.facility_location && (
                   <div className="mb-3">
-                    <h6 className="mb-2">Facility Name:</h6>
+                    <h6 className="mb-2">Facility Location:</h6>
                     <div className="card bg-light">
                       <div className="card-body">
-                        {currentDispatch.facility_name}
+                        {currentDispatch.facility_location}
                       </div>
                     </div>
                   </div>
