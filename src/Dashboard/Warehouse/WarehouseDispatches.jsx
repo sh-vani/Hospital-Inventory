@@ -40,11 +40,31 @@ const WarehouseDispatches = () => {
   
   // Mock data for dispatches
   const [dispatches, setDispatches] = useState([]);
+  // State for facilities
+  const [facilities, setFacilities] = useState([]);
+  const [facilitiesLoading, setFacilitiesLoading] = useState(false);
 
   // Fetch dispatches on component mount
   useEffect(() => {
     fetchDispatches();
+    fetchFacilities();
   }, []);
+
+  // Function to fetch facilities
+  const fetchFacilities = async () => {
+    setFacilitiesLoading(true);
+    try {
+      const response = await axios.get(`${BaseUrl}/facilities`);
+      if (response.data.success) {
+        setFacilities(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching facilities:', error);
+      alert('Failed to fetch facilities. Please try again.');
+    } finally {
+      setFacilitiesLoading(false);
+    }
+  };
 
   // Function to fetch dispatches
   const fetchDispatches = async (page = 1) => {
@@ -112,7 +132,7 @@ const WarehouseDispatches = () => {
   // Action handlers
   const handleCreateDispatch = async () => {
     if (!newDispatch.facility_id || !newDispatch.requisition_id) {
-      alert('Please fill Facility ID and Requisition ID fields.');
+      alert('Please select a Facility and fill Requisition ID fields.');
       return;
     }
 
@@ -347,16 +367,25 @@ const WarehouseDispatches = () => {
                 <form>
                   <div className="row mb-3">
                     <div className="col-md-6">
-                      <label className="form-label fw-medium">Facility ID <span className="text-danger">*</span></label>
-                      <input
-                        type="text"
-                        className="form-control form-control-lg"
+                      <label className="form-label fw-medium">Facility <span className="text-danger">*</span></label>
+                      <select
+                        className="form-select form-control-lg"
                         name="facility_id"
                         value={newDispatch.facility_id}
                         onChange={handleInputChange}
-                        placeholder="e.g. 1"
                         required
-                      />
+                      >
+                        <option value="">Select a facility</option>
+                        {facilitiesLoading ? (
+                          <option disabled>Loading facilities...</option>
+                        ) : (
+                          facilities.map(facility => (
+                            <option key={facility.id} value={facility.id}>
+                              {facility.name}
+                            </option>
+                          ))
+                        )}
+                      </select>
                     </div>
                     <div className="col-md-6">
                       <label className="form-label fw-medium">Requisition ID <span className="text-danger">*</span></label>
