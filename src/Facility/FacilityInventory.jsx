@@ -220,13 +220,7 @@ const FacilityInventory = () => {
               <FaSearch />
             </button>
           </div>
-          <button
-            className="btn btn-outline-primary d-flex align-items-center gap-1"
-            style={{ height: "40px" }}
-            onClick={() => (window.location.href = "/warehouse/inventory")}
-          >
-            <FaEye /> View Warehouse Inventory
-          </button>
+  
         </div>
       </div>
 

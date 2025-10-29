@@ -86,38 +86,48 @@ const FacilityUserRequisition = () => {
     };
   }, []);
 
-  // Fetch facility items — WITHOUT auto-requisition
-  const fetchFacilityItems = async (facilityId) => {
-    try {
-      setLoadingItems(true);
-      const response = await axiosInstance.get(
-        `${BaseUrl}/inventory/${facilityId}`
-      );
-      let items = [];
-      if (response.data.success) {
-        if (Array.isArray(response.data.data)) {
-          items = response.data.data;
-        } else if (
-          response.data.data &&
-          typeof response.data.data === "object"
-        ) {
-          items = [response.data.data];
-        }
-      }
-      setFacilityItems(items);
-      // 🔥 AUTO-REQUISITION CALL COMPLETELY REMOVED
-    } catch (error) {
-      console.error("Failed to fetch facility items:", error);
-      setFacilityItems([]);
-      Swal.fire({
-        icon: "error",
-        title: "Fetch Failed",
-        text: "Failed to fetch facility items. Please try again later.",
-      });
-    } finally {
-      setLoadingItems(false);
+// Fetch facility items using query param (as per your desired API style)
+const fetchFacilityItems = async (facilityId) => {
+  try {
+    setLoadingItems(true);
+    const response = await axiosInstance.get(`${BaseUrl}/inventory`, {
+      params: { facility_id: facilityId }
+    });
+
+    let items = [];
+    // Normalize response — handle multiple response shapes
+    if (Array.isArray(response.data.data)) {
+      items = response.data.data;
+    } else if (Array.isArray(response.data)) {
+      items = response.data;
+    } else if (response.data && typeof response.data === "object") {
+      items = [response.data];
     }
-  };
+
+    // Normalize each item (optional but safe)
+    const normalized = items.map((item) => ({
+      id: item.id,
+      item_name: item.item_name || "Unnamed Item",
+      unit: item.unit || "units",
+      quantity: item.quantity || 0,
+      reorder_level: item.reorder_level || 0,
+      expiry_date: item.expiry_date,
+      // Add other fields if needed: item_code, category, etc.
+    }));
+
+    setFacilityItems(normalized);
+  } catch (error) {
+    console.error("Failed to fetch facility items:", error);
+    setFacilityItems([]);
+    Swal.fire({
+      icon: "error",
+      title: "Fetch Failed",
+      text: "Failed to fetch facility items. Please try again later.",
+    });
+  } finally {
+    setLoadingItems(false);
+  }
+};
 
   // Fetch requisition history
   const fetchRequisitionHistory = async (userId) => {
