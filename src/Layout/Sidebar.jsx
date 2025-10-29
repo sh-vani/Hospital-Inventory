@@ -131,11 +131,11 @@ useEffect(() => {
         icon: faChartLine,
         path: "/warehouse/reports",
       },
-      {
-        name: " Returns & Recalls",
-        icon: faRotateLeft,
-        path: "/warehouse/returnsRecalls",
-      },
+      // {
+      //   name: " Returns & Recalls",
+      //   icon: faRotateLeft,
+      //   path: "/warehouse/returnsRecalls",
+      // },
       {
         name: " Returns ",
         icon: faRotateLeft,

@@ -137,19 +137,15 @@ const fetchFacilityItems = async (facilityId) => {
       );
       if (response.data.success && Array.isArray(response.data.data)) {
         const formatted = response.data.data
-          .map((req) => ({
-            id: req.id,
-            item_name: req.items?.length > 0 ? req.items[0].item_name : "N/A",
-            status:
-              (req.status || "").charAt(0).toUpperCase() +
-              (req.status || "").slice(1),
-            priority:
-              (req.priority || "normal").charAt(0).toUpperCase() +
-              (req.priority || "normal").slice(1),
-            remarks: req.remarks || "",
-            items: Array.isArray(req.items) ? req.items : [],
-          }))
-          .sort((a, b) => b.id - a.id);
+        .map((req) => ({
+          id: req.id,
+          item_name: req.items?.length > 0 ? req.items[0].item_name : "N/A",
+          status: (req.status || "").charAt(0).toUpperCase() + (req.status || "").slice(1),
+          priority: getHighestPriorityFromItems(req.items), // ✅ UPDATED HERE
+          remarks: req.remarks || "",
+          items: Array.isArray(req.items) ? req.items : [],
+        }))
+        .sort((a, b) => b.id - a.id);
         setRequisitionHistory(formatted);
       } else {
         setRequisitionHistory([]);
@@ -159,7 +155,23 @@ const fetchFacilityItems = async (facilityId) => {
       setRequisitionHistory([]);
     }
   };
+// ✅ Step 1: Add this helper function inside your component (but outside fetchRequisitionHistory)
+const getHighestPriorityFromItems = (items) => {
+  if (!Array.isArray(items) || items.length === 0) return "Normal";
 
+  const priorityOrder = { urgent: 3, high: 2, normal: 1 };
+  let highest = "normal";
+
+  for (const item of items) {
+    const p = (item.priority || "normal").toLowerCase();
+    if (priorityOrder[p] > priorityOrder[highest]) {
+      highest = p;
+    }
+  }
+
+  // Capitalize first letter
+  return highest.charAt(0).toUpperCase() + highest.slice(1);
+};
   // Initialize user session & fetch data
   useEffect(() => {
     const user = getUserFromStorage();
