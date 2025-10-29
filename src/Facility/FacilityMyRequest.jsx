@@ -4,11 +4,6 @@ import axios from 'axios';
 import BaseUrl from "../Api/BaseUrl"
 
 function FacilityMyRequest() {
-  // Current user (get from localStorage instead of hardcoding)
-  const [currentUser, setCurrentUser] = useState('');
-  // User's facility (hardcoded for this example)
-  const userFacility = 'Kumasi Branch Hospital';
-  
   // State management
   const [requisitions, setRequisitions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,6 +15,8 @@ function FacilityMyRequest() {
   const [approveRemarks, setApproveRemarks] = useState('');
   const [disapproveReason, setDisapproveReason] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [userFacility, setUserFacility] = useState('Your Facility'); // ✅ Dynamic
+  const [loggedUser, setLoggedUser] = useState(null); // ✅ For modal remarks
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -38,10 +35,10 @@ function FacilityMyRequest() {
         }
         
         const user = JSON.parse(userStr);
-        // Set current user from localStorage
-        setCurrentUser(user.name || user.user_name || 'Unknown User');
-        
-        // Get facility_id from user object
+        setLoggedUser(user); // ✅ Set logged-in user
+        setUserFacility(user.facility_name || 'Unknown Facility'); // ✅ Set facility name
+
+        // Get facility_id
         const facilityId = user.facility_id;
         
         if (!facilityId) {
@@ -56,10 +53,7 @@ function FacilityMyRequest() {
         if (response.data && response.data.success && response.data.data) {
           // Transform API response to match the current data structure
           const transformedData = response.data.data.map(req => {
-            // For simplicity, we'll create a separate requisition entry for each item
-            // In a real application, you might want to handle this differently
             return req.items && req.items.length > 0 ? req.items.map(item => {
-              // Create status timeline based on the status and timestamps
               const statusTimeline = [
                 { status: 'Raised by User', timestamp: formatDate(req.created_at) }
               ];
@@ -76,7 +70,6 @@ function FacilityMyRequest() {
                 statusTimeline.push({ status: 'Rejected', timestamp: formatDate(req.rejected_at) });
               }
               
-              // Create remarks log if remarks exist
               const remarksLog = req.remarks ? [
                 { 
                   user: req.user_name, 
@@ -100,7 +93,7 @@ function FacilityMyRequest() {
                 id: `REQ-${req.id}`,
                 facility: req.facility_name,
                 user: req.user_name,
-                department: 'Department', // This info is not in the API response
+                department: 'Department',
                 item: item.item_name || 'Unknown Item',
                 qty: item.quantity || 0,
                 facilityStock: item.available_quantity || 0,
@@ -111,7 +104,7 @@ function FacilityMyRequest() {
                 remarksLog
               };
             }) : [];
-          }).flat(); // Flatten the array of arrays
+          }).flat();
           
           setRequisitions(transformedData);
         } else {
@@ -137,11 +130,8 @@ function FacilityMyRequest() {
     });
   };
 
-  // Filter requisitions based on current user and search term
+  // ✅ Filter ONLY by search term — show ALL facility requisitions
   const filteredRequisitions = requisitions.filter(req => {
-    // Only show requisitions from current user
-    if (req.user !== currentUser) return false;
-    // Search filter
     if (searchTerm && !(
       req.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       req.item.toLowerCase().includes(searchTerm.toLowerCase())
@@ -196,8 +186,8 @@ function FacilityMyRequest() {
         const newRemarksLog = [
           ...req.remarksLog,
           { 
-            user: currentUser, 
-            remark: approveRemarks || 'Request approved', 
+            user: loggedUser?.name || 'Unknown User', // ✅ Use logged-in user
+            remark: approveRemarks || 'Request approved',
             timestamp: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
           }
         ];
@@ -231,8 +221,8 @@ function FacilityMyRequest() {
         const newRemarksLog = [
           ...req.remarksLog,
           { 
-            user: currentUser, 
-            remark: disapproveReason, 
+            user: loggedUser?.name || 'Unknown User', // ✅ Use logged-in user
+            remark: disapproveReason,
             timestamp: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
           }
         ];
@@ -296,8 +286,9 @@ function FacilityMyRequest() {
       {/* Header */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
         <div>
-          <h1 className="mb-0">My Request</h1>
-          <p className="text-muted mb-0">View and manage your requisitions in {userFacility}.</p>
+          {/* ✅ Updated title */}
+          <h1 className="mb-0">Facility Requests</h1>
+          <p className="text-muted mb-0">View and manage all requisitions in {userFacility}.</p>
         </div>
       </div>
       
@@ -339,7 +330,9 @@ function FacilityMyRequest() {
               {currentEntries.length === 0 ? (
                 <tr>
                   <td colSpan="9" className="text-center py-4 text-muted">
-                    No requisitions found for {currentUser} with the current filters.
+                    {searchTerm 
+                      ? "No requisitions match your search." 
+                      : "No requisitions found in this facility."}
                   </td>
                 </tr>
               ) : (

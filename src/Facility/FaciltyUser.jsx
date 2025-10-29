@@ -16,8 +16,7 @@ const FacilityUser = () => {
     role: 'facility_user', // always fixed
     phone: '',
     department: '',
-    facility_id: '',
-    facility_admin_id: ''
+
   });
 
   // ✅ Pagination state
@@ -73,11 +72,10 @@ const FacilityUser = () => {
       name: '',
       email: '',
       password: '',
-      role: 'facility_user', // fixed
+      role: 'facility_user',
       phone: '',
       department: '',
-      facility_id: loggedInUser.facility_id || '',
-      facility_admin_id: loggedInUser.id || ''
+
     });
     setModalType('add');
     setShowModal(true);
@@ -89,11 +87,10 @@ const FacilityUser = () => {
       name: user.name,
       email: user.email,
       password: '',
-      role: 'facility_user', // fixed
+      role: 'facility_user',
       phone: user.phone,
-      department: user.department_id,
-      facility_id: user.facility_id,
-      facility_admin_id: user.facility_admin_id
+
+      department: String(user.department_id),
     });
     setModalType('edit');
     setShowModal(true);
@@ -101,18 +98,52 @@ const FacilityUser = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+  
+    let facility_id, facility_admin_id;
+  
+    if (modalType === 'add') {
+      // Add: logged-in user की facility
+      facility_id = loggedInUser.facility_id ? Number(loggedInUser.facility_id) : null;
+      facility_admin_id = loggedInUser.id ? Number(loggedInUser.id) : null;
+    } else {
+      // Edit: existing user की facility (preserve original)
+      facility_id = selectedUser.facility_id;
+      facility_admin_id = selectedUser.facility_admin_id;
+    }
+  
+    if (!facility_id || isNaN(facility_id)) {
+      alert('Facility ID is missing or invalid.');
+      return;
+    }
+  
+    const payload = {
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      role: 'facility_user',
+      department: formData.department,
+      facility_id: Number(facility_id),
+      facility_admin_id: Number(facility_admin_id),
+    };
+  
+    if (formData.password) {
+      payload.password = formData.password;
+    }
+  
     try {
       if (modalType === 'add') {
-        await axiosInstance.post('/users', formData);
-      } else if (modalType === 'edit') {
-        await axiosInstance.put(`/users/${selectedUser.id}`, formData);
+        await axiosInstance.post('/users', payload);
+      } else {
+        await axiosInstance.put(`/users/${selectedUser.id}`, payload);
       }
+  
       setShowModal(false);
       const res = await axiosInstance.get(`/users/facility-admin/users/${loggedInUser.id}`);
       setUsers(res.data.data);
     } catch (err) {
       console.error('Error saving user', err);
-      alert('Failed to save user');
+      const msg = err.response?.data?.message || 'Failed to save user';
+      alert(msg);
     }
   };
 

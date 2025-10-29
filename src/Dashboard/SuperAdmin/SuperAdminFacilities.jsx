@@ -30,7 +30,17 @@ const SuperAdminFacilities = () => {
     email: '',
     address: ''
   });
-  
+  // Add this after createFacility state
+const [editFacility, setEditFacility] = useState({
+  name: '',
+  location: '',
+  type: 'Hospital',
+  contact_person: '',
+  phone: '',
+  email: '',
+  address: '',
+  status: 'active'
+});
   // State for assign admin form
   const [selectedAdminId, setSelectedAdminId] = useState('');
   const [adminUsers, setAdminUsers] = useState([]);
@@ -228,6 +238,16 @@ const SuperAdminFacilities = () => {
   };
   
   const openEditModal = (facility) => {
+    setEditFacility({
+      name: facility.name,
+      location: facility.location,
+      type: facility.type,
+      contact_person: facility.contact_person,
+      phone: facility.phone,
+      email: facility.email,
+      address: facility.address || '',
+      status: facility.status
+    });
     setCurrentFacility(facility);
     setShowEditModal(true);
   };
@@ -270,7 +290,13 @@ const SuperAdminFacilities = () => {
       [name]: value
     });
   };
-  
+  const handleEditFacilityChange = (e) => {
+    const { name, value } = e.target;
+    setEditFacility({
+      ...editFacility,
+      [name]: value
+    });
+  };
   const handleAdminChange = (e) => {
     setSelectedAdminId(e.target.value);
   };
@@ -312,7 +338,40 @@ const SuperAdminFacilities = () => {
       setLoading(false);
     }
   };
-  
+  const handleUpdateFacility = async () => {
+    if (!currentFacility) return;
+    try {
+      setLoading(true);
+      const response = await axiosInstance.put(`${BaseUrl}/facilities/${currentFacility.id}`, editFacility);
+      if (response.data.success) {
+        setShowEditModal(false);
+        fetchFacilities(); // Refresh list
+        Swal.fire({
+          icon: 'success',
+          title: 'Facility Updated!',
+          text: `Facility ${editFacility.name} has been updated successfully!`,
+          confirmButtonColor: '#28a745'
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Update Failed',
+          text: 'Failed to update facility. Please try again.',
+          confirmButtonColor: '#e74a3b'
+        });
+      }
+    } catch (err) {
+      console.error('Error updating facility:', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Network Error',
+        text: 'Failed to update facility. Please try again later.',
+        confirmButtonColor: '#e74a3b'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   const handleDeleteFacility = async () => {
     if (!currentFacility) return;
     try {
@@ -614,30 +673,37 @@ const SuperAdminFacilities = () => {
                         {getInventoryBadge(facility.inventory_count)}
                       </td>
                       <td>
-                        <div className="d-flex gap-2">
-                          <button 
-                            className="btn btn-sm btn-outline-primary" 
-                            onClick={() => openViewModal(facility)}
-                            title="View Details"
-                          >
-                            <FaInfoCircle />
-                          </button>
-                          <button 
-                            className="btn btn-sm btn-outline-info" 
-                            onClick={() => openAssignAdminModal(facility)}
-                            title={facility.assigned_To ? "Change Admin" : "Assign Admin"}
-                          >
-                            {facility.assigned_To ? <FaUserTimes /> : <FaUserPlus />}
-                          </button>
-                          <button 
-                            className="btn btn-sm btn-outline-danger" 
-                            onClick={() => openDeleteModal(facility)}
-                            title="Delete Facility"
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-                      </td>
+  <div className="d-flex gap-2">
+    <button 
+      className="btn btn-sm btn-outline-primary" 
+      onClick={() => openViewModal(facility)}
+      title="View Details"
+    >
+      <FaInfoCircle />
+    </button>
+    <button 
+      className="btn btn-sm btn-outline-secondary" 
+      onClick={() => openEditModal(facility)}
+      title="Edit Facility"
+    >
+      <FaEdit />
+    </button>
+    <button 
+      className="btn btn-sm btn-outline-info" 
+      onClick={() => openAssignAdminModal(facility)}
+      title={facility.assigned_To ? "Change Admin" : "Assign Admin"}
+    >
+      {facility.assigned_To ? <FaUserTimes /> : <FaUserPlus />}
+    </button>
+    <button 
+      className="btn btn-sm btn-outline-danger" 
+      onClick={() => openDeleteModal(facility)}
+      title="Delete Facility"
+    >
+      <FaTrash />
+    </button>
+  </div>
+</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1138,7 +1204,135 @@ const SuperAdminFacilities = () => {
           </div>
         </div>
       )}
-      
+      {/* Edit Facility Modal */}
+{showEditModal && currentFacility && (
+  <div className="modal show d-block" tabIndex="-1">
+    <div className="modal-dialog modal-lg">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">Edit Facility: {currentFacility.name}</h5>
+          <button type="button" className="btn-close" onClick={() => setShowEditModal(false)}></button>
+        </div>
+        <div className="modal-body">
+          <form>
+            <div className="row mb-3">
+              <div className="col-md-6">
+                <label className="form-label">Facility Name</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  name="name"
+                  value={editFacility.name}
+                  onChange={handleEditFacilityChange}
+                  required
+                />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label">Location</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  name="location"
+                  value={editFacility.location}
+                  onChange={handleEditFacilityChange}
+                  required
+                />
+              </div>
+            </div>
+            <div className="row mb-3">
+              <div className="col-md-6">
+                <label className="form-label">Facility Type</label>
+                <select 
+                  className="form-select" 
+                  name="type"
+                  value={editFacility.type}
+                  onChange={handleEditFacilityChange}
+                  required
+                >
+                  <option value="Hospital">Hospital</option>
+                  <option value="Clinic">Clinic</option>
+                  <option value="Emergency">Emergency</option>
+                  <option value="Regional Facility">Regional Facility</option>
+                  <option value="Metropolitan Facility">Metropolitan Facility</option>
+                  <option value="Community Health Center">Community Health Center</option>
+                  <option value="Central Storage Facility">Central Storage Facility</option>
+                  <option value="Coastal Regional Facility">Coastal Regional Facility</option>
+                  <option value="Medical Center">Medical Center</option>
+                </select>
+              </div>
+              <div className="col-md-6">
+                <label className="form-label">Contact Person</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  name="contact_person"
+                  value={editFacility.contact_person}
+                  onChange={handleEditFacilityChange}
+                  required
+                />
+              </div>
+            </div>
+            <div className="row mb-3">
+              <div className="col-md-6">
+                <label className="form-label">Phone Number</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  name="phone"
+                  value={editFacility.phone}
+                  onChange={handleEditFacilityChange}
+                  required
+                />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label">Email Address</label>
+                <input 
+                  type="email" 
+                  className="form-control" 
+                  name="email"
+                  value={editFacility.email}
+                  onChange={handleEditFacilityChange}
+                  required
+                />
+              </div>
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Address</label>
+              <input 
+                type="text" 
+                className="form-control" 
+                name="address"
+                value={editFacility.address}
+                onChange={handleEditFacilityChange}
+              />
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Status</label>
+              <select 
+                className="form-select" 
+                name="status"
+                value={editFacility.status}
+                onChange={handleEditFacilityChange}
+                required
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </form>
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>
+            Cancel
+          </button>
+          <button type="button" className="btn btn-primary" onClick={handleUpdateFacility}>
+            <FaSave className="me-2" /> Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
       {/* Modal Backdrop */}
       {(showViewModal || showEditModal || showDeleteModal || showAssignAdminModal || showUnassignAdminModal || showCreateModal) && (
         <div className="modal-backdrop show"></div>
