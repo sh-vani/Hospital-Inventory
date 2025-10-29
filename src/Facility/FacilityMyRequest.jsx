@@ -4,8 +4,8 @@ import axios from 'axios';
 import BaseUrl from "../Api/BaseUrl"
 
 function FacilityMyRequest() {
-  // Current user (hardcoded for this example)
-  const currentUser = 'Dr. Amoah';
+  // Current user (get from localStorage instead of hardcoding)
+  const [currentUser, setCurrentUser] = useState('');
   // User's facility (hardcoded for this example)
   const userFacility = 'Kumasi Branch Hospital';
   
@@ -38,7 +38,10 @@ function FacilityMyRequest() {
         }
         
         const user = JSON.parse(userStr);
-        // 从用户对象中获取 facility_id
+        // Set current user from localStorage
+        setCurrentUser(user.name || user.user_name || 'Unknown User');
+        
+        // Get facility_id from user object
         const facilityId = user.facility_id;
         
         if (!facilityId) {
@@ -82,6 +85,17 @@ function FacilityMyRequest() {
                 }
               ] : [];
               
+              // Normalize status and priority to capitalize first letter
+              const normalizeStatus = (status) => {
+                if (!status) return 'Pending';
+                return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+              };
+              
+              const normalizePriority = (priority) => {
+                if (!priority) return 'Normal';
+                return priority.charAt(0).toUpperCase() + priority.slice(1).toLowerCase();
+              };
+              
               return {
                 id: `REQ-${req.id}`,
                 facility: req.facility_name,
@@ -90,8 +104,8 @@ function FacilityMyRequest() {
                 item: item.item_name || 'Unknown Item',
                 qty: item.quantity || 0,
                 facilityStock: item.available_quantity || 0,
-                priority: req.priority || 'Normal',
-                status: req.status || 'Pending',
+                priority: normalizePriority(item.priority || req.priority),
+                status: normalizeStatus(req.status),
                 raisedOn: formatDate(req.created_at),
                 statusTimeline,
                 remarksLog
