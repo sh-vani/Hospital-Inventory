@@ -118,7 +118,7 @@ const FacilityInventory = () => {
   const currentInventory = filteredInventory.slice(startIndex, startIndex + itemsPerPage);
 
   useEffect(() => setCurrentPage(1), [searchTerm]);
-
+                
   // === MODAL HANDLERS ===
   const openViewModal = (item) => {
     setViewItem(item);
