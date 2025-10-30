@@ -260,7 +260,7 @@ const getHighestPriorityFromItems = (items) => {
         })),
       };
       const res = await axiosInstance.post(
-        `${BaseUrl}/requisitions/bulk`,
+        `${BaseUrl}/requisitions`,
         payload
       );
       if (res.data.success) {
@@ -279,154 +279,169 @@ const getHighestPriorityFromItems = (items) => {
     }
   };
 
-  // Handle individual submission
-  const handleIndividualSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedItem || !quantity || quantity <= 0) {
+// Handle individual submission
+const handleIndividualSubmit = async (e) => {
+  e.preventDefault();
+  if (!selectedItem || !quantity || quantity <= 0) {
+    Swal.fire({
+      icon: "warning",
+      title: "Incomplete Form",
+      text: "Please select an item and enter a valid quantity.",
+    });
+    return;
+  }
+  const user = getUserFromStorage();
+  if (!user || !user.facility_id || !user.id) {
+    Swal.fire({
+      icon: "error",
+      title: "Session Error",
+      text: "User data incomplete. Please log in again.",
+    });
+    return;
+  }
+  setLoading(true);
+  try {
+    const payload = {
+      user_id: user.id,
+      facility_id: user.facility_id,
+      priority: priority.toLowerCase(), // ✅ Root-level priority added
+      remarks: remarks.trim() || "",
+      items: [
+        {
+          item_id: parseInt(selectedItem),
+          quantity: parseInt(quantity),
+          priority: priority.toLowerCase(),
+        },
+      ],
+    };
+    const response = await axiosInstance.post(
+      `${BaseUrl}/requisitions`,
+      payload
+    );
+    if (response.data.success) {
+      setSuccess(true);
+      fetchRequisitionHistory(user.id);
+      resetIndividualForm();
+      setShowRequisitionModal(false);
       Swal.fire({
-        icon: "warning",
-        title: "Incomplete Form",
-        text: "Please select an item and enter a valid quantity.",
+        icon: "success",
+        title: "Submitted!",
+        text: "Your requisition has been submitted to Facility Admin.",
+        timer: 3000,
+        showConfirmButton: false,
       });
-      return;
-    }
-    const user = getUserFromStorage();
-    if (!user || !user.facility_id || !user.id) {
-      Swal.fire({
-        icon: "error",
-        title: "Session Error",
-        text: "User data incomplete. Please log in again.",
-      });
-      return;
-    }
-    setLoading(true);
-    try {
-      const payload = {
-        user_id: user.id,
-        facility_id: user.facility_id,
-        remarks: remarks.trim() || "",
-        items: [
-          {
-            item_id: parseInt(selectedItem),
-            quantity: parseInt(quantity),
-            priority: priority.toLowerCase(),
-          },
-        ],
-      };
-      const response = await axiosInstance.post(
-        `${BaseUrl}/requisitions`,
-        payload
-      );
-      if (response.data.success) {
-        setSuccess(true);
-        fetchRequisitionHistory(user.id);
-        resetIndividualForm();
-        setShowRequisitionModal(false);
-        Swal.fire({
-          icon: "success",
-          title: "Submitted!",
-          text: "Your requisition has been submitted to Facility Admin.",
-          timer: 3000,
-          showConfirmButton: false,
-        });
-      } else {
-        Swal.fire({
-          icon: "error",
-          title: "Submission Failed",
-          text:
-            "Failed to submit requisition: " +
-            (response.data.message || "Unknown error"),
-        });
-      }
-    } catch (error) {
-      console.error("Submission error:", error);
-      const msg =
-        error.response?.data?.message || "Network error. Please try again.";
+    } else {
       Swal.fire({
         icon: "error",
-        title: "Error",
-        text: msg,
+        title: "Submission Failed",
+        text:
+          "Failed to submit requisition: " +
+          (response.data.message || "Unknown error"),
       });
-    } finally {
-      setLoading(false);
-      setTimeout(() => setSuccess(false), 3000);
     }
+  } catch (error) {
+    console.error("Submission error:", error);
+    const msg =
+      error.response?.data?.message || "Network error. Please try again.";
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: msg,
+    });
+  } finally {
+    setLoading(false);
+    setTimeout(() => setSuccess(false), 3000);
+  }
+};
+ // Handle bulk submission
+const handleBulkSubmit = async (e) => {
+  e.preventDefault();
+  const validItems = bulkItems.filter(
+    (item) => item.item && item.quantity && parseInt(item.quantity) > 0
+  );
+  if (validItems.length === 0) {
+    Swal.fire({
+      icon: "warning",
+      title: "Incomplete Form",
+      text: "Please add at least one valid item with quantity.",
+    });
+    return;
+  }
+  const user = getUserFromStorage();
+  if (!user || !user.facility_id || !user.id) {
+    Swal.fire({
+      icon: "error",
+      title: "Session Error",
+      text: "User data incomplete. Please log in again.",
+    });
+    return;
+  }
+
+  // ✅ Helper: Get highest priority from validItems
+  const getHighestPriority = (items) => {
+    const order = { urgent: 3, high: 2, normal: 1 };
+    let max = "normal";
+    items.forEach((i) => {
+      const p = (i.priority || "normal").toLowerCase();
+      if (order[p] > order[max]) max = p;
+    });
+    return max;
   };
 
-  // Handle bulk submission
-  const handleBulkSubmit = async (e) => {
-    e.preventDefault();
-    const validItems = bulkItems.filter(
-      (item) => item.item && item.quantity && parseInt(item.quantity) > 0
+  const rootPriority = getHighestPriority(validItems); // ✅
+
+  setLoading(true);
+  try {
+    const payload = {
+      user_id: user.id,
+      facility_id: user.facility_id,
+      priority: rootPriority, // ✅ Root-level priority added
+      remarks: bulkRemarks.trim() || "",
+      items: validItems.map((item) => ({
+        item_id: parseInt(item.item),
+        quantity: parseInt(item.quantity),
+        priority: item.priority.toLowerCase(),
+      })),
+    };
+    const response = await axiosInstance.post(
+      `${BaseUrl}/requisitions`,
+      payload
     );
-    if (validItems.length === 0) {
+    if (response.data.success) {
+      setSuccess(true);
+      fetchRequisitionHistory(user.id);
+      resetBulkForm();
+      setShowRequisitionModal(false);
       Swal.fire({
-        icon: "warning",
-        title: "Incomplete Form",
-        text: "Please add at least one valid item with quantity.",
+        icon: "success",
+        title: "Submitted!",
+        text: "Your bulk requisition has been submitted to Facility Admin.",
+        timer: 3000,
+        showConfirmButton: false,
       });
-      return;
-    }
-    const user = getUserFromStorage();
-    if (!user || !user.facility_id || !user.id) {
-      Swal.fire({
-        icon: "error",
-        title: "Session Error",
-        text: "User data incomplete. Please log in again.",
-      });
-      return;
-    }
-    setLoading(true);
-    try {
-      const payload = {
-        user_id: user.id,
-        facility_id: user.facility_id,
-        remarks: bulkRemarks.trim() || "",
-        items: validItems.map((item) => ({
-          item_id: parseInt(item.item),
-          quantity: parseInt(item.quantity),
-          priority: item.priority.toLowerCase(),
-        })),
-      };
-      const response = await axiosInstance.post(
-        `${BaseUrl}/requisitions`,
-        payload
-      );
-      if (response.data.success) {
-        setSuccess(true);
-        fetchRequisitionHistory(user.id);
-        resetBulkForm();
-        setShowRequisitionModal(false);
-        Swal.fire({
-          icon: "success",
-          title: "Submitted!",
-          text: "Your bulk requisition has been submitted to Facility Admin.",
-          timer: 3000,
-          showConfirmButton: false,
-        });
-      } else {
-        Swal.fire({
-          icon: "error",
-          title: "Submission Failed",
-          text:
-            "Failed to submit requisition: " +
-            (response.data.message || "Unknown error"),
-        });
-      }
-    } catch (error) {
-      console.error("Submission error:", error);
-      const msg =
-        error.response?.data?.message || "Network error. Please try again.";
+    } else {
       Swal.fire({
         icon: "error",
-        title: "Error",
-        text: msg,
+        title: "Submission Failed",
+        text:
+          "Failed to submit requisition: " +
+          (response.data.message || "Unknown error"),
       });
-    } finally {
-      setLoading(false);
-      setTimeout(() => setSuccess(false), 3000);
     }
-  };
+  } catch (error) {
+    console.error("Submission error:", error);
+    const msg =
+      error.response?.data?.message || "Network error. Please try again.";
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: msg,
+    });
+  } finally {
+    setLoading(false);
+    setTimeout(() => setSuccess(false), 3000);
+  }
+};
 
   // Reset forms
   const resetIndividualForm = () => {

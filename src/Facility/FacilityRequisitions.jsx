@@ -35,7 +35,9 @@ function FacilityRequisitions() {
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-
+  const [showApproveModal, setShowApproveModal] = useState(false);
+const [approveItems, setApproveItems] = useState([]); // will hold { item_id, approved_quantity }
+const [approveRemarks, setApproveRemarks] = useState("");
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 10;
@@ -77,9 +79,10 @@ function FacilityRequisitions() {
 
             return req.items.map(item => ({
               id: `REQ-${req.id}`,
+              item_id: item.item_id, // 👈 YEH ADD KARO
               facility: req.facility_name || fName,
               user: req.user_name || "Unknown User",
-              department: "Department", // API doesn't provide this
+              department: "Department",
               item: item.item_name || "Unnamed Item",
               qty: item.quantity || 0,
               facilityStock: item.available_quantity || 0,
@@ -174,7 +177,54 @@ function FacilityRequisitions() {
       sessionStorage.setItem("suggestionsShown", "true");
     }
   }, [requisitions, adminFacility, loading]);
+  const handleApprove = (req) => {
+    // Prepare item for approval (single-item row assumption)
+    const itemForApproval = {
+      item_id: req.item_id,
+      approved_quantity: req.qty, // default: full requested qty
+      requested_qty: req.qty,
+      item_name: req.item,
+    };
+  
+    setSelectedRequisition(req);
+    setApproveItems([itemForApproval]);
+    setApproveRemarks("");
+    setShowApproveModal(true);
+  };
 
+  const submitApprove = async () => {
+    if (!selectedRequisition) return;
+  
+    const reqId = selectedRequisition.id.replace("REQ-", ""); // extract numeric ID
+  
+    const payload = {
+      userId: JSON.parse(localStorage.getItem("user"))?.id || 4,
+      remarks: approveRemarks.trim() || "Approved",
+      items: approveItems.map(item => ({
+        item_id: item.item_id,
+        approved_quantity: parseInt(item.approved_quantity) || 0,
+      })),
+    };
+  
+    try {
+      setLoading(true);
+      const response = await axios.patch(`${BaseUrl}/requisitions/${reqId}/approve`, payload);
+      if (response.data.success) {
+        alert("✅ Requisition approved successfully!");
+        window.location.reload(); // ya better: refetch data
+      } else {
+        alert("❌ Approval failed: " + (response.data.message || "Unknown error"));
+      }
+    } catch (err) {
+      console.error("Approve error:", err);
+      alert("Error: " + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+      setShowApproveModal(false);
+      setApproveItems([]);
+      setApproveRemarks("");
+    }
+  };
   // Filter logic (same as before)
   const filteredRequisitions = requisitions.filter((req) => {
     if (req.facility !== adminFacility) return false;
@@ -203,6 +253,96 @@ function FacilityRequisitions() {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
+  const submitReject = async () => {
+    if (!selectedRequisition || !rejectReason.trim()) {
+      alert("Please provide a rejection reason");
+      return;
+    }
+  
+    const reqId = selectedRequisition.id.replace("REQ-", ""); // e.g., "REQ-60" → "60"
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) {
+      alert("User not logged in");
+      return;
+    }
+  
+    const payload = {
+      userId: user.id,
+      remarks: rejectReason.trim(),
+    };
+  
+    try {
+      setLoading(true);
+      const response = await axios.put(`${BaseUrl}/requisitions/${reqId}/reject`, payload);
+      if (response.data.success) {
+        alert("✅ Requisition rejected successfully!");
+        window.location.reload(); // ya better: refetch data
+      } else {
+        alert("❌ Rejection failed: " + (response.data.message || "Unknown error"));
+      }
+    } catch (err) {
+      console.error("Reject error:", err);
+      alert("Error: " + (err.response?.data?.message || err.message || "Network error"));
+    } finally {
+      setLoading(false);
+      setShowRejectModal(false);
+      setSelectedRequisition(null);
+      setRejectReason("");
+    }
+  };
+  const handleDeliver = (req) => {
+    setSelectedRequisition(req);
+    setDeliverQty(Math.min(req.qty, req.facilityStock).toString());
+    setDeliverRemarks("");
+    setShowDeliverModal(true);
+  };
+  const submitDeliver = async () => {
+    if (!selectedRequisition || !deliverQty) return;
+  
+    const reqId = selectedRequisition.id.replace("REQ-", "");
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) {
+      alert("User not logged in");
+      return;
+    }
+  
+    const payload = {
+      user_id: user.id,
+      facility_id: user.facility_id,
+      remarks: deliverRemarks.trim() || "Delivered from facility stock",
+      items: [
+        {
+          item_id: selectedRequisition.item_id,
+          delivered_quantity: parseInt(deliverQty) || 0,
+        },
+      ],
+    };
+  
+    try {
+      setLoading(true);
+      const response = await axios.patch(`${BaseUrl}/requisitions/${reqId}/deliver`, payload);
+      if (response.data.success) {
+        alert("✅ Item delivered successfully!");
+        window.location.reload();
+      } else {
+        alert("❌ Delivery failed: " + (response.data.message || "Unknown error"));
+      }
+    } catch (err) {
+      console.error("Deliver error:", err);
+      alert("Error: " + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+      setShowDeliverModal(false);
+      setSelectedRequisition(null);
+      setDeliverQty("");
+      setDeliverRemarks("");
+    }
+  };
+  const handleReject = (req) => {
+    setSelectedRequisition(req);
+    setRejectReason("");
+    setShowRejectModal(true);
+  };
   useEffect(() => setCurrentPage(1), [activeTab, userFilter, itemFilter, departmentFilter, priorityFilter, searchTerm]);
 
   // getFacilityStatus, handleDeliver, handleRaiseToWarehouse, etc. — ALL REMAIN UNCHANGED
@@ -230,7 +370,7 @@ function FacilityRequisitions() {
       return { status: "In Stock", class: "bg-success-subtle text-success-emphasis" };
     }
   };
-
+  
   // ✅ ALL ACTION HANDLERS (handleDeliver, handleRaiseToWarehouse, submitDeliver, etc.) — COPY FROM YOUR ORIGINAL CODE BELOW
   // (They are long, so not repeated here for brevity — but they remain 100% unchanged)
 
@@ -440,11 +580,11 @@ function FacilityRequisitions() {
                       <td>{req.raisedOn}</td>
                       <td className="text-center">
                         <div className="d-flex justify-content-center gap-2 flex-wrap">
-                          {req.status === "Pending" && req.facilityStock >= req.qty && (
-                            <button className="btn btn-sm btn-success" onClick={() => handleDeliver(req)} title="Deliver from facility stock">
-                              Deliver
-                            </button>
-                          )}
+                        {(req.status === "Pending" && req.facilityStock >= req.qty) || req.status === "Approved" ? (
+  <button className="btn btn-sm btn-success" onClick={() => handleDeliver(req)} title="Deliver from facility stock">
+    Deliver
+  </button>
+) : null}
                           {req.status === "Pending" && req.facilityStock < req.qty && (
                             <>
                               <button className="btn btn-sm btn-primary" onClick={() => handleRaiseToWarehouse(req)} title="Raise to warehouse">
@@ -453,6 +593,9 @@ function FacilityRequisitions() {
                               <button className="btn btn-sm btn-info" onClick={() => handleAddToBulkList(req)} title="Add to bulk list">
                                 Add to Bulk
                               </button>
+                              <button className="btn btn-sm btn-success" onClick={() => handleApprove(req)} title="Approve requisition">
+      Approve
+    </button>
                             </>
                           )}
                           {req.status === "Pending" && (
@@ -997,6 +1140,81 @@ function FacilityRequisitions() {
           </div>
         </div>
       )}
+
+
+      {/* Approve Modal */}
+{showApproveModal && selectedRequisition && (
+  <div className="modal fade show" tabIndex="-1" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }} onClick={() => { setShowApproveModal(false); setApproveItems([]); setApproveRemarks(""); }}>
+    <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content">
+        <div className="modal-header border-0 pb-0">
+          <h5 className="modal-title fw-bold">Approve Requisition</h5>
+          <button type="button" className="btn-close" onClick={() => { setShowApproveModal(false); setApproveItems([]); setApproveRemarks(""); }}></button>
+        </div>
+        <div className="modal-body p-4">
+          <div className="row mb-3">
+            <div className="col-5 fw-bold text-muted">Req ID:</div>
+            <div className="col-7">{selectedRequisition.id}</div>
+          </div>
+          <div className="row mb-3">
+            <div className="col-5 fw-bold text-muted">Item:</div>
+            <div className="col-7">{selectedRequisition.item}</div>
+          </div>
+          <div className="row mb-3">
+            <div className="col-5 fw-bold text-muted">Requested Qty:</div>
+            <div className="col-7">{selectedRequisition.qty}</div>
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Approve Quantity</label>
+            <input
+              type="number"
+              className="form-control"
+              value={approveItems[0]?.approved_quantity || ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                setApproveItems([{ ...approveItems[0], approved_quantity: val }]);
+              }}
+              min="0"
+              max={selectedRequisition.qty}
+              required
+            />
+            <div className="form-text">Max: {selectedRequisition.qty}</div>
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Remarks</label>
+            <textarea
+              className="form-control"
+              value={approveRemarks}
+              onChange={(e) => setApproveRemarks(e.target.value)}
+              rows="2"
+              placeholder="e.g., Approved after stock verification"
+            ></textarea>
+          </div>
+        </div>
+        <div className="modal-footer border-0 pt-0">
+          <div className="d-flex flex-column flex-sm-row gap-2 w-100">
+            <button
+              type="button"
+              className="btn btn-outline-secondary w-100"
+              onClick={() => { setShowApproveModal(false); setApproveItems([]); setApproveRemarks(""); }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-success w-100"
+              onClick={submitApprove}
+            >
+              Approve
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
