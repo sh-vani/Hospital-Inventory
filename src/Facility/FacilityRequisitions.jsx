@@ -36,8 +36,8 @@ function FacilityRequisitions() {
   const [priorityFilter, setPriorityFilter] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [showApproveModal, setShowApproveModal] = useState(false);
-const [approveItems, setApproveItems] = useState([]); // will hold { item_id, approved_quantity }
-const [approveRemarks, setApproveRemarks] = useState("");
+  const [approveItems, setApproveItems] = useState([]); // will hold { item_id, approved_quantity }
+  const [approveRemarks, setApproveRemarks] = useState("");
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 10;
@@ -104,10 +104,10 @@ const [approveRemarks, setApproveRemarks] = useState("");
                 : [],
               expiryDate: item.expiry_date
                 ? new Date(item.expiry_date).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
                 : "N/A",
             }));
           });
@@ -185,7 +185,7 @@ const [approveRemarks, setApproveRemarks] = useState("");
       requested_qty: req.qty,
       item_name: req.item,
     };
-  
+
     setSelectedRequisition(req);
     setApproveItems([itemForApproval]);
     setApproveRemarks("");
@@ -194,9 +194,9 @@ const [approveRemarks, setApproveRemarks] = useState("");
 
   const submitApprove = async () => {
     if (!selectedRequisition) return;
-  
+
     const reqId = selectedRequisition.id.replace("REQ-", ""); // extract numeric ID
-  
+
     const payload = {
       userId: JSON.parse(localStorage.getItem("user"))?.id || 4,
       remarks: approveRemarks.trim() || "Approved",
@@ -205,7 +205,7 @@ const [approveRemarks, setApproveRemarks] = useState("");
         approved_quantity: parseInt(item.approved_quantity) || 0,
       })),
     };
-  
+
     try {
       setLoading(true);
       const response = await axios.patch(`${BaseUrl}/requisitions/${reqId}/approve`, payload);
@@ -258,19 +258,19 @@ const [approveRemarks, setApproveRemarks] = useState("");
       alert("Please provide a rejection reason");
       return;
     }
-  
+
     const reqId = selectedRequisition.id.replace("REQ-", ""); // e.g., "REQ-60" → "60"
     const user = JSON.parse(localStorage.getItem("user"));
     if (!user) {
       alert("User not logged in");
       return;
     }
-  
+
     const payload = {
       userId: user.id,
       remarks: rejectReason.trim(),
     };
-  
+
     try {
       setLoading(true);
       const response = await axios.put(`${BaseUrl}/requisitions/${reqId}/reject`, payload);
@@ -298,14 +298,14 @@ const [approveRemarks, setApproveRemarks] = useState("");
   };
   const submitDeliver = async () => {
     if (!selectedRequisition || !deliverQty) return;
-  
+
     const reqId = selectedRequisition.id.replace("REQ-", "");
     const user = JSON.parse(localStorage.getItem("user"));
     if (!user) {
       alert("User not logged in");
       return;
     }
-  
+
     const payload = {
       user_id: user.id,
       facility_id: user.facility_id,
@@ -317,7 +317,7 @@ const [approveRemarks, setApproveRemarks] = useState("");
         },
       ],
     };
-  
+
     try {
       setLoading(true);
       const response = await axios.patch(`${BaseUrl}/requisitions/${reqId}/deliver`, payload);
@@ -338,6 +338,54 @@ const [approveRemarks, setApproveRemarks] = useState("");
       setDeliverRemarks("");
     }
   };
+
+// Add this function below your other handlers (e.g., after handleReject)
+const handleAddToBulkList = (req) => {
+  // Check if already in bulk list
+  const exists = bulkRequisitionList.some(item => 
+    item.reqId === req.id && item.item === req.item
+  );
+
+  if (exists) {
+    alert("✅ Already added to bulk list!");
+    return;
+  }
+
+  // Add to bulk list
+  const newItem = {
+    reqId: req.id,
+    name: req.item,
+    qty: req.qty,
+    priority: req.priority,
+    reason: "Manual add from requisition",
+    item_id: req.item_id,
+  };
+
+  setBulkRequisitionList(prev => [...prev, newItem]);
+  alert("✅ Added to Bulk Requisition List!");
+};
+
+const updateBulkItemQty = (index, newQty) => {
+  const updated = [...bulkRequisitionList];
+  updated[index] = { ...updated[index], qty: parseInt(newQty) || 1 };
+  setBulkRequisitionList(updated);
+};
+
+const removeFromBulkList = (index) => {
+  const updated = bulkRequisitionList.filter((_, i) => i !== index);
+  setBulkRequisitionList(updated);
+};
+
+const addSuggestedToBulk = (suggestion) => {
+  const newItem = {
+    name: suggestion.item,
+    qty: suggestion.suggestedQty,
+    priority: suggestion.priority,
+    reason: suggestion.reason,
+  };
+  setBulkRequisitionList(prev => [...prev, newItem]);
+};
+
   const handleReject = (req) => {
     setSelectedRequisition(req);
     setRejectReason("");
@@ -370,7 +418,100 @@ const [approveRemarks, setApproveRemarks] = useState("");
       return { status: "In Stock", class: "bg-success-subtle text-success-emphasis" };
     }
   };
+  const handleRaiseToWarehouse = (req) => {
+    setSelectedRequisition(req);
+    setRaiseRequiredQty(req.qty.toString()); // default to requested qty
+    setRaisePriority("Normal");
+    setRaiseRemarks("");
+    setShowRaiseModal(true);
+  };
+
   
+  const submitBulkRequisition = async () => {
+    if (bulkRequisitionList.length === 0) return;
+  
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user || !facilityId) {
+      alert("User or facility not found");
+      return;
+    }
+  
+    try {
+      setLoading(true);
+  
+      // Har item ke liye alag raise-to-warehouse call karein
+      for (const item of bulkRequisitionList) {
+        const payload = {
+          facility_id: facilityId,
+          required_qty: item.qty,
+          priority: item.priority,
+          remarks: item.reason || "From bulk list",
+          user_name: user.name,
+          item_name: item.name,
+        };
+  
+        await axios.post(`${BaseUrl}/warehouse-requisitions/raise-to-warehouse`, payload);
+      }
+  
+      alert("✅ All items raised to warehouse successfully!");
+      setBulkRequisitionList([]);
+      setShowBulkModal(false);
+      window.location.reload();
+    } catch (err) {
+      console.error("Bulk raise error:", err);
+      alert("❌ Failed: " + (err.response?.data?.message || "Network error"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+
+  const submitRaiseToWarehouse = async () => {
+    if (!selectedRequisition || !raiseRequiredQty || !facilityId) {
+      alert("Please fill all required fields");
+      return;
+    }
+  
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) {
+      alert("User not logged in");
+      return;
+    }
+  
+    // ✅ Add user_name and item_name from selectedRequisition
+    const payload = {
+      requisition_id: parseInt(selectedRequisition.id.replace("REQ-", ""), 10),
+      facility_id: facilityId,
+      required_qty: parseInt(raiseRequiredQty, 10),
+      priority: raisePriority,
+      remarks: raiseRemarks.trim() || "Raised to warehouse",
+      user_name: selectedRequisition.user,      // ✅ "user28"
+      item_name: selectedRequisition.item,     // ✅ "Ibuprofen 400"
+    };
+  
+    try {
+      setLoading(true);
+      const response = await axios.post(`${BaseUrl}/warehouse-requisitions/raise-to-warehouse`, payload);
+      if (response.data.success) {
+        alert("✅ Requisition raised to warehouse successfully!");
+        window.location.reload();
+      } else {
+        alert("❌ Failed to raise to warehouse: " + (response.data.message || "Unknown error"));
+      }
+    } catch (err) {
+      console.error("Raise to warehouse error:", err);
+      alert("Error: " + (err.response?.data?.message || err.message || "Network error"));
+    } finally {
+      setLoading(false);
+      setShowRaiseModal(false);
+      setSelectedRequisition(null);
+      setRaiseRequiredQty("");
+      setRaisePriority("Normal");
+      setRaiseRemarks("");
+    }
+  };
   // ✅ ALL ACTION HANDLERS (handleDeliver, handleRaiseToWarehouse, submitDeliver, etc.) — COPY FROM YOUR ORIGINAL CODE BELOW
   // (They are long, so not repeated here for brevity — but they remain 100% unchanged)
 
@@ -563,56 +704,94 @@ const [approveRemarks, setApproveRemarks] = useState("");
                       </td>
                       <td>{req.expiryDate || "N/A"}</td>
                       <td>
-                        <span className={`badge rounded-pill ${
-                          req.status === "Pending"
+                        <span className={`badge rounded-pill ${req.status === "Pending"
                             ? "bg-secondary-subtle text-secondary-emphasis"
                             : req.status === "Processing"
-                            ? "bg-warning-subtle text-warning-emphasis"
-                            : req.status === "Delivered"
-                            ? "bg-info-subtle text-info-emphasis"
-                            : req.status === "Completed"
-                            ? "bg-success-subtle text-success-emphasis"
-                            : "bg-danger-subtle text-danger-emphasis"
-                        } px-3 py-1`}>
+                              ? "bg-warning-subtle text-warning-emphasis"
+                              : req.status === "Delivered"
+                                ? "bg-info-subtle text-info-emphasis"
+                                : req.status === "Completed"
+                                  ? "bg-success-subtle text-success-emphasis"
+                                  : "bg-danger-subtle text-danger-emphasis"
+                          } px-3 py-1`}>
                           {req.status}
                         </span>
                       </td>
                       <td>{req.raisedOn}</td>
                       <td className="text-center">
-                        <div className="d-flex justify-content-center gap-2 flex-wrap">
-                        {(req.status === "Pending" && req.facilityStock >= req.qty) || req.status === "Approved" ? (
-  <button className="btn btn-sm btn-success" onClick={() => handleDeliver(req)} title="Deliver from facility stock">
-    Deliver
-  </button>
-) : null}
-                          {req.status === "Pending" && req.facilityStock < req.qty && (
-                            <>
-                              <button className="btn btn-sm btn-primary" onClick={() => handleRaiseToWarehouse(req)} title="Raise to warehouse">
-                                Raise to Warehouse
-                              </button>
-                              <button className="btn btn-sm btn-info" onClick={() => handleAddToBulkList(req)} title="Add to bulk list">
-                                Add to Bulk
-                              </button>
-                              <button className="btn btn-sm btn-success" onClick={() => handleApprove(req)} title="Approve requisition">
-      Approve
+  <div className="d-flex justify-content-center gap-2 flex-wrap">
+    {/* Deliver: if stock sufficient AND status allows delivery */}
+    {((req.status === "Pending" || req.status === "Approved" || req.status === "Processing") && req.facilityStock >= req.qty) && (
+      <button
+        className="btn btn-sm btn-success"
+        onClick={() => handleDeliver(req)}
+        title="Deliver from facility stock"
+      >
+        Deliver
+      </button>
+    )}
+
+    {/* Raise to Warehouse & Add to Bulk: if stock low AND status is actionable */}
+    {((req.status === "Pending" || req.status === "Approved" || req.status === "Processing") && req.facilityStock < req.qty) && (
+      <>
+        <button
+          className="btn btn-sm btn-primary"
+          onClick={() => handleRaiseToWarehouse(req)}
+          title="Raise to warehouse"
+        >
+          Raise to Warehouse
+        </button>
+         <button
+          className="btn btn-sm btn-info"
+          onClick={() => handleAddToBulkList(req)}
+          title="Add to bulk list"
+        >
+          Add to Bulk
+        </button> 
+      </>
+    )}
+
+    {/* Approve & Reject: only for Pending */}
+    {req.status === "Pending" && (
+      <>
+        <button
+          className="btn btn-sm btn-success"
+          onClick={() => handleApprove(req)}
+          title="Approve requisition"
+        >
+          Approve
+        </button>
+        <button
+          className="btn btn-sm btn-danger"
+          onClick={() => handleReject(req)}
+          title="Reject"
+        >
+          Reject
+        </button>
+      </>
+    )}
+
+    {/* Complete: only for Delivered */}
+    {req.status === "Delivered" && (
+      <button
+        className="btn btn-sm btn-success"
+        onClick={() => markAsCompleted(req.id)}
+        title="Mark as completed"
+      >
+        Complete
+      </button>
+    )}
+
+    {/* View: always */}
+    <button
+      className="btn btn-sm btn-outline-secondary"
+      onClick={() => handleViewDetail(req)}
+      title="View details"
+    >
+      View
     </button>
-                            </>
-                          )}
-                          {req.status === "Pending" && (
-                            <button className="btn btn-sm btn-danger" onClick={() => handleReject(req)} title="Reject">
-                              Reject
-                            </button>
-                          )}
-                          {req.status === "Delivered" && (
-                            <button className="btn btn-sm btn-success" onClick={() => markAsCompleted(req.id)} title="Mark as completed">
-                              Complete
-                            </button>
-                          )}
-                          <button className="btn btn-sm btn-outline-secondary" onClick={() => handleViewDetail(req)} title="View details">
-                            View
-                          </button>
-                        </div>
-                      </td>
+  </div>
+</td>
                     </tr>
                   );
                 })
@@ -889,13 +1068,12 @@ const [approveRemarks, setApproveRemarks] = useState("");
                     <div className="row mb-3">
                       <div className="col-5 fw-bold text-muted">Priority:</div>
                       <div className="col-7">
-                        <span className={`badge rounded-pill ${
-                          selectedRequisition.priority === "Normal"
+                        <span className={`badge rounded-pill ${selectedRequisition.priority === "Normal"
                             ? "bg-secondary-subtle text-secondary-emphasis"
                             : selectedRequisition.priority === "High"
-                            ? "bg-warning-subtle text-warning-emphasis"
-                            : "bg-danger-subtle text-danger-emphasis"
-                        } px-3 py-1`}>
+                              ? "bg-warning-subtle text-warning-emphasis"
+                              : "bg-danger-subtle text-danger-emphasis"
+                          } px-3 py-1`}>
                           {selectedRequisition.priority}
                         </span>
                       </div>
@@ -926,17 +1104,16 @@ const [approveRemarks, setApproveRemarks] = useState("");
                 <div className="row mb-3">
                   <div className="col-5 fw-bold text-muted">Current Status:</div>
                   <div className="col-7">
-                    <span className={`badge rounded-pill ${
-                      selectedRequisition.status === "Pending"
+                    <span className={`badge rounded-pill ${selectedRequisition.status === "Pending"
                         ? "bg-secondary-subtle text-secondary-emphasis"
                         : selectedRequisition.status === "Processing"
-                        ? "bg-warning-subtle text-warning-emphasis"
-                        : selectedRequisition.status === "Delivered"
-                        ? "bg-info-subtle text-info-emphasis"
-                        : selectedRequisition.status === "Completed"
-                        ? "bg-success-subtle text-success-emphasis"
-                        : "bg-danger-subtle text-danger-emphasis"
-                    } px-3 py-1`}>
+                          ? "bg-warning-subtle text-warning-emphasis"
+                          : selectedRequisition.status === "Delivered"
+                            ? "bg-info-subtle text-info-emphasis"
+                            : selectedRequisition.status === "Completed"
+                              ? "bg-success-subtle text-success-emphasis"
+                              : "bg-danger-subtle text-danger-emphasis"
+                      } px-3 py-1`}>
                       {selectedRequisition.status}
                     </span>
                   </div>
@@ -1054,11 +1231,11 @@ const [approveRemarks, setApproveRemarks] = useState("");
                   <button type="button" className="btn btn-outline-secondary w-100" onClick={closeBulkModal}>
                     {bulkRequisitionList.length === 0 ? "Close" : "Cancel"}
                   </button>
-                  {bulkRequisitionList.length > 0 && (
-                    <button type="button" className="btn btn-primary w-100" onClick={submitBulkRequisition}>
+                   {bulkRequisitionList.length > 0 && (
+                   <button type="button" className="btn btn-primary w-100" onClick={submitBulkRequisition}>
                       Submit Bulk Requisition
-                    </button>
-                  )}
+                     </button>
+                   )} 
                 </div>
               </div>
             </div>
@@ -1094,18 +1271,17 @@ const [approveRemarks, setApproveRemarks] = useState("");
                           <td>{item.item}</td>
                           <td>{item.reason}</td>
                           <td>
-                            <span className={`badge rounded-pill ${
-                              item.priority === "Normal"
+                            <span className={`badge rounded-pill ${item.priority === "Normal"
                                 ? "bg-secondary-subtle text-secondary-emphasis"
                                 : item.priority === "High"
-                                ? "bg-warning-subtle text-warning-emphasis"
-                                : "bg-danger-subtle text-danger-emphasis"
-                            } px-3 py-1`}>
+                                  ? "bg-warning-subtle text-warning-emphasis"
+                                  : "bg-danger-subtle text-danger-emphasis"
+                              } px-3 py-1`}>
                               {item.priority}
                             </span>
                           </td>
                           <td>{item.suggestedQty}</td>
-                          <td className="text-center">
+                          {/* <td className="text-center">
                             <button
                               className="btn btn-sm btn-primary"
                               onClick={() => addSuggestedToBulk(item)}
@@ -1113,7 +1289,7 @@ const [approveRemarks, setApproveRemarks] = useState("");
                             >
                               Add to Bulk
                             </button>
-                          </td>
+                          </td> */}
                         </tr>
                       ))}
                     </tbody>
@@ -1123,7 +1299,7 @@ const [approveRemarks, setApproveRemarks] = useState("");
               <div className="modal-footer border-0 pt-0">
                 <div className="d-flex flex-column flex-sm-row gap-2 w-100">
                   <button type="button" className="btn btn-outline-secondary w-100" onClick={closeSuggestionModal}>Close</button>
-                  <button
+                  {/* <button
                     type="button"
                     className="btn btn-primary w-100"
                     onClick={() => {
@@ -1133,7 +1309,7 @@ const [approveRemarks, setApproveRemarks] = useState("");
                     }}
                   >
                     Add All to Bulk
-                  </button>
+                  </button> */}
                 </div>
               </div>
             </div>
@@ -1143,78 +1319,78 @@ const [approveRemarks, setApproveRemarks] = useState("");
 
 
       {/* Approve Modal */}
-{showApproveModal && selectedRequisition && (
-  <div className="modal fade show" tabIndex="-1" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }} onClick={() => { setShowApproveModal(false); setApproveItems([]); setApproveRemarks(""); }}>
-    <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
-      <div className="modal-content">
-        <div className="modal-header border-0 pb-0">
-          <h5 className="modal-title fw-bold">Approve Requisition</h5>
-          <button type="button" className="btn-close" onClick={() => { setShowApproveModal(false); setApproveItems([]); setApproveRemarks(""); }}></button>
-        </div>
-        <div className="modal-body p-4">
-          <div className="row mb-3">
-            <div className="col-5 fw-bold text-muted">Req ID:</div>
-            <div className="col-7">{selectedRequisition.id}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-5 fw-bold text-muted">Item:</div>
-            <div className="col-7">{selectedRequisition.item}</div>
-          </div>
-          <div className="row mb-3">
-            <div className="col-5 fw-bold text-muted">Requested Qty:</div>
-            <div className="col-7">{selectedRequisition.qty}</div>
-          </div>
+      {showApproveModal && selectedRequisition && (
+        <div className="modal fade show" tabIndex="-1" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }} onClick={() => { setShowApproveModal(false); setApproveItems([]); setApproveRemarks(""); }}>
+          <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title fw-bold">Approve Requisition</h5>
+                <button type="button" className="btn-close" onClick={() => { setShowApproveModal(false); setApproveItems([]); setApproveRemarks(""); }}></button>
+              </div>
+              <div className="modal-body p-4">
+                <div className="row mb-3">
+                  <div className="col-5 fw-bold text-muted">Req ID:</div>
+                  <div className="col-7">{selectedRequisition.id}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-5 fw-bold text-muted">Item:</div>
+                  <div className="col-7">{selectedRequisition.item}</div>
+                </div>
+                <div className="row mb-3">
+                  <div className="col-5 fw-bold text-muted">Requested Qty:</div>
+                  <div className="col-7">{selectedRequisition.qty}</div>
+                </div>
 
-          <div className="mb-3">
-            <label className="form-label">Approve Quantity</label>
-            <input
-              type="number"
-              className="form-control"
-              value={approveItems[0]?.approved_quantity || ""}
-              onChange={(e) => {
-                const val = e.target.value;
-                setApproveItems([{ ...approveItems[0], approved_quantity: val }]);
-              }}
-              min="0"
-              max={selectedRequisition.qty}
-              required
-            />
-            <div className="form-text">Max: {selectedRequisition.qty}</div>
-          </div>
+                <div className="mb-3">
+                  <label className="form-label">Approve Quantity</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    value={approveItems[0]?.approved_quantity || ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setApproveItems([{ ...approveItems[0], approved_quantity: val }]);
+                    }}
+                    min="0"
+                    max={selectedRequisition.qty}
+                    required
+                  />
+                  <div className="form-text">Max: {selectedRequisition.qty}</div>
+                </div>
 
-          <div className="mb-3">
-            <label className="form-label">Remarks</label>
-            <textarea
-              className="form-control"
-              value={approveRemarks}
-              onChange={(e) => setApproveRemarks(e.target.value)}
-              rows="2"
-              placeholder="e.g., Approved after stock verification"
-            ></textarea>
+                <div className="mb-3">
+                  <label className="form-label">Remarks</label>
+                  <textarea
+                    className="form-control"
+                    value={approveRemarks}
+                    onChange={(e) => setApproveRemarks(e.target.value)}
+                    rows="2"
+                    placeholder="e.g., Approved after stock verification"
+                  ></textarea>
+                </div>
+              </div>
+              <div className="modal-footer border-0 pt-0">
+                <div className="d-flex flex-column flex-sm-row gap-2 w-100">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary w-100"
+                    onClick={() => { setShowApproveModal(false); setApproveItems([]); setApproveRemarks(""); }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-success w-100"
+                    onClick={submitApprove}
+                  >
+                    Approve
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="modal-footer border-0 pt-0">
-          <div className="d-flex flex-column flex-sm-row gap-2 w-100">
-            <button
-              type="button"
-              className="btn btn-outline-secondary w-100"
-              onClick={() => { setShowApproveModal(false); setApproveItems([]); setApproveRemarks(""); }}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="btn btn-success w-100"
-              onClick={submitApprove}
-            >
-              Approve
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
     </div>
   );
 }

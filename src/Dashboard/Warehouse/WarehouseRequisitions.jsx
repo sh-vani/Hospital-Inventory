@@ -31,32 +31,33 @@ const WarehouseRequisitions = () => {
 
   const [requisitions, setRequisitions] = useState([]);
 
-  // Fetch requisitions from API
   useEffect(() => {
-    const fetchRequisitions = async () => {
+    const fetchRaiseRequests = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${BaseUrl}/requisitions`);
-        // Extract the data array from the response
-        const requisitionsData = Array.isArray(response.data.data) ? response.data.data : [];
-        setRequisitions(requisitionsData);
-        setPagination({
-          currentPage: 1,
-          totalPages: Math.ceil(requisitionsData.length / 10),
-          totalItems: requisitionsData.length,
-          itemsPerPage: 10,
-        });
+        const response = await axios.get(`${BaseUrl}/warehouse-requisitions/raise`);
+        if (response.data?.success && Array.isArray(response.data.data)) {
+          setRequisitions(response.data.data);
+          setPagination({
+            currentPage: 1,
+            totalPages: Math.ceil(response.data.data.length / 10),
+            totalItems: response.data.data.length,
+            itemsPerPage: 10,
+          });
+        } else {
+          setError("Invalid API response format");
+          setRequisitions([]);
+        }
       } catch (err) {
-        setError("Failed to fetch requisitions. Please try again later.");
-        console.error("Error fetching requisitions:", err);
-        // Ensure requisitions is an array even on error
+        setError("Failed to fetch raise requests. Please try again later.");
+        console.error("Error fetching raise requests:", err);
         setRequisitions([]);
       } finally {
         setLoading(false);
       }
     };
-
-    fetchRequisitions();
+  
+    fetchRaiseRequests();
   }, []);
 
   const filteredRequisitions = useMemo(() => {
@@ -138,18 +139,16 @@ const WarehouseRequisitions = () => {
     setRejectionReason("");
     setShowRejectModal(true);
   };
-
   const openPartialApproveModal = (req) => {
-    // Use the actual items from the requisition
     const initial = {};
     req.items.forEach((item) => {
-      initial[item.id] = item.available_quantity > 0 ? item.quantity : 0;
+      // Suggest min(requested, available)
+      initial[item.id] = Math.min(item.quantity, item.available_quantity);
     });
     setPartialApproveQuantities(initial);
     setCurrentRequisition(req);
     setShowPartialApproveModal(true);
   };
-
   const openItemsModal = (req) => {
     setCurrentRequisition(req);
     setShowItemsModal(true);
@@ -164,141 +163,210 @@ const WarehouseRequisitions = () => {
     setShowBulkApproveModal(true);
   };
 
-  // ACTION HANDLERS
-  const handleApproveSubmit = async () => {
+  const handleApprove = async (approvedItems, remarks = "") => {
     if (!currentRequisition) return;
-    setLoading(true);
+  
+    const payload = {
+      facility_id: currentRequisition.facility_id,
+      requisition_id: currentRequisition.requisition_id,
+      remarks: remarks,
+      userId: JSON.parse(localStorage.getItem("user"))?.id || 3,
+      approvedItems: approvedItems.map(item => ({
+        item_id: String(item.item_id), // ✅ स्ट्रिंग में
+        approved_qty: item.approved_qty
+      }))
+    };
+  
     try {
-      await axios.put(`${BaseUrl}/requisitions/${currentRequisition.id}`, {
-        status: "approved",
-        remarks: remarks
-      });
-      
-      setRequisitions(
-        requisitions.map((req) =>
-          req.id === currentRequisition.id
-            ? { ...req, status: "approved" }
+      setLoading(true);
+      await axios.patch(`${BaseUrl}/warehouse-requisitions/warehouse/approve`, payload);
+  
+      const isPartial = approvedItems.some(
+        item =>
+          item.approved_qty <
+          (currentRequisition.items.find(i => i.item_id === item.item_id)?.quantity || 0)
+      );
+  
+      setRequisitions((prev) =>
+        prev.map((req) =>
+          req.requisition_id === currentRequisition.requisition_id
+            ? { ...req, status: isPartial ? "partially approved" : "approved" }
             : req
         )
       );
+  
       setShowApproveModal(false);
     } catch (err) {
-      setError("Failed to approve requisition. Please try again.");
-      console.error("Error approving requisition:", err);
+      setError("Approval failed: " + (err.response?.data?.message || err.message));
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
-
+  const handleApproveSubmit = async () => {
+    if (!currentRequisition) return;
+  
+    const approvedItems = currentRequisition.items.map(item => ({
+      item_id: String(item.item_id), // ✅ स्ट्रिंग में बदला
+      approved_qty: item.available_quantity || item.quantity
+    }));
+  
+    await handleApprove(approvedItems, remarks);
+  };
+  
   const handlePartialApproveSubmit = async () => {
     if (!currentRequisition) return;
-    const total = Object.values(partialApproveQuantities).reduce(
+  
+    // Validate: कम से कम एक item की quantity > 0 हो
+    const totalApproved = Object.values(partialApproveQuantities).reduce(
       (sum, qty) => sum + (parseInt(qty) || 0),
       0
     );
-    if (total === 0) {
+    if (totalApproved === 0) {
       alert("At least one item must have approved quantity > 0");
       return;
     }
-    setLoading(true);
+  
+    // Validate: कोई भी quantity नकारात्मक या available से ज्यादा न हो
+    const hasInvalid = currentRequisition.items.some(item => {
+      const approved = partialApproveQuantities[item.id] || 0;
+      return approved < 0 || approved > item.available_quantity;
+    });
+  
+    if (hasInvalid) {
+      alert("Approved quantity cannot be negative or exceed available stock.");
+      return;
+    }
+  
+    // ✅ STEP 3: सही payload बनाएं (जैसा आपने बताया)
+    const approvedItems = currentRequisition.items
+      .map(item => ({
+        item_id: String(item.item_id), // item_id को string में
+        approved_qty: partialApproveQuantities[item.id] || 0
+      }))
+      .filter(item => item.approved_qty > 0); // केवल जिनकी quantity > 0
+  
+    const payload = {
+      facility_id: currentRequisition.facility_id,
+      requisition_id: currentRequisition.requisition_id,
+      approvedItems: approvedItems,
+      remarks: remarks || "Partially approved by warehouse"
+    };
+  
+    // ✅ STEP 4: सही API endpoint पर भेजें
     try {
-      // Prepare items data for partial approval
-      const itemsData = currentRequisition.items.map(item => ({
-        id: item.id,
-        approved_quantity: partialApproveQuantities[item.id] || 0
-      }));
-      
-      await axios.put(`${BaseUrl}/requisitions/${currentRequisition.id}`, {
-        status: "partially approved",
-        remarks: remarks,
-        items: itemsData
-      });
-      
-      setRequisitions(
-        requisitions.map((req) =>
-          req.id === currentRequisition.id
-            ? { 
-                ...req, 
-                status: "partially approved",
-                items: req.items.map(item => ({
-                  ...item,
-                  approved_quantity: partialApproveQuantities[item.id] || 0
-                }))
-              }
+      setLoading(true);
+      await axios.patch(
+        `${BaseUrl}/warehouse-requisitions/warehouse/partial-approve`,
+        payload
+      );
+  
+      // UI अपडेट: स्टेटस बदलें
+      setRequisitions(prev =>
+        prev.map(req =>
+          req.requisition_id === currentRequisition.requisition_id
+            ? { ...req, status: "partially approved" }
             : req
         )
       );
+  
       setShowPartialApproveModal(false);
     } catch (err) {
-      setError("Failed to partially approve requisition. Please try again.");
-      console.error("Error partially approving requisition:", err);
+      setError("Partial approval failed: " + (err.response?.data?.message || err.message));
+      console.error("Partial approve error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReject = async () => {
-    if (!rejectingRequisition || !rejectionReason.trim()) {
-      alert("Please provide a reason for rejection.");
-      return;
-    }
-    setLoading(true);
-    try {
-      await axios.put(`${BaseUrl}/requisitions/${rejectingRequisition.id}`, {
-        status: "rejected",
-        remarks: rejectionReason
-      });
-      
-      setRequisitions(
-        requisitions.map((req) =>
-          req.id === rejectingRequisition.id
-            ? { ...req, status: "rejected" }
-            : req
-        )
-      );
-      setShowRejectModal(false);
-    } catch (err) {
-      setError("Failed to reject requisition. Please try again.");
-      console.error("Error rejecting requisition:", err);
-    } finally {
-      setLoading(false);
-    }
+const handleReject = async (rejectionReason) => {
+  if (!rejectingRequisition || !rejectionReason?.trim()) return;
+
+  const payload = {
+    facility_id: rejectingRequisition.facility_id,
+    requisition_id: rejectingRequisition.requisition_id,
+    remarks: rejectionReason.trim(),
+    userId: JSON.parse(localStorage.getItem("user"))?.id || 3,
   };
 
-  const handleBulkApprove = async () => {
-    if (selectedRequisitions.length === 0) {
-      setError("No requisitions selected for approval");
-      return;
-    }
+  try {
     setLoading(true);
-    try {
-      // Process each selected requisition
-      const approvalPromises = selectedRequisitions.map(reqId => {
-        return axios.put(`${BaseUrl}/requisitions/${reqId}`, {
-          status: "approved",
-          remarks: bulkRemarks
-        });
-      });
-      
-      await Promise.all(approvalPromises);
-      
-      setRequisitions(
-        requisitions.map((req) =>
-          selectedRequisitions.includes(req.id)
-            ? { ...req, status: "approved" }
-            : req
-        )
-      );
-      setSelectedRequisitions([]);
-      setSelectAll(false);
-      setShowBulkApproveModal(false);
-    } catch (err) {
-      setError("Failed to approve selected requisitions. Please try again.");
-      console.error("Error in bulk approval:", err);
-    } finally {
-      setLoading(false);
-    }
+    await axios.patch(`${BaseUrl}/warehouse-requisitions/warehouse/reject`, payload);
+
+    setRequisitions(prev =>
+      prev.map(req =>
+        req.requisition_id === rejectingRequisition.requisition_id
+          ? { ...req, status: "rejected" }
+          : req
+      )
+    );
+
+    setShowRejectModal(false);
+  } catch (err) {
+    setError("Rejection failed: " + (err.response?.data?.message || err.message));
+    console.error("Reject error:", err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleBulkApprove = async () => {
+  if (selectedRequisitions.length === 0) {
+    setError("No requisitions selected for approval");
+    return;
+  }
+
+  // सिर्फ pending requisitions चुनें
+  const pendingReqs = requisitions.filter(
+    req => 
+      selectedRequisitions.includes(req.id) && 
+      req.status?.toLowerCase() === "pending"
+  );
+
+  if (pendingReqs.length === 0) {
+    setError("No pending requisitions selected for approval");
+    return;
+  }
+
+  // approvedList बनाएं
+  const approvedList = pendingReqs.map(req => ({
+    facility_id: req.facility_id,
+    requisition_id: req.requisition_id,
+    facilityRemarks: bulkRemarks || "Approved via bulk action",
+    approvedItems: req.items.map(item => ({
+      item_id: String(item.item_id),
+      approved_qty: item.available_quantity || item.quantity
+    }))
+  }));
+
+  const payload = {
+    remarks: bulkRemarks || "Warehouse approved multiple requisitions in bulk",
+    approvedList
   };
+
+  try {
+    setLoading(true);
+    await axios.patch(`${BaseUrl}/warehouse-requisitions/warehouse/bulk-approve`, payload);
+
+    // UI अपडेट करें
+    setRequisitions(prev =>
+      prev.map(req =>
+        pendingReqs.some(p => p.id === req.id) // ✅ id से compare करें
+          ? { ...req, status: "approved" }
+          : req
+      )
+    );
+
+    setSelectedRequisitions([]);
+    setSelectAll(false);
+    setShowBulkApproveModal(false);
+  } catch (err) {
+    setError("Bulk approval failed: " + (err.response?.data?.message || err.message));
+    console.error("Error in bulk approval:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSelectRequisition = (reqId) => {
     if (selectedRequisitions.includes(reqId)) {
@@ -506,7 +574,7 @@ const WarehouseRequisitions = () => {
                           </button>
                         )}
                       </td>
-                      <td>{req.id}</td>
+                      <td>{req.raise_request_id}</td>
                       <td>{req.facility_name || "N/A"}</td>
                       <td>{req.user_name || "N/A"}</td>
                       <td>
@@ -529,34 +597,35 @@ const WarehouseRequisitions = () => {
                         <StatusBadge status={req.status} />
                       </td>
                       <td>
-                        <div className="d-flex gap-1 flex-wrap">
-                          {req.status?.toLowerCase() === "pending" && (
-                            <>
-                              <button
-                                className="btn btn-sm btn-success"
-                                onClick={() => openApproveModal(req)}
-                                disabled={loading}
-                              >
-                                Approve All
-                              </button>
-                              <button
-                                className="btn btn-sm btn-warning"
-                                onClick={() => openPartialApproveModal(req)}
-                                disabled={loading}
-                              >
-                                Partial
-                              </button>
-                              <button
-                                className="btn btn-sm btn-danger"
-                                onClick={() => openRejectModal(req)}
-                                disabled={loading}
-                              >
-                                Reject
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
+  <div className="d-flex gap-1 flex-wrap">
+    {req.status?.toLowerCase() === "pending" && (
+      <>
+        <button
+          className="btn btn-sm btn-success"
+          onClick={() => openApproveModal(req)}
+          disabled={loading}
+        >
+          Approve All
+        </button>
+        <button
+          className="btn btn-sm btn-warning"
+          onClick={() => openPartialApproveModal(req)}
+          disabled={loading}
+        >
+          Partial
+        </button>
+        <button
+  className="btn btn-danger"
+  onClick={() => openRejectModal(req)}
+  disabled={loading}
+>
+  {loading ? "Processing..." : "Reject"}
+</button>
+      </>
+    )}
+  </div>
+</td>
+
                     </tr>
                   ))
                 ) : (
@@ -842,8 +911,9 @@ const WarehouseRequisitions = () => {
                     </thead>
                     <tbody>
                       {currentRequisition.items && currentRequisition.items.length > 0 ? (
-                        currentRequisition.items.map((item) => (
-                          <tr key={item.id}>
+                        currentRequisition.items.map((item,index) => (
+                          <tr key={index}>
+
                             <td>{item.item_name}</td>
                             <td>{item.item_code}</td>
                             <td>{item.quantity}</td>
@@ -1020,12 +1090,12 @@ const WarehouseRequisitions = () => {
                   Cancel
                 </button>
                 <button
-                  className="btn btn-danger"
-                  onClick={handleReject}
-                  disabled={loading}
-                >
-                  {loading ? "Processing..." : "Reject"}
-                </button>
+  className="btn btn-danger"
+  onClick={() => handleReject(rejectionReason)} // ✅ अब सही रीजन पास होगा
+  disabled={loading}
+>
+  {loading ? "Processing..." : "Reject"}
+</button>
               </div>
             </div>
           </div>
