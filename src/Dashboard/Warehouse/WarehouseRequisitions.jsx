@@ -35,7 +35,7 @@ const WarehouseRequisitions = () => {
     const fetchRaiseRequests = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${BaseUrl}/warehouse-requisitions/raise`);
+        const response = await axios.get(`${BaseUrl}/facility-requisitions`);
         if (response.data?.success && Array.isArray(response.data.data)) {
           setRequisitions(response.data.data);
           setPagination({
@@ -163,33 +163,53 @@ const WarehouseRequisitions = () => {
     setShowBulkApproveModal(true);
   };
 
+  const handleApproveSubmit = async () => {
+    if (!currentRequisition) return;
+  
+    // ✅ approvedItems में सीधे सही field name का उपयोग करें
+    const approvedItems = currentRequisition.items.map(item => ({
+      item_id: item.item_id,
+      approved_quantity: item.available_quantity || item.quantity // ✅ "approved_quantity"
+    }));
+  
+    await handleApprove(approvedItems, remarks);
+  };
+  
   const handleApprove = async (approvedItems, remarks = "") => {
     if (!currentRequisition) return;
   
+    const requisitionId = currentRequisition.id; // ✅ सीधे .id, क्योंकि requisition_id नहीं है
+  
+    if (!requisitionId) {
+      setError("Requisition ID is missing");
+      return;
+    }
+  
+    if (!approvedItems || approvedItems.length === 0) {
+      setError("No items to approve");
+      return;
+    }
+  
     const payload = {
-      facility_id: currentRequisition.facility_id,
-      requisition_id: currentRequisition.requisition_id,
-      remarks: remarks,
-      userId: JSON.parse(localStorage.getItem("user"))?.id || 3,
-      approvedItems: approvedItems.map(item => ({
-        item_id: String(item.item_id), // ✅ स्ट्रिंग में
-        approved_qty: item.approved_qty
-      }))
+      requisition_id: requisitionId,
+      approvedItems, // ✅ पहले से सही structure
+      remarks
     };
   
     try {
       setLoading(true);
-      await axios.patch(`${BaseUrl}/warehouse-requisitions/warehouse/approve`, payload);
+      await axios.post(`${BaseUrl}/facility-requisitions/approve`, payload);
   
+      // Check if partial
       const isPartial = approvedItems.some(
         item =>
-          item.approved_qty <
+          item.approved_quantity < // ✅ approved_quantity
           (currentRequisition.items.find(i => i.item_id === item.item_id)?.quantity || 0)
       );
   
-      setRequisitions((prev) =>
-        prev.map((req) =>
-          req.requisition_id === currentRequisition.requisition_id
+      setRequisitions(prev =>
+        prev.map(req =>
+          req.id === requisitionId // ✅ .id से compare
             ? { ...req, status: isPartial ? "partially approved" : "approved" }
             : req
         )
@@ -197,118 +217,48 @@ const WarehouseRequisitions = () => {
   
       setShowApproveModal(false);
     } catch (err) {
-      setError("Approval failed: " + (err.response?.data?.message || err.message));
-      console.error(err);
+      const errorMsg = err.response?.data?.message || err.message || "Unknown error";
+      setError("Approval failed: " + errorMsg);
+      console.error("Approval Error:", err);
     } finally {
       setLoading(false);
     }
   };
-  const handleApproveSubmit = async () => {
-    if (!currentRequisition) return;
+ 
+
   
-    const approvedItems = currentRequisition.items.map(item => ({
-      item_id: String(item.item_id), // ✅ स्ट्रिंग में बदला
-      approved_qty: item.available_quantity || item.quantity
-    }));
-  
-    await handleApprove(approvedItems, remarks);
-  };
-  
-  const handlePartialApproveSubmit = async () => {
-    if (!currentRequisition) return;
-  
-    // Validate: कम से कम एक item की quantity > 0 हो
-    const totalApproved = Object.values(partialApproveQuantities).reduce(
-      (sum, qty) => sum + (parseInt(qty) || 0),
-      0
-    );
-    if (totalApproved === 0) {
-      alert("At least one item must have approved quantity > 0");
-      return;
-    }
-  
-    // Validate: कोई भी quantity नकारात्मक या available से ज्यादा न हो
-    const hasInvalid = currentRequisition.items.some(item => {
-      const approved = partialApproveQuantities[item.id] || 0;
-      return approved < 0 || approved > item.available_quantity;
-    });
-  
-    if (hasInvalid) {
-      alert("Approved quantity cannot be negative or exceed available stock.");
-      return;
-    }
-  
-    // ✅ STEP 3: सही payload बनाएं (जैसा आपने बताया)
-    const approvedItems = currentRequisition.items
-      .map(item => ({
-        item_id: String(item.item_id), // item_id को string में
-        approved_qty: partialApproveQuantities[item.id] || 0
-      }))
-      .filter(item => item.approved_qty > 0); // केवल जिनकी quantity > 0
+
+
+  const handleReject = async (rejectionReason) => {
+    if (!rejectingRequisition || !rejectionReason?.trim()) return;
   
     const payload = {
-      facility_id: currentRequisition.facility_id,
-      requisition_id: currentRequisition.requisition_id,
-      approvedItems: approvedItems,
-      remarks: remarks || "Partially approved by warehouse"
+      facility_id: rejectingRequisition.facility_id,
+      requisition_id: rejectingRequisition.id, // ✅ .id का उपयोग
+      remarks: rejectionReason.trim(),
+      userId: JSON.parse(localStorage.getItem("user"))?.id || 3,
     };
   
-    // ✅ STEP 4: सही API endpoint पर भेजें
     try {
       setLoading(true);
-      await axios.patch(
-        `${BaseUrl}/warehouse-requisitions/warehouse/partial-approve`,
-        payload
-      );
+      await axios.patch(`${BaseUrl}/warehouse-requisitions/warehouse/reject`, payload);
   
-      // UI अपडेट: स्टेटस बदलें
       setRequisitions(prev =>
         prev.map(req =>
-          req.requisition_id === currentRequisition.requisition_id
-            ? { ...req, status: "partially approved" }
+          req.id === rejectingRequisition.id // ✅ .id से compare
+            ? { ...req, status: "rejected" }
             : req
         )
       );
   
-      setShowPartialApproveModal(false);
+      setShowRejectModal(false);
     } catch (err) {
-      setError("Partial approval failed: " + (err.response?.data?.message || err.message));
-      console.error("Partial approve error:", err);
+      setError("Rejection failed: " + (err.response?.data?.message || err.message));
+      console.error("Reject error:", err);
     } finally {
       setLoading(false);
     }
   };
-
-const handleReject = async (rejectionReason) => {
-  if (!rejectingRequisition || !rejectionReason?.trim()) return;
-
-  const payload = {
-    facility_id: rejectingRequisition.facility_id,
-    requisition_id: rejectingRequisition.requisition_id,
-    remarks: rejectionReason.trim(),
-    userId: JSON.parse(localStorage.getItem("user"))?.id || 3,
-  };
-
-  try {
-    setLoading(true);
-    await axios.patch(`${BaseUrl}/warehouse-requisitions/warehouse/reject`, payload);
-
-    setRequisitions(prev =>
-      prev.map(req =>
-        req.requisition_id === rejectingRequisition.requisition_id
-          ? { ...req, status: "rejected" }
-          : req
-      )
-    );
-
-    setShowRejectModal(false);
-  } catch (err) {
-    setError("Rejection failed: " + (err.response?.data?.message || err.message));
-    console.error("Reject error:", err);
-  } finally {
-    setLoading(false);
-  }
-};
 
 const handleBulkApprove = async () => {
   if (selectedRequisitions.length === 0) {
@@ -548,7 +498,7 @@ const handleBulkApprove = async () => {
                   </th>
                   <th>Req ID</th>
                   <th>Facility</th>
-                  <th>User</th>
+               
                   <th>Items</th>
                   <th>Priority</th>
                   <th>Status</th>
@@ -557,7 +507,7 @@ const handleBulkApprove = async () => {
               </thead>
               <tbody>
                 {currentItems.length > 0 ? (
-                  currentItems.map((req) => (
+                  currentItems.map((req,index) => (
                     <tr key={req.id}>
                       <td>
                         {req.status?.toLowerCase() === "pending" && (
@@ -574,9 +524,9 @@ const handleBulkApprove = async () => {
                           </button>
                         )}
                       </td>
-                      <td>{req.raise_request_id}</td>
+                      <td>{req.requisition_id}</td>
                       <td>{req.facility_name || "N/A"}</td>
-                      <td>{req.user_name || "N/A"}</td>
+                  
                       <td>
                         <div className="d-flex align-items-center">
                           <span className="badge bg-secondary me-2">
@@ -797,9 +747,7 @@ const handleBulkApprove = async () => {
                 <p>
                   <strong>Facility:</strong> {currentRequisition.facility_name}
                 </p>
-                <p>
-                  <strong>User:</strong> {currentRequisition.user_name} ({currentRequisition.user_email})
-                </p>
+               
                 <p>
                   <strong>Items:</strong>
                 </p>

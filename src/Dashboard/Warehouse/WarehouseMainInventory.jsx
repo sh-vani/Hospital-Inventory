@@ -173,24 +173,7 @@ const WarehouseMainInventory = () => {
     }
   };
 
-  const openEditModal = async (item) => {
-    setLoading(true);
-    const fetchedItem = await fetchItemById(item.id);
-    setLoading(false);
-    if (fetchedItem) {
-      // ✅ Format expiry_date to YYYY-MM-DD for <input type="date" />
-      const formattedExpiry = fetchedItem.expiry_date
-        ? new Date(fetchedItem.expiry_date).toISOString().split("T")[0]
-        : "";
-  
-      setCurrentItem(fetchedItem);
-      setEditForm({
-        ...fetchedItem,
-        expiry_date: formattedExpiry, // ✅ Now valid format
-      });
-      setShowEditModal(true);
-    }
-  };
+
 
   const openHistoryModal = (item) => {
     setCurrentItem(item);
@@ -219,6 +202,7 @@ const WarehouseMainInventory = () => {
     setShowAddModal(false);
     setCurrentItem(null);
     setViewItem(null);
+    setEditForm({});
   };
 
   const handleInputChange = (e) => {
@@ -632,9 +616,7 @@ const WarehouseMainInventory = () => {
                       <td>{getStatusBadge(calculateStatus(item))}</td>
                       <td>
   <div className="btn-group">
-    <button className="btn btn-sm btn-outline-primary" onClick={() => openEditModal(item)}>
-      <FaEdit />
-    </button>
+
     <button className="btn btn-sm btn-outline-success" onClick={() => openViewModal(item)}>
       View
     </button>
@@ -815,110 +797,6 @@ const WarehouseMainInventory = () => {
         </div>
       )}
 
-      {/* ===== EDIT MODAL ===== */}
-      {showEditModal && currentItem && (
-        <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Edit Item: {currentItem.item_code}</h5>
-                <button type="button" className="btn-close" onClick={closeAllModals}></button>
-              </div>
-              <div className="modal-body">
-                <form>
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Item Code</label>
-                      <input className="form-control" value={editForm.item_code} readOnly />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Category</label>
-                      <input
-                        className="form-control"
-                        name="category"
-                        value={editForm.category}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-12">
-                      <label className="form-label">Item Name</label>
-                      <input
-                        className="form-control"
-                        name="item_name"
-                        value={editForm.item_name}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-12">
-                      <label className="form-label">Description</label>
-                      <textarea
-                        className="form-control"
-                        name="description"
-                        value={editForm.description || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Unit</label>
-                      <input
-                        className="form-control"
-                        name="unit"
-                        value={editForm.unit}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Quantity</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        name="quantity"
-                        value={editForm.quantity}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Reorder Level</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        name="reorder_level"
-                        value={editForm.reorder_level || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Item Cost (GHS)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control"
-                        name="item_cost"
-                        value={editForm.item_cost}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Expiry Date</label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        name="expiry_date"
-                        value={editForm.expiry_date || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                  </div>
-                </form>
-              </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={closeAllModals}>Cancel</button>
-                <button className="btn btn-primary" onClick={handleSaveEdit}>Save Changes</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ===== VIEW MODAL ===== */}
       {showViewModal && viewItem && (

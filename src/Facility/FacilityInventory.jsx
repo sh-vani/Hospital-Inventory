@@ -27,7 +27,6 @@ const FacilityInventory = () => {
   const itemsPerPage = 10;
   const hoverRef = useRef(null);
 
-  // === FETCH INVENTORY FROM API USING facility_id FROM localStorage ===
   useEffect(() => {
     const fetchInventory = async () => {
       try {
@@ -45,7 +44,7 @@ const FacilityInventory = () => {
           }
         }
   
-        const response = await axios.get(`${BaseUrl}/inventory/fasilities/${facilityId}`);
+        const response = await axios.get(`${BaseUrl}/inventory-facility/${facilityId}`);
   
         let rawData = [];
         if (Array.isArray(response.data.data)) {
@@ -54,15 +53,18 @@ const FacilityInventory = () => {
           rawData = [response.data.data];
         }
   
-        // ✅ FILTER: Only keep true inventory items (must have 'id' and 'quantity')
+        // ✅ FIXED: Accept both numbers and valid numeric strings
         const inventoryItems = rawData.filter(item => 
           item.hasOwnProperty('id') && 
           item.hasOwnProperty('quantity') &&
           typeof item.id === 'number' &&
-          typeof item.quantity === 'number'
+          (
+            typeof item.quantity === 'number' || 
+            (typeof item.quantity === 'string' && !isNaN(parseFloat(item.quantity)))
+          )
         );
   
-        // ✅ NORMALIZE with safe defaults
+        // ✅ FIXED: Parse string values to numbers during normalization
         const normalized = inventoryItems.map((item) => ({
           id: item.id,
           item_code: item.item_code || `ITEM-${item.id}`,
@@ -70,9 +72,9 @@ const FacilityInventory = () => {
           category: item.category || "General",
           description: item.description || "",
           unit: item.unit || "units",
-          quantity: item.quantity || 0,
-          reorder_level: item.reorder_level != null ? item.reorder_level : 10, // default 10
-          item_cost: item.item_cost != null ? parseFloat(item.item_cost) : 0,
+          quantity: parseFloat(item.quantity) || 0, // Convert to number
+          reorder_level: item.reorder_level != null ? parseInt(item.reorder_level) : 10,
+          item_cost: item.item_cost != null ? parseFloat(item.item_cost) : 0, // Convert to number
           expiry_date: item.expiry_date || null,
           facility_name: item.facility_name || `Facility ${facilityId}`,
           updated_at: item.updated_at || new Date().toISOString(),
@@ -97,6 +99,7 @@ const FacilityInventory = () => {
   
     fetchInventory();
   }, []);
+
   // Close modals on outside click
   useEffect(() => {
     const handleClick = (e) => {

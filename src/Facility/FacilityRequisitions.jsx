@@ -44,90 +44,104 @@ function FacilityRequisitions() {
   const entriesPerPage = 10;
 
   // === FETCH REAL DATA FROM API ===
-  useEffect(() => {
-    const fetchRequisitions = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+// === FETCH REAL DATA FROM API ===
+useEffect(() => {
+  const fetchRequisitions = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const userStr = localStorage.getItem("user");
-        if (!userStr) {
-          setError("User not logged in");
-          setLoading(false);
-          return;
-        }
+      const userStr = localStorage.getItem("user");
+      if (!userStr) {
+        setError("User not logged in");
+        setLoading(false);
+        return;
+      }
 
-        const user = JSON.parse(userStr);
-        const fid = user.facility_id;
-        const fName = user.facility_name || "Unknown Facility";
+      const user = JSON.parse(userStr);
+      const fid = user.facility_id;
+      const fName = user.facility_name || "Unknown Facility";
 
-        if (!fid) {
-          setError("Facility ID missing in user profile");
-          setLoading(false);
-          return;
-        }
+      if (!fid) {
+        setError("Facility ID missing in user profile");
+        setLoading(false);
+        return;
+      }
 
-        setFacilityId(fid);
-        setAdminFacility(fName);
+      setFacilityId(fid);
+      setAdminFacility(fName);
 
-        // ✅ API CALL — same as your other component
-        const response = await axios.get(`${BaseUrl}/requisitions/facility/${fid}`);
+      // ✅ API CALL
+      const response = await axios.get(`${BaseUrl}/requisitions/facility/${fid}`);
 
-        if (response.data?.success && Array.isArray(response.data.data)) {
-          // Transform API response → flat requisition list
-          const transformed = response.data.data.flatMap(req => {
-            if (!req.items || !Array.isArray(req.items)) return [];
+      if (response.data?.success && Array.isArray(response.data.data)) {
+        // ✅ FLATTEN nested requisitions with items
+        const transformed = response.data.data.flatMap(req => {
+          // Skip if no items or invalid items array
+          if (!req.items || !Array.isArray(req.items) || req.items.length === 0) {
+            return [];
+          }
 
-            return req.items.map(item => ({
+          return req.items.map(item => {
+            const raisedDate = new Date(req.created_at);
+            const expiryDate = item.expiry_date ? new Date(item.expiry_date) : null;
+
+            return {
               id: `REQ-${req.id}`,
-              item_id: item.item_id, // 👈 YEH ADD KARO
+              item_id: item.item_id,
               facility: req.facility_name || fName,
               user: req.user_name || "Unknown User",
-              department: "Department",
+              department: "Department", // as per your UI
               item: item.item_name || "Unnamed Item",
-              qty: item.quantity || 0,
-              facilityStock: item.available_quantity || 0,
+              qty: item.requested_quantity || 0,
+              facilityStock: parseFloat(item.facility_stock) || 0,
               priority: req.priority?.charAt(0).toUpperCase() + req.priority?.slice(1) || "Normal",
               status: req.status?.charAt(0).toUpperCase() + req.status?.slice(1) || "Pending",
-              raisedOn: new Date(req.created_at).toLocaleDateString("en-GB", {
+              raisedOn: raisedDate.toLocaleDateString("en-GB", {
                 day: "2-digit",
                 month: "short",
                 year: "numeric",
               }),
               statusTimeline: [
-                { status: "Raised by User", timestamp: new Date(req.created_at).toLocaleString("en-GB") },
-                ...(req.approved_at ? [{ status: "Approved", timestamp: new Date(req.approved_at).toLocaleString("en-GB") }] : []),
-                ...(req.delivered_at ? [{ status: "Delivered", timestamp: new Date(req.delivered_at).toLocaleString("en-GB") }] : []),
-                ...(req.rejected_at ? [{ status: "Rejected", timestamp: new Date(req.rejected_at).toLocaleString("en-GB") }] : []),
+                { status: "Raised by User", timestamp: raisedDate.toLocaleString("en-GB") },
+                ...(req.approved_at
+                  ? [{ status: "Approved", timestamp: new Date(req.approved_at).toLocaleString("en-GB") }]
+                  : []),
+                ...(req.delivered_at
+                  ? [{ status: "Delivered", timestamp: new Date(req.delivered_at).toLocaleString("en-GB") }]
+                  : []),
+                ...(req.rejected_at
+                  ? [{ status: "Rejected", timestamp: new Date(req.rejected_at).toLocaleString("en-GB") }]
+                  : []),
               ],
               remarksLog: req.remarks
-                ? [{ user: req.user_name, remark: req.remarks, timestamp: new Date(req.created_at).toLocaleString("en-GB") }]
+                ? [{ user: req.user_name, remark: req.remarks, timestamp: raisedDate.toLocaleString("en-GB") }]
                 : [],
-              expiryDate: item.expiry_date
-                ? new Date(item.expiry_date).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })
+              expiryDate: expiryDate
+                ? expiryDate.toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })
                 : "N/A",
-            }));
+            };
           });
+        });
 
-          setRequisitions(transformed);
-        } else {
-          setError("Invalid API response format");
-        }
-      } catch (err) {
-        console.error("Fetch error:", err);
-        setError("Failed to load requisitions: " + (err.response?.data?.message || err.message));
-      } finally {
-        setLoading(false);
+        setRequisitions(transformed);
+      } else {
+        setError("Invalid API response format");
       }
-    };
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setError("Failed to load requisitions: " + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchRequisitions();
-  }, []);
-
+  fetchRequisitions();
+}, []);
   // === Rest of your logic remains EXACTLY the same ===
   // (Filters, pagination, modals, actions, etc.)
 
