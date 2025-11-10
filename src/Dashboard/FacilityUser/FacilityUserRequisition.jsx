@@ -104,8 +104,8 @@ const fetchInventoryItems = async () => {
       id: item.id,
       item_name: item.item_name || "Unnamed Item",
       unit: item.unit || "units",
-      quantity: item.quantity || 0,
-      reorder_level: item.reorder_level || 0,
+      quantity: parseFloat(item.quantity) || 0,          // ✅ Parse to number
+      reorder_level: parseInt(item.reorder_level) || 0,  // ✅ Also safe-parse reorder_level
       expiry_date: item.expiry_date,
     }));
 
@@ -123,47 +123,66 @@ const fetchInventoryItems = async () => {
   }
 };
 
-  // Fetch requisition history
-  const fetchRequisitionHistory = async (userId) => {
-    try {
-      const response = await axiosInstance.get(
-        `${BaseUrl}/requisitions/user/${userId}`
-      );
-      if (response.data.success && Array.isArray(response.data.data)) {
-        const formatted = response.data.data
-        .map((req) => ({
-          id: req.id,
-          item_name: req.items?.length > 0 ? req.items[0].item_name : "N/A",
-          status: (req.status || "").charAt(0).toUpperCase() + (req.status || "").slice(1),
-          priority: getHighestPriorityFromItems(req.items), // ✅ UPDATED HERE
-          remarks: req.remarks || "",
-          items: Array.isArray(req.items) ? req.items : [],
-        }))
+const fetchRequisitionHistory = async (userId) => {
+  try {
+    const response = await axiosInstance.get(
+      `${BaseUrl}/requisitions/user/${userId}`
+    );
+    if (response.data.success && Array.isArray(response.data.data)) {
+      const formatted = response.data.data
+        .map((req) => {
+          const items = (req.items || []).map((item) => ({
+            item_id: item.item_id,
+            item_name: item.item_name || "Unnamed Item",
+            quantity: item.requested_quantity || 0, // ✅ Important: use requested_quantity
+            approved_quantity: item.approved_quantity || 0,
+            delivered_quantity: item.delivered_quantity || 0,
+            priority: (item.priority || "Normal").charAt(0).toUpperCase() + (item.priority || "Normal").slice(1),
+            description: item.description || "",
+          }));
+
+          const allItemNames = items.map(i => i.item_name).join(", ") || "N/A";
+          const totalQty = items.reduce((sum, i) => sum + (i.quantity || 0), 0);
+
+          return {
+            id: req.id,
+            item_name: allItemNames,
+            total_quantity: totalQty,
+            status: (req.status || "").charAt(0).toUpperCase() + (req.status || "").slice(1),
+            priority: getHighestPriorityFromItems(items),
+            remarks: req.remarks || "",
+            items: items,
+          };
+        })
         .sort((a, b) => b.id - a.id);
-        setRequisitionHistory(formatted);
-      } else {
-        setRequisitionHistory([]);
-      }
-    } catch (error) {
-      console.error("Failed to fetch requisition history:", error);
+
+      setRequisitionHistory(formatted);
+    } else {
       setRequisitionHistory([]);
     }
-  };
-// ✅ Step 1: Add this helper function inside your component (but outside fetchRequisitionHistory)
+  } catch (error) {
+    console.error("Failed to fetch requisition history:", error);
+    setRequisitionHistory([]);
+    Swal.fire({
+      icon: "error",
+      title: "Fetch Failed",
+      text: "Unable to load requisition history.",
+    });
+  }
+};
+
+
+
 const getHighestPriorityFromItems = (items) => {
   if (!Array.isArray(items) || items.length === 0) return "Normal";
-
   const priorityOrder = { urgent: 3, high: 2, normal: 1 };
   let highest = "normal";
-
   for (const item of items) {
     const p = (item.priority || "normal").toLowerCase();
     if (priorityOrder[p] > priorityOrder[highest]) {
       highest = p;
     }
   }
-
-  // Capitalize first letter
   return highest.charAt(0).toUpperCase() + highest.slice(1);
 };
 useEffect(() => {
@@ -269,7 +288,8 @@ useEffect(() => {
 // Handle individual submission
 const handleIndividualSubmit = async (e) => {
   e.preventDefault();
-  if (!selectedItem || !quantity || quantity <= 0) {
+
+  if (!selectedItem || !quantity || parseInt(quantity) <= 0) {
     Swal.fire({
       icon: "warning",
       title: "Incomplete Form",
@@ -277,37 +297,62 @@ const handleIndividualSubmit = async (e) => {
     });
     return;
   }
+
   const user = getUserFromStorage();
-  if (!user || !user.facility_id || !user.id) {
+
+  // 🔍 Debug: Log user object
+  console.log("User from localStorage:", user);
+
+  // ✅ Strict validation for user session
+  if (!user || !user.id || !user.facility_id) {
     Swal.fire({
       icon: "error",
       title: "Session Error",
-      text: "User data incomplete. Please log in again.",
+      text: "User session invalid. Please log in again.",
     });
     return;
   }
+
+  // ✅ Ensure user.id is a number (not string)
+  const userId = Number(user.id);
+  const facilityId = Number(user.facility_id);
+
+  if (isNaN(userId) || isNaN(facilityId)) {
+    Swal.fire({
+      icon: "error",
+      title: "Invalid User Data",
+      text: "User ID or Facility ID is invalid. Please log in again.",
+    });
+    return;
+  }
+
   setLoading(true);
   try {
     const payload = {
-      user_id: user.id,
-      facility_id: user.facility_id,
-      priority: priority.toLowerCase(), // ✅ Root-level priority added
+      user_id: userId, // ✅ Ensure number
+      facility_id: facilityId, // ✅ Ensure number
+      priority: priority.toLowerCase(),
       remarks: remarks.trim() || "",
       items: [
         {
-          item_id: parseInt(selectedItem),
-          quantity: parseInt(quantity),
+          item_id: parseInt(selectedItem, 10),
+          quantity: parseInt(quantity, 10),
           priority: priority.toLowerCase(),
         },
       ],
     };
+
+    // 🔍 Debug: Log final payload
+    console.log("Submitting payload:", payload);
+
     const response = await axiosInstance.post(
       `${BaseUrl}/requisitions`,
       payload
     );
+
     if (response.data.success) {
       setSuccess(true);
-      fetchRequisitionHistory(user.id);
+      await fetchRequisitionHistory(userId); // ✅ Use userId directly
       resetIndividualForm();
       setShowRequisitionModal(false);
       Swal.fire({
@@ -329,7 +374,9 @@ const handleIndividualSubmit = async (e) => {
   } catch (error) {
     console.error("Submission error:", error);
     const msg =
-      error.response?.data?.message || "Network error. Please try again.";
+      error.response?.data?.message ||
+      error.message ||
+      "Network error. Please try again.";
     Swal.fire({
       icon: "error",
       title: "Error",

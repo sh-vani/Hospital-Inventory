@@ -193,40 +193,40 @@ useEffect(() => {
     }
   }, [requisitions, adminFacility, loading]);
   const handleApprove = (req) => {
-    // Prepare item for approval (single-item row assumption)
     const itemForApproval = {
       item_id: req.item_id,
-      approved_quantity: req.qty, // default: full requested qty
-      requested_qty: req.qty,
-      item_name: req.item,
+      approved_quantity: req.qty, // or allow editing later in modal
     };
-
     setSelectedRequisition(req);
-    setApproveItems([itemForApproval]);
+    setApproveItems([itemForApproval]); // array of items
     setApproveRemarks("");
     setShowApproveModal(true);
   };
 
   const submitApprove = async () => {
-    if (!selectedRequisition) return;
-
-    const reqId = selectedRequisition.id.replace("REQ-", ""); // extract numeric ID
-
+    const userStr = localStorage.getItem("user");
+    if (!userStr) {
+      alert("User not logged in");
+      return;
+    }
+    const user = JSON.parse(userStr);
+    const reqId = selectedRequisition.id.replace("REQ-", "");
+  
     const payload = {
-      userId: JSON.parse(localStorage.getItem("user"))?.id || 4,
-      remarks: approveRemarks.trim() || "Approved",
-      items: approveItems.map(item => ({
+      requisition_id: parseInt(reqId, 10),
+      user_id: user.id,
+      approvedItems: approveItems.map((item) => ({
         item_id: item.item_id,
         approved_quantity: parseInt(item.approved_quantity) || 0,
       })),
     };
-
+  
     try {
       setLoading(true);
-      const response = await axios.patch(`${BaseUrl}/requisitions/${reqId}/approve`, payload);
+      const response = await axios.post(`${BaseUrl}/requisitions/approve`, payload);
       if (response.data.success) {
         alert("✅ Requisition approved successfully!");
-        window.location.reload(); // ya better: refetch data
+        window.location.reload(); // or refetch
       } else {
         alert("❌ Approval failed: " + (response.data.message || "Unknown error"));
       }
@@ -236,6 +236,7 @@ useEffect(() => {
     } finally {
       setLoading(false);
       setShowApproveModal(false);
+      setSelectedRequisition(null);
       setApproveItems([]);
       setApproveRemarks("");
     }
@@ -273,22 +274,21 @@ useEffect(() => {
       alert("Please provide a rejection reason");
       return;
     }
-
-    const reqId = selectedRequisition.id.replace("REQ-", ""); // e.g., "REQ-60" → "60"
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (!user) {
-      alert("User not logged in");
+  
+    const reqId = parseInt(selectedRequisition.id.replace("REQ-", ""), 10); // "REQ-60" → 60 (as number)
+    if (isNaN(reqId)) {
+      alert("Invalid requisition ID");
       return;
     }
-
+  
     const payload = {
-      userId: user.id,
+      requisition_id: reqId,
       remarks: rejectReason.trim(),
     };
-
+  
     try {
       setLoading(true);
-      const response = await axios.put(`${BaseUrl}/requisitions/${reqId}/reject`, payload);
+      const response = await axios.post(`${BaseUrl}/requisitions/reject`, payload);
       if (response.data.success) {
         alert("✅ Requisition rejected successfully!");
         window.location.reload(); // ya better: refetch data
@@ -305,6 +305,11 @@ useEffect(() => {
       setRejectReason("");
     }
   };
+
+
+
+
+
   const handleDeliver = (req) => {
     setSelectedRequisition(req);
     setDeliverQty(Math.min(req.qty, req.facilityStock).toString());
@@ -401,11 +406,13 @@ const addSuggestedToBulk = (suggestion) => {
   setBulkRequisitionList(prev => [...prev, newItem]);
 };
 
-  const handleReject = (req) => {
-    setSelectedRequisition(req);
-    setRejectReason("");
-    setShowRejectModal(true);
-  };
+const handleReject = (req) => {
+  setSelectedRequisition(req);
+  setRejectReason("");
+  setShowRejectModal(true); // ✅ Modal open karo
+};
+
+
   useEffect(() => setCurrentPage(1), [activeTab, userFilter, itemFilter, departmentFilter, priorityFilter, searchTerm]);
 
   // getFacilityStatus, handleDeliver, handleRaiseToWarehouse, etc. — ALL REMAIN UNCHANGED
@@ -441,64 +448,48 @@ const addSuggestedToBulk = (suggestion) => {
     setShowRaiseModal(true);
   };
 
-  
   const submitBulkRequisition = async () => {
-    if (bulkRequisitionList.length === 0) {
-      alert("No items to approve");
+    const userStr = localStorage.getItem("user");
+    if (!userStr || bulkRequisitionList.length === 0) {
+      alert("No user or items to approve");
       return;
     }
+    const user = JSON.parse(userStr);
   
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (!user || !facilityId) {
-      alert("User or facility not found");
-      return;
-    }
-  
-    // Step 1: Group items by requisition ID (e.g., "REQ-95" → 95)
+    // Group by requisition ID
     const grouped = bulkRequisitionList.reduce((acc, item) => {
-      const reqIdNum = parseInt(item.reqId.replace("REQ-", ""), 10);
-      if (isNaN(reqIdNum)) return acc; // Skip invalid IDs
-  
-      if (!acc[reqIdNum]) {
-        acc[reqIdNum] = {
-          facility_id: facilityId,
-          requisition_id: reqIdNum,
-          facilityRemarks: "Approved via bulk action", // You can customize this later if needed
-          approvedItems: []
+      const reqId = item.reqId.replace("REQ-", "");
+      if (!acc[reqId]) {
+        acc[reqId] = {
+          requisition_id: parseInt(reqId, 10),
+          user_id: user.id,
+          approvedItems: [],
         };
       }
-      acc[reqIdNum].approvedItems.push({
-        item_id: String(item.item_id), // Ensure it's string as per your API example
-        approved_qty: parseInt(item.qty) || 0
+      acc[reqId].approvedItems.push({
+        item_id: item.item_id,
+        approved_quantity: parseInt(item.qty) || 0,
       });
       return acc;
     }, {});
   
-    // Step 2: Convert to array
-    const approvedList = Object.values(grouped);
-  
-    // Step 3: Final payload
-    const payload = {
-      remarks: "Bulk approval by warehouse manager",
-      approvedList: approvedList
-    };
-  
+    // Send each group as a separate API call (or you can batch if your backend supports array of requisitions)
     try {
       setLoading(true);
-      console.log("Bulk approve payload:", payload); // For debugging
-  
-      const response = await axios.patch(
-        `${BaseUrl}/warehouse-requisitions/warehouse/bulk-approve`,
-        payload
+      const promises = Object.values(grouped).map((payload) =>
+        axios.post(`${BaseUrl}/requisitions/approve`, payload)
       );
+      const results = await Promise.all(promises);
   
-      if (response.data?.success) {
+      const allSuccess = results.every(res => res.data?.success);
+      if (allSuccess) {
         alert("✅ Bulk approval submitted successfully!");
         setBulkRequisitionList([]);
         setShowBulkModal(false);
-        window.location.reload(); // Or better: refetch requisitions
+        window.location.reload();
       } else {
-        alert("❌ Bulk approval failed: " + (response.data.message || "Unknown error"));
+        const errMsg = results.find(res => !res.data?.success)?.data?.message || "Some approvals failed";
+        alert("⚠️ Partial failure: " + errMsg);
       }
     } catch (err) {
       console.error("Bulk approval error:", err);
@@ -1088,58 +1079,37 @@ const addSuggestedToBulk = (suggestion) => {
         </div>
       )}
 
-      {/* Reject Modal */}
-      {showRejectModal && selectedRequisition && (
-        <div className="modal fade show" tabIndex="-1" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }} onClick={closeRejectModal}>
-          <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-content">
-              <div className="modal-header border-0 pb-0">
-                <h5 className="modal-title fw-bold">Reject Requisition</h5>
-                <button type="button" className="btn-close" onClick={closeRejectModal}></button>
-              </div>
-              <div className="modal-body p-4">
-                <div className="row mb-3">
-                  <div className="col-5 fw-bold text-muted">Req ID:</div>
-                  <div className="col-7">{selectedRequisition.id}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-5 fw-bold text-muted">User Name:</div>
-                  <div className="col-7">{selectedRequisition.user}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-5 fw-bold text-muted">Item Name:</div>
-                  <div className="col-7">{selectedRequisition.item}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-5 fw-bold text-muted">Requested Qty:</div>
-                  <div className="col-7">{selectedRequisition.qty}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-5 fw-bold text-muted">Expiry Date:</div>
-                  <div className="col-7">{selectedRequisition.expiryDate || "N/A"}</div>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Reason for Rejection <span className="text-danger">*</span></label>
-                  <textarea
-                    className="form-control"
-                    value={rejectReason}
-                    onChange={(e) => setRejectReason(e.target.value)}
-                    rows="3"
-                    placeholder="Please provide a reason for rejection"
-                    required
-                  ></textarea>
-                </div>
-              </div>
-              <div className="modal-footer border-0 pt-0">
-                <div className="d-flex flex-column flex-sm-row gap-2 w-100">
-                  <button type="button" className="btn btn-outline-secondary w-100" onClick={closeRejectModal}>Cancel</button>
-                  <button type="button" className="btn btn-danger w-100" onClick={submitReject}>Reject</button>
-                </div>
-              </div>
-            </div>
+{/* Replace React-Bootstrap <Modal> with your custom modal */}
+{showRejectModal && selectedRequisition && (
+  <div className="modal fade show" tabIndex="-1" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }} onClick={closeRejectModal}>
+    <div className="modal-dialog modal-dialog-centered" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content">
+        <div className="modal-header border-0 pb-0">
+          <h5 className="modal-title">Reject Requisition</h5>
+          <button type="button" className="btn-close" onClick={closeRejectModal}></button>
+        </div>
+        <div className="modal-body p-4">
+          <p>Please enter reason for rejection:</p>
+          <textarea
+            className="form-control"
+            rows="3"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Enter rejection remarks"
+          ></textarea>
+        </div>
+        <div className="modal-footer border-0 pt-0">
+          <div className="d-flex flex-column flex-sm-row gap-2 w-100">
+            <button className="btn btn-outline-secondary w-100" onClick={closeRejectModal}>Cancel</button>
+            <button className="btn btn-danger w-100" onClick={submitReject}>
+              {loading ? "Rejecting..." : "Reject"}
+            </button>
           </div>
         </div>
-      )}
+      </div>
+    </div>
+  </div>
+)}
 
       {/* View Detail Modal */}
       {showViewModal && selectedRequisition && (

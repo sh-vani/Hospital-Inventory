@@ -163,68 +163,17 @@ const WarehouseRequisitions = () => {
     setShowBulkApproveModal(true);
   };
 
+
   const handleApproveSubmit = async () => {
     if (!currentRequisition) return;
   
-    // ✅ approvedItems में सीधे सही field name का उपयोग करें
     const approvedItems = currentRequisition.items.map(item => ({
-      item_id: item.item_id,
-      approved_quantity: item.available_quantity || item.quantity // ✅ "approved_quantity"
+      item_id: item.item_id, // ✅ integer
+      approved_qty: item.available_quantity || item.quantity // ध्यान: यहाँ key "approved_qty" है, लेकिन handleApprove में rename हो जाएगा
     }));
   
     await handleApprove(approvedItems, remarks);
   };
-  
-  const handleApprove = async (approvedItems, remarks = "") => {
-    if (!currentRequisition) return;
-  
-    const requisitionId = currentRequisition.id; // ✅ सीधे .id, क्योंकि requisition_id नहीं है
-  
-    if (!requisitionId) {
-      setError("Requisition ID is missing");
-      return;
-    }
-  
-    if (!approvedItems || approvedItems.length === 0) {
-      setError("No items to approve");
-      return;
-    }
-  
-    const payload = {
-      requisition_id: requisitionId,
-      approvedItems, // ✅ पहले से सही structure
-      remarks
-    };
-  
-    try {
-      setLoading(true);
-      await axios.post(`${BaseUrl}/facility-requisitions/approve`, payload);
-  
-      // Check if partial
-      const isPartial = approvedItems.some(
-        item =>
-          item.approved_quantity < // ✅ approved_quantity
-          (currentRequisition.items.find(i => i.item_id === item.item_id)?.quantity || 0)
-      );
-  
-      setRequisitions(prev =>
-        prev.map(req =>
-          req.id === requisitionId // ✅ .id से compare
-            ? { ...req, status: isPartial ? "partially approved" : "approved" }
-            : req
-        )
-      );
-  
-      setShowApproveModal(false);
-    } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message || "Unknown error";
-      setError("Approval failed: " + errorMsg);
-      console.error("Approval Error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
- 
 
   
 

@@ -1,15 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  FaSearch,
-  FaEdit,
-  FaHistory,
-  FaPlus,
-  FaExclamationTriangle,
-  FaClock,
-  FaTimes,
-  FaArrowRight,
-  FaEye,
-} from "react-icons/fa";
+import { FaSearch } from "react-icons/fa";
 import axios from "axios";
 import BaseUrl from "../../Api/BaseUrl";
 
@@ -27,44 +17,38 @@ const FacilityInventory = () => {
   const itemsPerPage = 10;
   const hoverRef = useRef(null);
 
+  // ✅ Fetch inventory by user_id
   useEffect(() => {
     const fetchInventory = async () => {
       try {
         setLoading(true);
         setError(null);
-  
-        // Get user from localStorage
+
+        // ✅ Get user from localStorage
         const userStr = localStorage.getItem("user");
-        let userId = null;
-  
-        if (userStr) {
-          try {
-            const user = JSON.parse(userStr);
-            userId = user?.id; // ✅ Use user.id, not facility_id
-          } catch (e) {
-            console.warn("Invalid user data in localStorage", e);
-          }
-        }
-  
-        if (!userId) {
-          setError("User ID not found. Please log in again.");
+        if (!userStr) {
+          setError("User not logged in. Please log in again.");
           setLoading(false);
           return;
         }
-  
-        // ✅ NEW API ENDPOINT: /inventory/user/:id
-        const response = await axios.get(`${BaseUrl}/inventory/user/${userId}`);
-  
-        // Normalize response data (same as before)
-        let inventoryData = [];
-        if (Array.isArray(response.data.data)) {
-          inventoryData = response.data.data;
-        } else if (Array.isArray(response.data)) {
-          inventoryData = response.data;
-        } else if (response.data && typeof response.data === "object") {
-          inventoryData = [response.data];
+
+        const user = JSON.parse(userStr);
+        const userId = user?.id;
+
+        if (!userId) {
+          setError("User ID not found in localStorage.");
+          setLoading(false);
+          return;
         }
-  
+
+        // ✅ API Call
+        const response = await axios.get(`${BaseUrl}/inventory/user/${userId}`);
+
+        const inventoryData = Array.isArray(response.data?.data)
+          ? response.data.data
+          : [];
+
+        // ✅ Normalize API data
         const normalized = inventoryData.map((item) => ({
           id: item.id,
           item_code: item.item_code || "N/A",
@@ -76,29 +60,22 @@ const FacilityInventory = () => {
           reorder_level: item.reorder_level || 0,
           item_cost: item.item_cost || 0,
           expiry_date: item.expiry_date,
-          facility_name: item.facility_name || `Facility ${item.facility_id || 'N/A'}`,
+          facility_name: user.facility_name || "N/A",
           updated_at: item.updated_at || new Date().toISOString(),
         }));
-  
+
+        // ✅ Update states
         setInventory(normalized);
-  
-        // Categorize items
-        setLowStockItems(
-          normalized.filter((i) => i.quantity > 0 && i.quantity < i.reorder_level)
-        );
-        setOutOfStockItems(
-          normalized.filter((i) => i.quantity === 0)
-        );
-        setNearExpiryItems(
-          normalized.filter((i) => {
-            if (!i.expiry_date) return false;
-            const days = Math.ceil(
-              (new Date(i.expiry_date) - new Date()) / (1000 * 60 * 60 * 24)
-            );
-            return days >= 0 && days <= 30;
-          })
-        );
-  
+        setLowStockItems(normalized.filter(i => i.quantity > 0 && i.quantity < i.reorder_level));
+        setOutOfStockItems(normalized.filter(i => i.quantity === 0));
+        setNearExpiryItems(normalized.filter(i => {
+          if (!i.expiry_date) return false;
+          const days = Math.ceil(
+            (new Date(i.expiry_date) - new Date()) / (1000 * 60 * 60 * 24)
+          );
+          return days >= 0 && days <= 30;
+        }));
+
         setLoading(false);
       } catch (err) {
         console.error("API Error:", err);
@@ -106,11 +83,11 @@ const FacilityInventory = () => {
         setLoading(false);
       }
     };
-  
+
     fetchInventory();
   }, []);
 
-  // Close modals on outside click
+  // ✅ Close modal on outside click
   useEffect(() => {
     const handleClick = (e) => {
       if (hoverRef.current && !hoverRef.current.contains(e.target)) {
@@ -121,7 +98,7 @@ const FacilityInventory = () => {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  // === FILTER & PAGINATION ===
+  // ✅ Filter + Pagination
   const filteredInventory = inventory.filter((item) => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return true;
@@ -138,7 +115,7 @@ const FacilityInventory = () => {
 
   useEffect(() => setCurrentPage(1), [searchTerm]);
 
-  // === MODAL HANDLERS ===
+  // ✅ Modal handlers
   const openViewModal = (item) => {
     setViewItem(item);
     setShowViewModal(true);
@@ -148,7 +125,7 @@ const FacilityInventory = () => {
     if (e.target === e.currentTarget) setShowViewModal(false);
   };
 
-  // === HELPERS ===
+  // ✅ Helpers
   const calculateStatus = (item) => {
     if (item.quantity === 0) return "out_of_stock";
     if (item.quantity < item.reorder_level) return "low_stock";
@@ -168,7 +145,7 @@ const FacilityInventory = () => {
       case "low_stock":
         return <span className="badge bg-warning text-dark">Low Stock</span>;
       case "near_expiry":
-        return <span className="badge bg-info">Near Expiry</span>;
+        return <span className="badge bg-info text-dark">Near Expiry</span>;
       default:
         return <span className="badge bg-success">In Stock</span>;
     }
@@ -227,36 +204,30 @@ const FacilityInventory = () => {
     );
   };
 
-  // ===== RENDER =====
+  // ✅ RENDER
   return (
     <div className="container-fluid py-3">
-      {/* Toolbar */}
+      {/* Header */}
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <h2 className="fw-bold mb-0">Facility Inventory</h2>
-        <div className="d-flex gap-2" style={{ maxWidth: "600px", width: "100%" }}>
-          <div className="input-group" style={{ maxWidth: "320px", width: "100%" }}>
-            <input
-              type="text"
-              className="form-control"
-              style={{ height: "40px" }}
-              placeholder="Search by Item Code, Name, or Category..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <button className="btn btn-outline-secondary" style={{ height: "40px" }} type="button">
-              <FaSearch />
-            </button>
-          </div>
-   
+        <div className="input-group" style={{ maxWidth: "320px", width: "100%" }}>
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Search by Item Code, Name, or Category..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <button className="btn btn-outline-secondary" type="button">
+            <FaSearch />
+          </button>
         </div>
       </div>
 
       {/* Loading / Error */}
       {loading && (
         <div className="text-center py-4">
-          <div className="spinner-border" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
+          <div className="spinner-border" role="status"></div>
         </div>
       )}
       {error && <div className="alert alert-danger">{error}</div>}
@@ -299,7 +270,7 @@ const FacilityInventory = () => {
                       <td className={item.quantity < item.reorder_level ? "text-warning fw-medium" : "text-success fw-medium"}>
                         {item.quantity.toLocaleString()}
                       </td>
-                      <td>{item.reorder_level.toLocaleString()}</td>
+                      <td>{item.reorder_level}</td>
                       <td>GHS {parseFloat(item.item_cost).toFixed(2)}</td>
                       <td>
                         {item.expiry_date ? (
@@ -311,10 +282,7 @@ const FacilityInventory = () => {
                       <td>{item.facility_name}</td>
                       <td>{getStatusBadge(calculateStatus(item))}</td>
                       <td>
-                        <button
-                          className="btn btn-sm btn-outline-success"
-                          onClick={() => openViewModal(item)}
-                        >
+                        <button className="btn btn-sm btn-outline-success" onClick={() => openViewModal(item)}>
                           View
                         </button>
                       </td>
@@ -330,76 +298,43 @@ const FacilityInventory = () => {
 
       {/* View Modal */}
       {showViewModal && viewItem && (
-        <div
-          className="modal fade show d-block"
-          tabIndex="-1"
-          onClick={closeModalOnBackdrop}
-        >
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header border-bottom-0">
-                <h5 className="modal-title">Item Details: {viewItem.item_name}</h5>
-                <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
-              </div>
-              <div className="modal-body">
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Item Code:</div>
-                  <div className="col-6">{viewItem.item_code}</div>
+        <>
+          <div className="modal fade show d-block" tabIndex="-1" onClick={closeModalOnBackdrop}>
+            <div className="modal-dialog modal-dialog-centered">
+              <div className="modal-content">
+                <div className="modal-header border-bottom-0">
+                  <h5 className="modal-title">Item Details: {viewItem.item_name}</h5>
+                  <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
                 </div>
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Name:</div>
-                  <div className="col-6">{viewItem.item_name}</div>
+                <div className="modal-body">
+                  {[
+                    ["Item Code", viewItem.item_code],
+                    ["Name", viewItem.item_name],
+                    ["Category", viewItem.category],
+                    ["Description", viewItem.description || "—"],
+                    ["Stock", `${viewItem.quantity} ${viewItem.unit}`],
+                    ["Reorder Level", viewItem.reorder_level],
+                    ["Item Cost", `GHS ${parseFloat(viewItem.item_cost).toFixed(2)}`],
+                    ["Expiry Date", viewItem.expiry_date ? formatDate(viewItem.expiry_date) : "N/A"],
+                    ["Facility", viewItem.facility_name],
+                    ["Last Updated", new Date(viewItem.updated_at).toLocaleString()],
+                    ["Status", getStatusBadge(calculateStatus(viewItem))],
+                  ].map(([label, value], idx) => (
+                    <div className="row mb-2" key={idx}>
+                      <div className="col-6 fw-bold">{label}:</div>
+                      <div className="col-6">{value}</div>
+                    </div>
+                  ))}
                 </div>
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Category:</div>
-                  <div className="col-6">{viewItem.category}</div>
+                <div className="modal-footer border-top-0">
+                  <button className="btn btn-secondary" onClick={() => setShowViewModal(false)}>Close</button>
                 </div>
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Description:</div>
-                  <div className="col-6">{viewItem.description || "—"}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Stock:</div>
-                  <div className="col-6">{viewItem.quantity} {viewItem.unit}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Unit:</div>
-                  <div className="col-6">{viewItem.unit}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Reorder Level:</div>
-                  <div className="col-6">{viewItem.reorder_level}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Item Cost:</div>
-                  <div className="col-6">GHS {parseFloat(viewItem.item_cost).toFixed(2)}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Expiry Date:</div>
-                  <div className="col-6">{viewItem.expiry_date ? formatDate(viewItem.expiry_date) : "N/A"}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Facility:</div>
-                  <div className="col-6">{viewItem.facility_name}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Last Updated:</div>
-                  <div className="col-6">{new Date(viewItem.updated_at).toLocaleString()}</div>
-                </div>
-                <div className="row mb-3">
-                  <div className="col-6 fw-bold">Status:</div>
-                  <div className="col-6">{getStatusBadge(calculateStatus(viewItem))}</div>
-                </div>
-              </div>
-              <div className="modal-footer border-top-0">
-                <button className="btn btn-secondary" onClick={() => setShowViewModal(false)}>Close</button>
               </div>
             </div>
           </div>
-        </div>
+          <div className="modal-backdrop fade show"></div>
+        </>
       )}
-
-      {(showViewModal) && <div className="modal-backdrop fade show"></div>}
     </div>
   );
 };

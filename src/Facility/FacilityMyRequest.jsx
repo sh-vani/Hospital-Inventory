@@ -5,7 +5,7 @@ import BaseUrl from "../../src/Api/BaseUrl";
 import axiosInstance from "../../src/Api/axiosInstance";
 import Swal from "sweetalert2";
 
-const FacilityUserRequisition = () => {
+const MyRequisition = () => {
   // Form states
   const [department, setDepartment] = useState("");
   const [username, setUsername] = useState("");
@@ -894,4 +894,4 @@ const fetchRequisitionsByFacility = async (facilityId) => {
   );
 };
 
-export default FacilityUserRequisition;
+export default MyRequisition;
