@@ -38,6 +38,7 @@ function FacilityRequisitions() {
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [approveItems, setApproveItems] = useState([]); // will hold { item_id, approved_quantity }
   const [approveRemarks, setApproveRemarks] = useState("");
+  
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 10;
@@ -428,7 +429,10 @@ const addSuggestedToBulk = (suggestion) => {
 
   
   const submitBulkRequisition = async () => {
-    if (bulkRequisitionList.length === 0) return;
+    if (bulkRequisitionList.length === 0) {
+      alert("No items to approve");
+      return;
+    }
   
     const user = JSON.parse(localStorage.getItem("user"));
     if (!user || !facilityId) {
@@ -436,30 +440,55 @@ const addSuggestedToBulk = (suggestion) => {
       return;
     }
   
+    // Step 1: Group items by requisition ID (e.g., "REQ-95" → 95)
+    const grouped = bulkRequisitionList.reduce((acc, item) => {
+      const reqIdNum = parseInt(item.reqId.replace("REQ-", ""), 10);
+      if (isNaN(reqIdNum)) return acc; // Skip invalid IDs
+  
+      if (!acc[reqIdNum]) {
+        acc[reqIdNum] = {
+          facility_id: facilityId,
+          requisition_id: reqIdNum,
+          facilityRemarks: "Approved via bulk action", // You can customize this later if needed
+          approvedItems: []
+        };
+      }
+      acc[reqIdNum].approvedItems.push({
+        item_id: String(item.item_id), // Ensure it's string as per your API example
+        approved_qty: parseInt(item.qty) || 0
+      });
+      return acc;
+    }, {});
+  
+    // Step 2: Convert to array
+    const approvedList = Object.values(grouped);
+  
+    // Step 3: Final payload
+    const payload = {
+      remarks: "Bulk approval by warehouse manager",
+      approvedList: approvedList
+    };
+  
     try {
       setLoading(true);
+      console.log("Bulk approve payload:", payload); // For debugging
   
-      // Har item ke liye alag raise-to-warehouse call karein
-      for (const item of bulkRequisitionList) {
-        const payload = {
-          facility_id: facilityId,
-          required_qty: item.qty,
-          priority: item.priority,
-          remarks: item.reason || "From bulk list",
-          user_name: user.name,
-          item_name: item.name,
-        };
+      const response = await axios.patch(
+        `${BaseUrl}/warehouse-requisitions/warehouse/bulk-approve`,
+        payload
+      );
   
-        await axios.post(`${BaseUrl}/warehouse-requisitions/raise-to-warehouse`, payload);
+      if (response.data?.success) {
+        alert("✅ Bulk approval submitted successfully!");
+        setBulkRequisitionList([]);
+        setShowBulkModal(false);
+        window.location.reload(); // Or better: refetch requisitions
+      } else {
+        alert("❌ Bulk approval failed: " + (response.data.message || "Unknown error"));
       }
-  
-      alert("✅ All items raised to warehouse successfully!");
-      setBulkRequisitionList([]);
-      setShowBulkModal(false);
-      window.location.reload();
     } catch (err) {
-      console.error("Bulk raise error:", err);
-      alert("❌ Failed: " + (err.response?.data?.message || "Network error"));
+      console.error("Bulk approval error:", err);
+      alert("❌ Error: " + (err.response?.data?.message || err.message || "Network error"));
     } finally {
       setLoading(false);
     }
@@ -662,141 +691,208 @@ const addSuggestedToBulk = (suggestion) => {
       <div className="card border-0 shadow-sm">
         <div className="table-responsive">
           <table className="table table-hover align-middle mb-0">
-            <thead className="bg-light">
-              <tr>
-                <th>Req ID</th>
-                <th>User Name</th>
-                <th>Department</th>
-                <th>Item Name</th>
-                <th>Requested Qty</th>
-                <th>Facility Stock</th>
-                <th>Facility Status</th>
-                <th>Expiry Date</th>
-                <th>Status</th>
-                <th>Raised On</th>
-                <th className="text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentEntries.length === 0 ? (
-                <tr>
-                  <td colSpan="11" className="text-center py-4 text-muted">
-                    No requisitions found for {adminFacility} with the current filters.
-                  </td>
-                </tr>
-              ) : (
-                currentEntries.map((req) => {
-                  const facilityStatus = getFacilityStatus(req);
-                  return (
-                    <tr key={req.id}>
-                      <td className="fw-medium">
-                        {req.id}
-                      </td>
-                      <td>{req.user}</td>
-                      <td>{req.department}</td>
-                      <td>{req.item}</td>
-                      <td>{req.qty}</td>
-                      <td>{req.facilityStock}</td>
-                      <td>
-                        <span className={`badge rounded-pill ${facilityStatus.class} px-3 py-1`}>
-                          {facilityStatus.status}
-                        </span>
-                      </td>
-                      <td>{req.expiryDate || "N/A"}</td>
-                      <td>
-                        <span className={`badge rounded-pill ${req.status === "Pending"
-                            ? "bg-secondary-subtle text-secondary-emphasis"
-                            : req.status === "Processing"
-                              ? "bg-warning-subtle text-warning-emphasis"
-                              : req.status === "Delivered"
-                                ? "bg-info-subtle text-info-emphasis"
-                                : req.status === "Completed"
-                                  ? "bg-success-subtle text-success-emphasis"
-                                  : "bg-danger-subtle text-danger-emphasis"
-                          } px-3 py-1`}>
-                          {req.status}
-                        </span>
-                      </td>
-                      <td>{req.raisedOn}</td>
-                      <td className="text-center">
-  <div className="d-flex justify-content-center gap-2 flex-wrap">
-    {/* Deliver: if stock sufficient AND status allows delivery */}
-    {((req.status === "Pending" || req.status === "Approved" || req.status === "Processing") && req.facilityStock >= req.qty) && (
-      <button
-        className="btn btn-sm btn-success"
-        onClick={() => handleDeliver(req)}
-        title="Deliver from facility stock"
-      >
-        Deliver
-      </button>
-    )}
+          <thead className="bg-light">
+  <tr>
+    <th>
+      <div className="form-check">
+        <input
+          className="form-check-input"
+          type="checkbox"
+          checked={bulkRequisitionList.length > 0 && bulkRequisitionList.length === currentEntries.filter(req => 
+            (req.status === "Pending" || req.status === "Approved" || req.status === "Processing") && 
+            req.facilityStock < req.qty
+          ).length}
+          onChange={(e) => {
+            if (e.target.checked) {
+              // Add all actionable rows to bulk list
+              const actionable = currentEntries.filter(req => 
+                (req.status === "Pending" || req.status === "Approved" || req.status === "Processing") && 
+                req.facilityStock < req.qty
+              );
+              const newItems = actionable.map(req => ({
+                reqId: req.id,
+                name: req.item,
+                qty: req.qty,
+                priority: req.priority,
+                reason: "Bulk selected",
+                item_id: req.item_id,
+              }));
+              setBulkRequisitionList(newItems);
+            } else {
+              // Clear bulk list
+              setBulkRequisitionList([]);
+            }
+          }}
+        />
+      </div>
+      <span className="ms-2">Add Bulk Approve</span>
+    </th>
+    <th>Req ID</th>
+    <th>User Name</th>
+    <th>Department</th>
+    <th>Item Name</th>
+    <th>Requested Qty</th>
+    <th>Facility Stock</th>
+    <th>Facility Status</th>
+    <th>Expiry Date</th>
+    <th>Status</th>
+    <th>Raised On</th>
+    <th className="text-center">Actions</th>
+  </tr>
+</thead>
+<tbody>
+  {currentEntries.length === 0 ? (
+    <tr>
+      <td colSpan="12" className="text-center py-4 text-muted">
+        No requisitions found for {adminFacility} with the current filters.
+      </td>
+    </tr>
+  ) : (
+    currentEntries.map((req) => {
+      const facilityStatus = getFacilityStatus(req);
+      const isActionable = (req.status === "Pending" || req.status === "Approved" || req.status === "Processing") && req.facilityStock < req.qty;
+      const isChecked = bulkRequisitionList.some(
+        (item) => item.reqId === req.id && item.item_id === req.item_id
+      );
 
-    {/* Raise to Warehouse & Add to Bulk: if stock low AND status is actionable */}
-    {((req.status === "Pending" || req.status === "Approved" || req.status === "Processing") && req.facilityStock < req.qty) && (
-      <>
-        <button
-          className="btn btn-sm btn-primary"
-          onClick={() => handleRaiseToWarehouse(req)}
-          title="Raise to warehouse"
-        >
-          Raise to Warehouse
-        </button>
-         <button
-          className="btn btn-sm btn-info"
-          onClick={() => handleAddToBulkList(req)}
-          title="Add to bulk list"
-        >
-          Add to Bulk
-        </button> 
-      </>
-    )}
+      return (
+        <tr key={req.id}>
+          {/* ✅ NEW: Checkbox Column (First Column) */}
+          <td>
+            {isActionable ? (
+              <div className="form-check">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      handleAddToBulkList(req);
+                    } else {
+                      setBulkRequisitionList((prev) =>
+                        prev.filter(
+                          (item) => !(item.reqId === req.id && item.item_id === req.item_id)
+                        )
+                      );
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <span className="text-muted">–</span>
+            )}
+          </td>
 
-    {/* Approve & Reject: only for Pending */}
-    {req.status === "Pending" && (
-      <>
-        <button
-          className="btn btn-sm btn-success"
-          onClick={() => handleApprove(req)}
-          title="Approve requisition"
-        >
-          Approve
-        </button>
-        <button
-          className="btn btn-sm btn-danger"
-          onClick={() => handleReject(req)}
-          title="Reject"
-        >
-          Reject
-        </button>
-      </>
-    )}
-
-    {/* Complete: only for Delivered */}
-    {req.status === "Delivered" && (
-      <button
-        className="btn btn-sm btn-success"
-        onClick={() => markAsCompleted(req.id)}
-        title="Mark as completed"
-      >
-        Complete
-      </button>
-    )}
-
-    {/* View: always */}
-    <button
-      className="btn btn-sm btn-outline-secondary"
-      onClick={() => handleViewDetail(req)}
-      title="View details"
-    >
-      View
-    </button>
-  </div>
-</td>
-                    </tr>
-                  );
-                })
+          {/* Existing Columns (UNCHANGED) */}
+          <td className="fw-medium">{req.id}</td>
+          <td>{req.user}</td>
+          <td>{req.department}</td>
+          <td>{req.item}</td>
+          <td>{req.qty}</td>
+          <td>{req.facilityStock}</td>
+          <td>
+            <span className={`badge rounded-pill ${facilityStatus.class} px-3 py-1`}>
+              {facilityStatus.status}
+            </span>
+          </td>
+          <td>{req.expiryDate || "N/A"}</td>
+          <td>
+            <span
+              className={`badge rounded-pill ${
+                req.status === "Pending"
+                  ? "bg-secondary-subtle text-secondary-emphasis"
+                  : req.status === "Processing"
+                    ? "bg-warning-subtle text-warning-emphasis"
+                    : req.status === "Delivered"
+                      ? "bg-info-subtle text-info-emphasis"
+                      : req.status === "Completed"
+                        ? "bg-success-subtle text-success-emphasis"
+                        : "bg-danger-subtle text-danger-emphasis"
+              } px-3 py-1`}
+            >
+              {req.status}
+            </span>
+          </td>
+          <td>{req.raisedOn}</td>
+          <td className="text-center">
+            <div className="d-flex justify-content-center gap-2 flex-wrap">
+              {/* Deliver */}
+              {((req.status === "Pending" || req.status === "Approved" || req.status === "Processing") && req.facilityStock >= req.qty) && (
+                <button
+                  className="btn btn-sm btn-success"
+                  onClick={() => handleDeliver(req)}
+                  title="Deliver from facility stock"
+                >
+                  Deliver
+                </button>
               )}
-            </tbody>
+
+              {/* Raise to Warehouse & Add to Bulk (UNCHANGED) */}
+              {isActionable && (
+                <>
+                  <button
+                    className="btn btn-sm btn-primary"
+                    onClick={() => handleRaiseToWarehouse(req)}
+                    title="Raise to warehouse"
+                  >
+                    Raise to Warehouse
+                  </button>
+                  <button
+                    className="btn btn-sm btn-info"
+                    onClick={() => handleAddToBulkList(req)}
+                    title="Add to bulk list"
+                  >
+                    Add to Bulk
+                  </button>
+                </>
+              )}
+
+              {/* Approve & Reject */}
+              {req.status === "Pending" && (
+                <>
+                  <button
+                    className="btn btn-sm btn-success"
+                    onClick={() => handleApprove(req)}
+                    title="Approve requisition"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    className="btn btn-sm btn-danger"
+                    onClick={() => handleReject(req)}
+                    title="Reject"
+                  >
+                    Reject
+                  </button>
+                </>
+              )}
+
+              {/* Complete */}
+              {req.status === "Delivered" && (
+                <button
+                  className="btn btn-sm btn-success"
+                  onClick={() => markAsCompleted(req.id)}
+                  title="Mark as completed"
+                >
+                  Complete
+                </button>
+              )}
+
+              {/* View */}
+              <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => handleViewDetail(req)}
+                title="View details"
+              >
+                View
+              </button>
+            </div>
+          </td>
+        </tr>
+      );
+    })
+  )}
+</tbody>
           </table>
         </div>
       </div>

@@ -21,12 +21,12 @@ const Login = () => {
       password: "123",
     },
     "Facility Admin": {
-      email: "facilityadmin@hospital.com",
+      email: "apple@example.com",
       password: "123456",
     },
     "Facility User": {
-      email: "alice.brown@hospital.com",
-      password: "123",
+      email: "auser@example.com",
+      password: "123456",
     },
   };
 

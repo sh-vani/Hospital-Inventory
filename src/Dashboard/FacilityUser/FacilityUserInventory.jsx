@@ -27,37 +27,35 @@ const FacilityInventory = () => {
   const itemsPerPage = 10;
   const hoverRef = useRef(null);
 
-  // === FETCH INVENTORY FROM API USING facility_id FROM localStorage ===
   useEffect(() => {
     const fetchInventory = async () => {
       try {
         setLoading(true);
         setError(null);
-
-        // Get facility_id from localStorage
-        let facilityId = null;
+  
+        // Get user from localStorage
         const userStr = localStorage.getItem("user");
+        let userId = null;
+  
         if (userStr) {
           try {
             const user = JSON.parse(userStr);
-            facilityId = user?.facility_id;
+            userId = user?.id; // ✅ Use user.id, not facility_id
           } catch (e) {
-            console.warn("Invalid user data in localStorage");
+            console.warn("Invalid user data in localStorage", e);
           }
         }
-
-        if (!facilityId) {
-          setError("Facility ID not found. Please log in again.");
+  
+        if (!userId) {
+          setError("User ID not found. Please log in again.");
           setLoading(false);
           return;
         }
-
-        // ✅ CORRECTED API CALL — using query param
-        const response = await axios.get(`${BaseUrl}/inventory`, {
-          params: { facility_id: facilityId }
-        });
-
-        // Normalize response data
+  
+        // ✅ NEW API ENDPOINT: /inventory/user/:id
+        const response = await axios.get(`${BaseUrl}/inventory/user/${userId}`);
+  
+        // Normalize response data (same as before)
         let inventoryData = [];
         if (Array.isArray(response.data.data)) {
           inventoryData = response.data.data;
@@ -66,7 +64,7 @@ const FacilityInventory = () => {
         } else if (response.data && typeof response.data === "object") {
           inventoryData = [response.data];
         }
-
+  
         const normalized = inventoryData.map((item) => ({
           id: item.id,
           item_code: item.item_code || "N/A",
@@ -78,13 +76,13 @@ const FacilityInventory = () => {
           reorder_level: item.reorder_level || 0,
           item_cost: item.item_cost || 0,
           expiry_date: item.expiry_date,
-          facility_name: item.facility_name || `Facility ${facilityId}`,
+          facility_name: item.facility_name || `Facility ${item.facility_id || 'N/A'}`,
           updated_at: item.updated_at || new Date().toISOString(),
         }));
-
+  
         setInventory(normalized);
-
-        // Categorize
+  
+        // Categorize items
         setLowStockItems(
           normalized.filter((i) => i.quantity > 0 && i.quantity < i.reorder_level)
         );
@@ -97,10 +95,10 @@ const FacilityInventory = () => {
             const days = Math.ceil(
               (new Date(i.expiry_date) - new Date()) / (1000 * 60 * 60 * 24)
             );
-            return days >= 0 && days <= 30; // Only upcoming expiries
+            return days >= 0 && days <= 30;
           })
         );
-
+  
         setLoading(false);
       } catch (err) {
         console.error("API Error:", err);
@@ -108,7 +106,7 @@ const FacilityInventory = () => {
         setLoading(false);
       }
     };
-
+  
     fetchInventory();
   }, []);
 

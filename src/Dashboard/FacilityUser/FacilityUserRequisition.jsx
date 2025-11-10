@@ -86,17 +86,13 @@ const FacilityUserRequisition = () => {
     };
   }, []);
 
-// Fetch facility items using query param (as per your desired API style)
-const fetchFacilityItems = async (facilityId) => {
+// Replace the existing fetchFacilityItems function with this
+const fetchInventoryItems = async () => {
   try {
     setLoadingItems(true);
-    const response = await axiosInstance.get(`${BaseUrl}/inventory`, {
-      params: { facility_id: facilityId }
-    });
-
+    const response = await axiosInstance.get(`${BaseUrl}/inventory`);
     let items = [];
-    // Normalize response — handle multiple response shapes
-    if (Array.isArray(response.data.data)) {
+    if (response.data?.data && Array.isArray(response.data.data)) {
       items = response.data.data;
     } else if (Array.isArray(response.data)) {
       items = response.data;
@@ -104,7 +100,6 @@ const fetchFacilityItems = async (facilityId) => {
       items = [response.data];
     }
 
-    // Normalize each item (optional but safe)
     const normalized = items.map((item) => ({
       id: item.id,
       item_name: item.item_name || "Unnamed Item",
@@ -112,17 +107,16 @@ const fetchFacilityItems = async (facilityId) => {
       quantity: item.quantity || 0,
       reorder_level: item.reorder_level || 0,
       expiry_date: item.expiry_date,
-      // Add other fields if needed: item_code, category, etc.
     }));
 
     setFacilityItems(normalized);
   } catch (error) {
-    console.error("Failed to fetch facility items:", error);
+    console.error("Failed to fetch inventory items:", error);
     setFacilityItems([]);
     Swal.fire({
       icon: "error",
       title: "Fetch Failed",
-      text: "Failed to fetch facility items. Please try again later.",
+      text: "Failed to load inventory items. Please try again.",
     });
   } finally {
     setLoadingItems(false);
@@ -172,28 +166,21 @@ const getHighestPriorityFromItems = (items) => {
   // Capitalize first letter
   return highest.charAt(0).toUpperCase() + highest.slice(1);
 };
-  // Initialize user session & fetch data
-  useEffect(() => {
-    const user = getUserFromStorage();
-    if (user) {
-      setDepartment(user.department || "N/A");
-      setUsername(user.name || "User");
-      const facilityId = user.facility_id;
-      if (facilityId) {
-        fetchFacilityItems(facilityId);
-      } else {
-        console.error("Facility ID not found in user data");
-        setLoadingItems(false);
-      }
-      if (user.id) {
-        fetchRequisitionHistory(user.id);
-      }
-    } else {
-      console.error("User not found in localStorage");
-      setLoadingItems(false);
+useEffect(() => {
+  const user = getUserFromStorage();
+  if (user) {
+    setDepartment(user.department || "N/A");
+    setUsername(user.name || "User");
+    if (user.id) {
+      fetchRequisitionHistory(user.id);
     }
-  }, []);
+  } else {
+    console.error("User not found in localStorage");
+  }
 
+  // ✅ Fetch ALL inventory items (no facility_id)
+  fetchInventoryItems();
+}, []);
   // ✅ Add to Bulk Cart
   const addToBulkCart = (item) => {
     const existing = bulkCart.find((i) => i.item_id === item.id);
@@ -997,13 +984,8 @@ const handleBulkSubmit = async (e) => {
                             const warnings = getItemWarnings(item);
                             return (
                               <option key={item.id} value={item.id}>
-                                {item.item_name} ({item.quantity}{" "}
-                                {item.unit || "units"})
-                                {warnings.length > 0 && (
-                                  <span className="text-danger ms-2">
-                                    ⚠️ {warnings.join(", ")}
-                                  </span>
-                                )}
+                                {item.item_name} 
+                            
                               </option>
                             );
                           })

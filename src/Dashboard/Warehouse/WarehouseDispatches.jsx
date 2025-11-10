@@ -366,7 +366,7 @@ const WarehouseDispatches = () => {
                   <thead className="bg-light">
                     <tr>
                       <th>Dispatch ID</th>
-                      <th>Tracking Number</th>
+                      {/* <th>Tracking Number</th> */}
                       <th>Facility Name</th> {/* Changed from Facility ID to Facility Name */}
                       <th>Requisition ID</th>
                       <th>Status</th>
@@ -377,7 +377,7 @@ const WarehouseDispatches = () => {
                     {filteredDispatches.map((dispatch,i) => (
                       <tr key={dispatch.id}>
                         <td><span className="fw-bold">#{i+1}</span></td>
-                        <td>{dispatch.tracking_number}</td>
+                        {/* <td>{dispatch.tracking_number}</td> */}
                         <td>{dispatch.facility_name}</td> {/* Changed from facility_id to facility_name */}
                         <td>{dispatch.requisition_id}</td>
                         <td><StatusBadge status={dispatch.status} /></td>

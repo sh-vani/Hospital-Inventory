@@ -33,10 +33,9 @@ const FacilityInventory = () => {
       try {
         setLoading(true);
         setError(null);
-
-        // Get facility_id from localStorage
+  
         const userStr = localStorage.getItem("user");
-        let facilityId = 11; // fallback
+        let facilityId = 11;
         if (userStr) {
           try {
             const user = JSON.parse(userStr);
@@ -45,43 +44,49 @@ const FacilityInventory = () => {
             console.warn("Invalid user in localStorage");
           }
         }
-
-        // ✅ Real API call
+  
         const response = await axios.get(`${BaseUrl}/inventory/fasilities/${facilityId}`);
-
-        let inventoryData = [];
+  
+        let rawData = [];
         if (Array.isArray(response.data.data)) {
-          inventoryData = response.data.data;
+          rawData = response.data.data;
         } else if (response.data.data && typeof response.data.data === "object") {
-          inventoryData = [response.data.data];
+          rawData = [response.data.data];
         }
-
-        const normalized = inventoryData.map((item) => ({
+  
+        // ✅ FILTER: Only keep true inventory items (must have 'id' and 'quantity')
+        const inventoryItems = rawData.filter(item => 
+          item.hasOwnProperty('id') && 
+          item.hasOwnProperty('quantity') &&
+          typeof item.id === 'number' &&
+          typeof item.quantity === 'number'
+        );
+  
+        // ✅ NORMALIZE with safe defaults
+        const normalized = inventoryItems.map((item) => ({
           id: item.id,
-          item_code: item.item_code || "N/A",
+          item_code: item.item_code || `ITEM-${item.id}`,
           item_name: item.item_name || "Unnamed Item",
-          category: item.category || "Uncategorized",
+          category: item.category || "General",
           description: item.description || "",
           unit: item.unit || "units",
           quantity: item.quantity || 0,
-          reorder_level: item.reorder_level || 0,
-          item_cost: item.item_cost || 0,
-          expiry_date: item.expiry_date,
+          reorder_level: item.reorder_level != null ? item.reorder_level : 10, // default 10
+          item_cost: item.item_cost != null ? parseFloat(item.item_cost) : 0,
+          expiry_date: item.expiry_date || null,
           facility_name: item.facility_name || `Facility ${facilityId}`,
           updated_at: item.updated_at || new Date().toISOString(),
         }));
-
+  
         setInventory(normalized);
-
-        // Categorize
         setLowStockItems(normalized.filter(i => i.quantity > 0 && i.quantity < i.reorder_level));
         setOutOfStockItems(normalized.filter(i => i.quantity === 0));
         setNearExpiryItems(normalized.filter(i => {
           if (!i.expiry_date) return false;
           const days = Math.ceil((new Date(i.expiry_date) - new Date()) / (1000 * 60 * 60 * 24));
-          return days <= 30;
+          return days > 0 && days <= 30;
         }));
-
+  
         setLoading(false);
       } catch (err) {
         console.error("API Error:", err);
@@ -89,10 +94,9 @@ const FacilityInventory = () => {
         setLoading(false);
       }
     };
-
+  
     fetchInventory();
   }, []);
-
   // Close modals on outside click
   useEffect(() => {
     const handleClick = (e) => {

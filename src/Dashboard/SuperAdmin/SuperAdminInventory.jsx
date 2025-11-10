@@ -35,20 +35,21 @@ const SuperAdminInventory = () => {
   const [filterType, setFilterType] = useState(null);
   const [facilities, setFacilities] = useState([]);
   const [facilitiesLoading, setFacilitiesLoading] = useState(true);
-  const [bulkItems, setBulkItems] = useState([
-    {
-      item_code: "",
-      item_name: "",
-      category: "",
-      description: "",
-      unit: "",
-      quantity: "",
-      reorder_level: "",
-      item_cost: "",
-      expiry_date: "",
-      facility_id: "", 
-    },
-  ]);
+  const [totalNetWorth, setTotalNetWorth] = useState("0.00");
+
+
+  const [showAddToAllModal, setShowAddToAllModal] = useState(false);
+  const [addToAllForm, setAddToAllForm] = useState({
+    item_code: "",
+    item_name: "Test Item",
+    category: "Medicine",
+    unit: "Box",
+    quantity: 100,
+    item_cost: 50,
+    expiry_date: "2026-12-31",
+    description: "",
+    reorder_level: 10, // optional but recommended
+  });
   const [movements, setMovements] = useState([]);
   const [movementsLoading, setMovementsLoading] = useState(false);
   const [categories, setCategories] = useState([]);
@@ -121,61 +122,120 @@ const SuperAdminInventory = () => {
     };
     fetchCategories();
   }, []);
-  // === FETCH INVENTORY DATA ===
-  useEffect(() => {
-    const fetchInventoryData = async () => {
-      try {
-        setLoading(true);
-        const response = await axiosInstance.get(`${BaseUrl}/inventory`, {
-          params: {
-            page: 1,
-            limit: 1000, // or implement real pagination later
-            category: "Medicines", // or remove if you want all categories
-            low_stock: false,
-          },
-        });
+// === FETCH INVENTORY DATA ===
+useEffect(() => {
+  const fetchInventoryData = async () => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.get(`${BaseUrl}/inventory`, {
+        params: {
+          page: 1,
+          limit: 1000,
+          category: "Medicines",
+          low_stock: false,
+        },
+      });
+      if (response.data.success) {
+        const inventoryData = response.data.data || [];
+        setInventory(inventoryData);
 
-        if (response.data.success) {
-          const inventoryData = response.data.data;
+        // ✅ Extract and set total net worth
+        const netWorth = response.data.total_net_worth || 0;
+        setTotalNetWorth(parseFloat(netWorth).toFixed(2));
 
-          setInventory(inventoryData);
-
-          const outOfStock = inventoryData.filter(
-            (item) => item.quantity === 0
-          );
-          const lowStock = inventoryData.filter(
-            (item) => item.quantity > 0 && item.quantity < item.reorder_level
-          );
-          const nearExpiry = inventoryData.filter((item) => {
-            if (!item.expiry_date) return false;
-            const days = daysUntilExpiry(item.expiry_date);
-            return days !== null && days <= 30;
-          });
-
-          setOutOfStockItems(outOfStock);
-          setLowStockItems(lowStock);
-          setNearExpiryItems(nearExpiry);
-
-          // ⚠️ Pending requests: if you have real API, replace later
-          setPendingRequests([]); // or fetch from /requisitions API
-        } else {
-          setError(
-            "Failed to load inventory: " +
-              (response.data.message || "Unknown error")
-          );
-        }
-      } catch (err) {
-        setError(
-          "Error fetching data: " + (err.response?.data?.message || err.message)
+        // ... (baki categorization code: lowStock, outOfStock, etc.)
+        const outOfStock = inventoryData.filter((item) => item.quantity === 0);
+        const lowStock = inventoryData.filter(
+          (item) => item.quantity > 0 && item.quantity < item.reorder_level
         );
-      } finally {
-        setLoading(false);
+        const nearExpiry = inventoryData.filter((item) => {
+          if (!item.expiry_date) return false;
+          const days = daysUntilExpiry(item.expiry_date);
+          return days !== null && days <= 30;
+        });
+        setOutOfStockItems(outOfStock);
+        setLowStockItems(lowStock);
+        setNearExpiryItems(nearExpiry);
+        setPendingRequests([]);
+      } else {
+        setError("Failed to load inventory: " + (response.data.message || "Unknown error"));
       }
-    };
+    } catch (err) {
+      setError("Error fetching data: " + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchInventoryData();
+}, []);
+// Handle changes in the "Add to All" form
+const handleAddToAllChange = (e) => {
+  const { name, value } = e.target;
+  setAddToAllForm(prev => ({
+    ...prev,
+    [name]: value
+  }));
+};
 
-    fetchInventoryData();
-  }, []);
+// Submit handler for "Add to All Facilities"
+const handleAddToAllSubmit = async () => {
+  const {
+    item_code,
+    item_name,
+    category,
+    unit,
+    quantity,
+    item_cost,
+    expiry_date,
+    description = "",
+    reorder_level = 0
+  } = addToAllForm;
 
+  // Validation
+  if (!item_code || !item_name || !category || !unit || quantity === "" || item_cost === "") {
+    alert("Please fill all required fields.");
+    return;
+  }
+
+  // ✅ Wrap the single item in an ARRAY
+  const payload = [
+    {
+      item_code,
+      item_name,
+      category,
+      unit,
+      quantity: parseInt(quantity, 10) || 0,
+      item_cost: parseFloat(item_cost) || 0,
+      expiry_date: expiry_date || null,
+      description,
+      reorder_level: parseInt(reorder_level, 10) || 0,
+    }
+  ];
+
+  try {
+    const response = await axiosInstance.post(`${BaseUrl}/inventory/facilities`, payload);
+    if (response.data.success) {
+      alert("✅ Item successfully added to all facilities!");
+      setShowAddToAllModal(false);
+      setAddToAllForm({
+        item_code: "",
+        item_name: "",
+        category: "",
+        unit: "",
+        quantity: "",
+        item_cost: "",
+        expiry_date: "",
+ 
+        reorder_level: "",
+      });
+    } else {
+      alert("❌ Failed: " + (response.data.message || "Unknown error"));
+    }
+  } catch (err) {
+    console.error("Add to all facilities error:", err);
+    alert("⚠️ Error: " + (err.response?.data?.message || err.message || "Network error"));
+  }
+};
   // Handle clicks outside the hover tooltip
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -323,7 +383,7 @@ const SuperAdminInventory = () => {
         reorder_level: "",
         item_cost: "",
         expiry_date: "",
-        facility_id: "", // ✅
+        // ❌ No facility_id
       },
     ]);
   };
@@ -413,63 +473,7 @@ const SuperAdminInventory = () => {
     link.click();
     document.body.removeChild(link);
   };
-  const handleBulkAdd = async () => {
-    try {
-      // Validate required fields
-      const invalidItems = bulkItems.filter(
-        (item) =>
-          !item.item_code ||
-          !item.item_name ||
-          !item.category ||
-          !item.unit ||
-          item.quantity === "" ||
-          item.reorder_level === "" ||
-          item.item_cost === ""
-      );
-      if (invalidItems.length > 0) {
-        alert("Please fill all required fields in all rows.");
-        return;
-      }
-  
-      // ✅ Format data types
-      const formattedBulkItems = bulkItems.map(item => ({
-        item_code: item.item_code,
-        item_name: item.item_name,
-        category: item.category,
-        description: item.description,
-        unit: item.unit,
-        quantity: parseInt(item.quantity, 10) || 0,
-        reorder_level: parseInt(item.reorder_level, 10) || 0,
-        item_cost: parseFloat(item.item_cost) || 0,
-        expiry_date: item.expiry_date || null,
-        facility_id: item.facility_id ? parseInt(item.facility_id, 10) : null,
-      }));
-  
-      // ✅ Send DIRECT ARRAY — no "items" wrapper
-      const response = await axiosInstance.post(`${BaseUrl}/inventory`, formattedBulkItems);
-  
-      if (response.data.success) {
-        // Update local state with new items
-        const newItems = response.data.data || formattedBulkItems.map((item, i) => ({
-          ...item,
-          id: Date.now() + i,
-          updated_at: new Date().toISOString(),
-          facility_name: facilities.find(f => f.id === item.facility_id)?.name || "Central Warehouse",
-        }));
-        setInventory((prev) => [...prev, ...newItems]);
-        alert(`${bulkItems.length} item(s) added successfully!`);
-        setShowBulkModal(false);
-      } else {
-        alert("Bulk add failed: " + (response.data.message || "Unknown error"));
-      }
-    } catch (err) {
-      console.error("Bulk add error:", err);
-      alert(
-        "Error adding items: " +
-          (err.response?.data?.message || err.message || "Network error")
-      );
-    }
-  };
+ 
   // === HELPER FUNCTIONS ===
   const calculateStatus = (item) => {
     if (item.quantity === 0) return "out_of_stock";
@@ -630,51 +634,33 @@ const SuperAdminInventory = () => {
       </nav>
     );
   };
-  // Calculate total warehouse net worth
-  const totalNetWorth = inventory
-    .reduce(
-      (sum, item) => sum + item.quantity * (parseFloat(item.item_cost) || 0),
-      0
-    )
-    .toFixed(2);
+
+
   return (
     <div className="container-fluid py-3">
-      {/* ===== Top Toolbar ===== */}
-      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-        <h2 className="fw-bold mb-0">Inventory (Global View)</h2>
-        <div
-          className="d-flex gap-2"
-          style={{ maxWidth: "600px", width: "100%" }}
-        >
-          <div
-            className="input-group"
-            style={{ maxWidth: "320px", width: "100%" }}
-          >
-            <input
-              type="text"
-              className="form-control"
-              style={{ height: "40px" }}
-              placeholder="Search by Item Code, Name, or Category..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <button
-              className="btn btn-outline-secondary"
-              style={{ height: "40px" }}
-              type="button"
-            >
-              <FaSearch />
-            </button>
-          </div>
-          <button
-            className="btn btn-primary d-flex align-items-center gap-1"
-            style={{ height: "40px" }}
-            onClick={openBulkModal}
-          >
-            <FaPlus /> Add Bulk Items
-          </button>
-        </div>
-      </div>
+     {/* ===== Top Toolbar ===== */}
+<div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+  <h2 className="fw-bold mb-0">Inventory (Global View)</h2>
+  <div className="d-flex gap-2" style={{ maxWidth: "600px", width: "100%" }}>
+    {/* ... search input ... */}
+    <button
+      onClick={openBulkModal}
+      className="btn btn-primary d-flex align-items-center gap-1"
+      style={{ height: "40px" }}
+    >
+      <FaPlus /> Add Bulk Items
+    </button>
+
+    {/* ✅ NEW BUTTON: Add to All Facilities */}
+    <button
+      className="btn btn-success d-flex align-items-center gap-1"
+      style={{ height: "40px" }}
+      onClick={() => setShowAddToAllModal(true)}
+    >
+      <FaPlus /> Add to All Facilities
+    </button>
+  </div>
+</div>
       {/* ===== FILTER BUTTONS ===== */}
       <div className="d-flex flex-wrap gap-2 mb-4">
         <button
@@ -865,19 +851,20 @@ const SuperAdminInventory = () => {
       {/* Row 2: Net Worth + Pending Requests (2 cards) */}
       <div className="row mb-4 g-3" ref={hoverRef}>
         {/* Total Net Worth Card */}
-        <div className="col-md-4">
-          <div className="card border-primary bg-primary bg-opacity-10 h-100">
-            <div className="card-body d-flex align-items-center">
-              <div className="me-3">
-                <FaArrowRight className="text-primary fs-2" />
-              </div>
-              <div>
-                <h6 className="mb-0">Total Warehouse Net Worth</h6>
-                <span className="fw-bold fs-5">GHS {totalNetWorth}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+    {/* Total Net Worth Card */}
+<div className="col-md-4">
+  <div className="card border-primary bg-primary bg-opacity-10 h-100">
+    <div className="card-body d-flex align-items-center">
+      <div className="me-3">
+        <FaArrowRight className="text-primary fs-2" />
+      </div>
+      <div>
+        <h6 className="mb-0">Total Warehouse Net Worth</h6>
+        <span className="fw-bold fs-5">GHS {totalNetWorth}</span>
+      </div>
+    </div>
+  </div>
+</div>
 
         {/* Pending Requests Alert */}
         <div className="col-md-4">
@@ -931,7 +918,7 @@ const SuperAdminInventory = () => {
                   <th>Reorder Level</th>
                   <th>Item Cost</th>
                   <th>Expiry Date</th>
-                  <th>Facility</th>
+        
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -986,7 +973,7 @@ const SuperAdminInventory = () => {
                           "N/A"
                         )}
                       </td>
-                      <td>{item.facility_name || "Central Warehouse"}</td>
+                 
                       <td>{getStatusBadge(calculateStatus(item))}</td>
                       <td>
                         <div className="btn-group" role="group">
@@ -1140,22 +1127,7 @@ const SuperAdminInventory = () => {
                         onChange={handleInputChange}
                       />
                     </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Facility</label>
-                  <select
-  className="form-control"
-  name="facility_id" // ✅
-  value={editForm.facility_id || ""}
-  onChange={handleInputChange}
->
-  <option value="">-- Select Facility --</option>
-  {facilities.map((facility) => (
-    <option key={facility.id} value={facility.id}> {/* ✅ ID as value */}
-      {facility.name}
-    </option>
-  ))}
-</select>
-                    </div>
+              
                   </div>
                 </form>
               </div>
@@ -1595,12 +1567,146 @@ const SuperAdminInventory = () => {
           </div>
         </div>
       )}
-
+{/* ===== ADD TO ALL FACILITIES MODAL ===== */}
+{showAddToAllModal && (
+  <div className="modal show d-block" tabIndex="-1">
+    <div className="modal-dialog modal-lg">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">Add Item to All Facilities</h5>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => setShowAddToAllModal(false)}
+          ></button>
+        </div>
+        <div className="modal-body">
+          <form>
+            <div className="row g-3">
+              <div className="col-md-6">
+                <label className="form-label">Item Code *</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="item_code"
+                  value={addToAllForm.item_code}
+                  onChange={handleAddToAllChange}
+                  required
+                />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label">Category *</label>
+                <select
+                  className="form-control"
+                  name="category"
+                  value={addToAllForm.category}
+                  onChange={handleAddToAllChange}
+                  required
+                >
+                  <option value="">-- Select --</option>
+                  {categoriesLoading ? (
+                    <option>Loading...</option>
+                  ) : (
+                    categories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))
+                  )}
+                </select>
+              </div>
+              <div className="col-md-12">
+                <label className="form-label">Item Name *</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="item_name"
+                  value={addToAllForm.item_name}
+                  onChange={handleAddToAllChange}
+                  required
+                />
+              </div>
+          
+              <div className="col-md-4">
+                <label className="form-label">Unit *</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="unit"
+                  value={addToAllForm.unit}
+                  onChange={handleAddToAllChange}
+                  required
+                />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label">Quantity *</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  name="quantity"
+                  value={addToAllForm.quantity}
+                  onChange={handleAddToAllChange}
+                  required
+                />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label">Reorder Level</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  name="reorder_level"
+                  value={addToAllForm.reorder_level}
+                  onChange={handleAddToAllChange}
+                />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label">Item Cost (GHS) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="form-control"
+                  name="item_cost"
+                  value={addToAllForm.item_cost}
+                  onChange={handleAddToAllChange}
+                  required
+                />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label">Expiry Date</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  name="expiry_date"
+                  value={addToAllForm.expiry_date || ""}
+                  onChange={handleAddToAllChange}
+                />
+              </div>
+            </div>
+          </form>
+        </div>
+        <div className="modal-footer">
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowAddToAllModal(false)}
+          >
+            Cancel
+          </button>
+          <button
+            className="btn btn-success"
+            onClick={handleAddToAllSubmit}
+          >
+            Add to All Facilities
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
       {(showAddModal ||
         showEditModal ||
         showRestockModal ||
         showBulkModal ||
         showViewModal ||
+        showAddToAllModal || // ✅ Add this
+
         showHistoryModal) && <div className="modal-backdrop fade show"></div>}
     </div>
   );

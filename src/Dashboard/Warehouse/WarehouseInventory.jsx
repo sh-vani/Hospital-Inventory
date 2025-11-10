@@ -45,6 +45,19 @@ const WarehouseInventory = () => {
     expiry_date: "",
     facility_id: "",
   });
+
+  const [showAddToAllModal, setShowAddToAllModal] = useState(false);
+const [addToAllForm, setAddToAllForm] = useState({
+  item_code: "",
+  item_name: "",
+  category: "",
+  // description: "",
+  unit: "",
+  quantity: "",
+  reorder_level: "",
+  item_cost: "",
+  expiry_date: "",
+});
   const [movements, setMovements] = useState([]);
   const [movementsLoading, setMovementsLoading] = useState(false);
   const [addingItem, setAddingItem] = useState(false);
@@ -164,6 +177,8 @@ const WarehouseInventory = () => {
       setMovements([]);
     }
   };
+// Handle form input change for Add-to-All
+
 
   // Calculate days until expiry
   const daysUntilExpiry = (expiryDate) => {
@@ -218,22 +233,29 @@ const WarehouseInventory = () => {
 
   const openEditModal = (item) => {
     setCurrentItem(item);
-    // Find the facility ID based on the facility name
-    const facility = facilities.find((f) => f.name === item.facility_name);
+  
+    // ✅ SAFE DATE FORMATTING — Invalid dates ko handle karega
+    let formattedExpiry = "";
+    if (item.expiry_date && item.expiry_date !== "0000-00-00") {
+      const date = new Date(item.expiry_date);
+      if (!isNaN(date.getTime()) && date.getFullYear() > 1900) {
+        formattedExpiry = date.toISOString().split("T")[0];
+      }
+    }
+  
     setEditForm({
-      item_name: item.item_name,
-      category: item.category,
-      description: item.description,
-      unit: item.unit,
-      quantity: item.quantity,
-      reorder_level: item.reorder_level,
-      item_cost: item.item_cost,
-      expiry_date: item.expiry_date,
-      facility_id: facility ? facility.id : "",
+      item_name: item.item_name ?? "",
+      category: item.category ?? "",
+      description: item.description ?? "",
+      unit: item.unit ?? "",
+      quantity: item.quantity != null ? String(item.quantity) : "",
+      reorder_level: item.reorder_level != null ? String(item.reorder_level) : "",
+      item_cost: item.item_cost != null ? String(item.item_cost) : "",
+      expiry_date: formattedExpiry, // ✅ ab kabhi bhi error nahi dega
     });
+  
     setShowEditModal(true);
   };
-
   const openHistoryModal = async (item) => {
     setCurrentItem(item);
     setShowHistoryModal(true);
@@ -279,10 +301,8 @@ const WarehouseInventory = () => {
     }));
   };
 
-  // === ACTION HANDLERS ===
   const handleSaveEdit = async () => {
     try {
-      // Prepare the payload for update
       const payload = {
         item_name: editForm.item_name,
         category: editForm.category,
@@ -291,32 +311,23 @@ const WarehouseInventory = () => {
         quantity: parseInt(editForm.quantity),
         reorder_level: parseInt(editForm.reorder_level),
         item_cost: parseFloat(editForm.item_cost),
-        expiry_date: editForm.expiry_date || null
+        expiry_date: editForm.expiry_date || null,
+        // ✅ facility_id intentionally omitted — not editable
       };
-
-      // Make the API call to update the item
+  
       const response = await axiosInstance.put(`${BaseUrl}/inventory/${currentItem.id}`, payload);
-      
       if (response.data && response.data.success) {
-        // Find the selected facility name based on the facility_id
-        const selectedFacility = facilities.find(
-          (f) => f.id === parseInt(editForm.facility_id)
-        );
-
+        // ✅ Update local state WITHOUT changing facility
         const updatedItem = {
           ...currentItem,
           ...editForm,
-          facility_name: selectedFacility
-            ? selectedFacility.name
-            : currentItem.facility_name,
+          // facility_name unchanged
         };
-
         setInventory((prevInventory) =>
           prevInventory.map((item) =>
             item.id === currentItem.id ? updatedItem : item
           )
         );
-
         alert(`Item ${currentItem.item_code} updated successfully`);
         setShowEditModal(false);
       } else {
@@ -327,7 +338,6 @@ const WarehouseInventory = () => {
       alert("Error updating item: " + (err.response?.data?.message || err.message));
     }
   };
-
   // === EXPORT TO CSV ===
   const handleExportCSV = () => {
     const headers = [
@@ -601,41 +611,47 @@ const WarehouseInventory = () => {
   return (
     <div className="container-fluid py-3">
       {/* ===== Top Toolbar ===== */}
-      <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-        <h2 className="fw-bold mb-0">Inventory (Global View)</h2>
-        <div
-          className="d-flex gap-2"
-          style={{ maxWidth: "600px", width: "100%" }}
-        >
-          <div
-            className="input-group"
-            style={{ maxWidth: "320px", width: "100%" }}
-          >
-            <input
-              type="text"
-              className="form-control"
-              style={{ height: "40px" }}
-              placeholder="Search by Item Code, Name, or Category..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <button
-              className="btn btn-outline-secondary"
-              style={{ height: "40px" }}
-              type="button"
-            >
-              <FaSearch />
-            </button>
-          </div>
-          <button
-            className="btn btn-primary d-flex align-items-center gap-1"
-            style={{ height: "40px" }}
-            onClick={openAddModal}
-          >
-            <FaPlus /> Add Item
-          </button>
-        </div>
-      </div>
+    {/* ===== Top Toolbar ===== */}
+{/* ===== Top Toolbar ===== */}
+<div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+  <h2 className="fw-bold mb-0">Inventory (Global View)</h2>
+  <div className="d-flex gap-2 flex-nowrap" style={{ maxWidth: "600px", width: "100%" }}>
+    <div className="input-group" style={{ maxWidth: "320px", width: "100%" }}>
+      <input
+        type="text"
+        className="form-control"
+        style={{ height: "40px" }}
+        placeholder="Search by Item Code, Name, or Category..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+      <button className="btn btn-outline-secondary" style={{ height: "40px" }} type="button">
+        <FaSearch />
+      </button>
+    </div>
+
+    {/* ✅ BUTTON GROUP — Icon + Text in one row */}
+    <div className="d-flex gap-2" style={{ height: "40px" }}>
+      <button
+        className="btn btn-primary d-flex align-items-center gap-1"
+        style={{ height: "100%" }}
+        onClick={openAddModal}
+      >
+        <FaPlus /> Add Item
+      </button>
+
+      <button
+        className="btn btn-success d-flex align-items-center gap-1"
+        style={{ height: "100%" }}
+        onClick={() => setShowAddToAllModal(true)}
+      >
+        <FaPlus /> Add to All Facilities
+      </button>
+    </div>
+  </div>
+</div>
+
+
       {/* ===== FILTER & EXPORT BUTTONS ===== */}
       <div className="d-flex flex-wrap gap-2 mb-4">
         <button
@@ -1016,143 +1032,150 @@ const WarehouseInventory = () => {
         </div>
       )}
 
-      {/* ===== EDIT MODAL ===== */}
-      {showEditModal && currentItem && (
-        <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">
-                  Edit Inventory Item: {currentItem.item_code}
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowEditModal(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <form>
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Item Code</label>
-                      <input
-                        className="form-control"
-                        defaultValue={currentItem.item_code}
-                        readOnly
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Category</label>
-                      <input
-                        className="form-control"
-                        name="category"
-                        value={editForm.category || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-12">
-                      <label className="form-label">Item Name</label>
-                      <input
-                        className="form-control"
-                        name="item_name"
-                        value={editForm.item_name || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-12">
-                      <label className="form-label">Description</label>
-                      <textarea
-                        className="form-control"
-                        name="description"
-                        value={editForm.description || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Unit</label>
-                      <input
-                        className="form-control"
-                        name="unit"
-                        value={editForm.unit || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Quantity</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        name="quantity"
-                        value={editForm.quantity || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Reorder Level</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        name="reorder_level"
-                        value={editForm.reorder_level || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Item Cost (GHS)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control"
-                        name="item_cost"
-                        value={editForm.item_cost || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Expiry Date</label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        name="expiry_date"
-                        value={editForm.expiry_date || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    {/* <div className="col-md-6">
-                      <label className="form-label">Facility</label>
-                      <select
-                        className="form-select"
-                        name="facility_id"
-                        value={editForm.facility_id || ""}
-                        onChange={handleInputChange}
-                      >
-                        <option value="">Select a facility</option>
-                        {facilities.map((facility) => (
-                          <option key={facility.id} value={facility.id}>
-                            {facility.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div> */}
-                  </div>
-                </form>
-              </div>
-              <div className="modal-footer">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setShowEditModal(false)}
-                >
-                  Cancel
-                </button>
-                <button className="btn btn-primary" onClick={handleSaveEdit}>
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      
+
+{/* ===== EDIT MODAL ===== */}
+{showEditModal && currentItem && Object.keys(editForm).length > 0 && (
+     <div className="modal show d-block" tabIndex="-1">
+     <div className="modal-dialog modal-lg">
+       <div className="modal-content">
+         <div className="modal-header">
+           <h5 className="modal-title">
+             Edit Inventory Item: {currentItem.item_code}
+           </h5>
+           <button
+             type="button"
+             className="btn-close"
+             onClick={() => setShowEditModal(false)}
+           ></button>
+         </div>
+         <div className="modal-body">
+           <form>
+             <div className="row g-3">
+               <div className="col-md-6">
+                 <label className="form-label">Item Code</label>
+                 <input
+                   className="form-control"
+                   defaultValue={currentItem.item_code}
+                   readOnly
+                 />
+               </div>
+               <div className="col-md-6">
+                 <label className="form-label">Category</label>
+                 <input
+                   className="form-control"
+                   name="category"
+                   value={editForm.category || ""}
+                   onChange={handleInputChange}
+                 />
+               </div>
+               <div className="col-md-12">
+                 <label className="form-label">Item Name</label>
+                 <input
+                   className="form-control"
+                   name="item_name"
+                   value={editForm.item_name || ""}
+                   onChange={handleInputChange}
+                 />
+               </div>
+               <div className="col-md-12">
+                 <label className="form-label">Description</label>
+                 <textarea
+                   className="form-control"
+                   name="description"
+                   value={editForm.description || ""}
+                   onChange={handleInputChange}
+                 />
+               </div>
+               <div className="col-md-3">
+                 <label className="form-label">Unit</label>
+                 <input
+                   className="form-control"
+                   name="unit"
+                   value={editForm.unit || ""}
+                   onChange={handleInputChange}
+                 />
+               </div>
+               <div className="col-md-3">
+                 <label className="form-label">Quantity</label>
+                 <input
+                   type="number"
+                   className="form-control"
+                   name="quantity"
+                   value={editForm.quantity || ""}
+                   onChange={handleInputChange}
+                 />
+               </div>
+               <div className="col-md-3">
+                 <label className="form-label">Reorder Level</label>
+                 <input
+                   type="number"
+                   className="form-control"
+                   name="reorder_level"
+                   value={editForm.reorder_level || ""}
+                   onChange={handleInputChange}
+                 />
+               </div>
+               <div className="col-md-3">
+                 <label className="form-label">Item Cost (GHS)</label>
+                 <input
+                   type="number"
+                   step="0.01"
+                   className="form-control"
+                   name="item_cost"
+                   value={editForm.item_cost || ""}
+                   onChange={handleInputChange}
+                 />
+               </div>
+               <div className="col-md-6">
+                 <label className="form-label">Expiry Date</label>
+                 <input
+                   type="date"
+                   className="form-control"
+                   name="expiry_date"
+                   value={editForm.expiry_date || ""}
+                   onChange={handleInputChange}
+                 />
+               </div>
+               {/* <div className="col-md-6">
+                 <label className="form-label">Facility</label>
+                 <select
+                   className="form-select"
+                   name="facility_id"
+                   value={editForm.facility_id || ""}
+                   onChange={handleInputChange}
+                 >
+                   <option value="">Select a facility</option>
+                   {facilities.map((facility) => (
+                     <option key={facility.id} value={facility.id}>
+                       {facility.name}
+                     </option>
+                   ))}
+                 </select>
+               </div> */}
+             </div>
+           </form>
+         </div>
+         <div className="modal-footer">
+           <button
+             className="btn btn-secondary"
+             onClick={() => setShowEditModal(false)}
+           >
+             Cancel
+           </button>
+           <button className="btn btn-primary" onClick={handleSaveEdit}>
+             Save Changes
+           </button>
+         </div>
+       </div>
+     </div>
+   </div>
+)}
+
+
+
+
+
 
       {/* ===== ADD ITEM MODAL ===== */}
       {showAddModal && (
@@ -1506,7 +1529,9 @@ const WarehouseInventory = () => {
         showEditModal ||
         showRestockModal ||
         showViewModal ||
-        showHistoryModal) && <div className="modal-backdrop fade show"></div>}
+        showHistoryModal||
+        showAddToAllModal
+        ) && <div className="modal-backdrop fade show"></div>}
     </div>
   );
 };

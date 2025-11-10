@@ -58,6 +58,7 @@ import ReturnsRecalls from "./Dashboard/Warehouse/ReturnsRecalls";
 
 import WarehouseReturn from "./Dashboard/Warehouse/WarehouseReturn";
 import FacilityReturns from "./Facility/FacilityReturns";
+import WarehouseMainInventory from "./Dashboard/Warehouse/WarehouseMainInventory";
 
 function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -106,7 +107,7 @@ function App() {
                   <Route path="/facility-admin/dashboard" element= {<FacilityDashboard/>}/>'
                   <Route path="/facility/dashboard" element= {<FacilityDashboard/>}/>'
                    <Route path="/facility/requisitions" element={<FacilityRequisitions/>}/>'
-                     <Route path="/facility/myrequest" element={<FacilityMyRequest/>}/>'
+                   <Route path="/facility/myrequest" element={<FacilityMyRequest/>}/>'
                   <Route path="/facility/reports" element={<FacilityReports/>}/>'
                   <Route path="/facility/assets" element={<FacilityAssets/>}/>'
                   <Route path="/Facility/users" element={<FacilityUser/>}/>'
@@ -139,6 +140,7 @@ function App() {
 
                   {/* Warehouse Routes */}
                  <Route path="/warehouse/dashboard"element={<WarehouseDashbaord/>}/>
+                 <Route path="/warehouse/main-inventory"element={<WarehouseMainInventory/>}/>
                  <Route path="/warehouse/inventory"element={<WarehouseInventory/>}/>
                  <Route path="/warehouse/assets"element={<WareHouseAssets/>}/>
                  <Route path="/warehouse/reports"element={<WarehouseReports/>}/>

@@ -111,6 +111,13 @@ useEffect(() => {
         path: "/warehouse/dashboard",
         
       },
+
+
+      {
+        name: "Main Inventory",
+        icon: faWarehouse,
+        path: "/warehouse/main-inventory",
+      },
       {
         name: "Inventory",
         icon: faWarehouse,

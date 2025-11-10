@@ -100,7 +100,7 @@ const SuperAdminDashboard = () => {
         {
           title: "Total Warehouse Net Worth",
           value: `GHS ${
-            dashboardData.stats.total_warehouse_worth?.toLocaleString() || "0"
+            dashboardData.stats.total_net_worth?.toLocaleString() || "0"
           }`,
           change: "+4.2%",
           positive: true,
