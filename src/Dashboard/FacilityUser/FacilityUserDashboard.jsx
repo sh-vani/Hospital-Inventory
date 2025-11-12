@@ -11,21 +11,17 @@ const FacilityUserDashboard = () => {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
 
-  // Dashboard stats
   const [stats, setStats] = useState({
-    my_total_requests: 0,
-    my_dispatched_requests: 0,
-    my_rejected_requests: 0,
-    available_items: 0
+    total_pending_requests: 0,
+    delivered_this_week: 0,
+    low_stock_items: 0,
+    total_inventory_items: 0
   });
 
-  // Requisitions data
-  const [requisitions, setRequisitions] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [approvedRequests, setApprovedRequests] = useState([]);
-  const [loadingRequisitions, setLoadingRequisitions] = useState(false);
 
-  // ✅ Extract user info from localStorage
+  // Extract user info from localStorage
   useEffect(() => {
     const userStr =
       localStorage.getItem('user') ||
@@ -52,7 +48,7 @@ const FacilityUserDashboard = () => {
     }
   }, []);
 
-  // ✅ Fetch dashboard data
+  // Fetch dashboard data
   useEffect(() => {
     if (!user?.id) return;
 
@@ -63,18 +59,22 @@ const FacilityUserDashboard = () => {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
         const response = await axios.get(
-          `${BaseUrl}/dashboard/getFacilityUserDashboardUser?user_id=${user.id}`,
+          `${BaseUrl}/dashboard/user/${user.id}`,
           { headers }
         );
 
         if (response.data?.success) {
-          const fetched = response.data.data.stats || {};
+          const data = response.data.data || {};
+
           setStats({
-            my_total_requests: fetched.my_total_requests || 0,
-            my_dispatched_requests: fetched.my_dispatched_requests || 0,
-            my_rejected_requests: fetched.my_rejected_requests || 0,
-            available_items: fetched.available_items || 0,
+            total_pending_requests: data.total_pending_requests || 0,
+            delivered_this_week: data.delivered_this_week || 0,
+            low_stock_items: data.low_stock_items || 0,
+            total_inventory_items: data.total_inventory_items || 0,
           });
+
+          setPendingRequests(data.my_pending_requests || []);
+          setApprovedRequests(data.my_approved_requests || []);
         } else {
           setError(response.data.message || 'Failed to load dashboard data.');
         }
@@ -89,46 +89,6 @@ const FacilityUserDashboard = () => {
     fetchDashboardData();
   }, [user]);
 
-  // ✅ Fetch requisitions data
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const fetchRequisitions = async () => {
-      try {
-        setLoadingRequisitions(true);
-        const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-        const response = await axios.get(
-          `${BaseUrl}/requisitions/user/${user.id}`,
-          { headers }
-        );
-
-        if (response.data?.success) {
-          const requisitionsData = response.data.data || [];
-          setRequisitions(requisitionsData);
-          
-          // Filter pending requests
-          const pending = requisitionsData.filter(req => req.status === 'pending');
-          setPendingRequests(pending);
-          
-          // Filter approved requests
-          const approved = requisitionsData.filter(req => req.status === 'approved');
-          setApprovedRequests(approved);
-        } else {
-          console.error('Failed to load requisitions:', response.data.message);
-        }
-      } catch (err) {
-        console.error('Requisitions fetch error:', err);
-      } finally {
-        setLoadingRequisitions(false);
-      }
-    };
-
-    fetchRequisitions();
-  }, [user]);
-
-  // ✅ Helper for date format
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     return date.toLocaleString('en-US', {
@@ -140,7 +100,6 @@ const FacilityUserDashboard = () => {
     });
   };
 
-  // ✅ Status badge
   const getStatusBadge = (status) => {
     switch (status) {
       case 'pending': return <span className="badge bg-warning text-dark">Pending</span>;
@@ -153,14 +112,30 @@ const FacilityUserDashboard = () => {
     }
   };
 
-  // ✅ Priority badge
   const getPriorityBadge = (priority) => {
     switch (priority) {
       case 'urgent': return <span className="badge bg-danger">Urgent</span>;
       case 'high': return <span className="badge bg-warning text-dark">High</span>;
+      case 'medium': return <span className="badge bg-secondary">Medium</span>;
       case 'normal': return <span className="badge bg-info">Normal</span>;
       default: return <span className="badge bg-secondary">{priority || 'N/A'}</span>;
     }
+  };
+
+  // Helper to render item list
+  const renderItemNames = (items) => {
+    if (!items || items.length === 0) {
+      return <span className="text-muted">No items</span>;
+    }
+
+    const names = items.map((item, idx) => (
+      <span key={idx} className="me-2">
+        <strong>{item.item_name || 'Unnamed Item'}</strong>
+    
+      </span>
+    ));
+
+    return <div className="small text-wrap">{names}</div>;
   };
 
   return (
@@ -180,7 +155,6 @@ const FacilityUserDashboard = () => {
         </div>
       </div>
 
-      {/* Content */}
       <div className="p-4">
         {error && <div className="alert alert-danger">{error}</div>}
 
@@ -192,9 +166,8 @@ const FacilityUserDashboard = () => {
           </div>
         ) : (
           <>
-            {/* KPI Cards (4 only) */}
+            {/* KPI Cards */}
             <div className="row mb-4">
-              {/* Pending Requests */}
               <div className="col-md-3 col-sm-6 mb-3">
                 <div className="card border-0 shadow-sm h-100">
                   <div className="card-body d-flex align-items-center">
@@ -202,14 +175,13 @@ const FacilityUserDashboard = () => {
                       <FaClock className="text-warning fs-4" />
                     </div>
                     <div>
-                      <h5 className="fw-bold mb-0">{stats.my_total_requests}</h5>
+                      <h5 className="fw-bold mb-0">{stats.total_pending_requests}</h5>
                       <p className="mb-0 text-muted small">Pending Requests</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Delivered This Week */}
               <div className="col-md-3 col-sm-6 mb-3">
                 <div className="card border-0 shadow-sm h-100">
                   <div className="card-body d-flex align-items-center">
@@ -217,29 +189,27 @@ const FacilityUserDashboard = () => {
                       <FaBox className="text-success fs-4" />
                     </div>
                     <div>
-                      <h5 className="fw-bold mb-0">{stats.my_dispatched_requests}</h5>
+                      <h5 className="fw-bold mb-0">{stats.delivered_this_week}</h5>
                       <p className="mb-0 text-muted small">Delivered This Week</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Low Stock Items */}
               <div className="col-md-3 col-sm-6 mb-3">
                 <div className="card border-0 shadow-sm h-100">
                   <div className="card-body d-flex align-items-center">
-                    <div className="bg-info bg-opacity-10 p-3 rounded-circle me-3">
-                      <FaTruck className="text-info fs-4" />
+                    <div className="bg-danger bg-opacity-10 p-3 rounded-circle me-3">
+                      <FaExclamationTriangle className="text-danger fs-4" />
                     </div>
                     <div>
-                      <h5 className="fw-bold mb-0">{stats.my_rejected_requests}</h5>
+                      <h5 className="fw-bold mb-0">{stats.low_stock_items}</h5>
                       <p className="mb-0 text-muted small">Low Stock Items</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Total Inventory Items */}
               <div className="col-md-3 col-sm-6 mb-3">
                 <div className="card border-0 shadow-sm h-100">
                   <div className="card-body d-flex align-items-center">
@@ -247,7 +217,7 @@ const FacilityUserDashboard = () => {
                       <FaClipboardList className="text-primary fs-4" />
                     </div>
                     <div>
-                      <h5 className="fw-bold mb-0">{stats.available_items}</h5>
+                      <h5 className="fw-bold mb-0">{stats.total_inventory_items}</h5>
                       <p className="mb-0 text-muted small">Total Inventory Items</p>
                     </div>
                   </div>
@@ -263,13 +233,7 @@ const FacilityUserDashboard = () => {
                 </h5>
               </div>
               <div className="card-body">
-                {loadingRequisitions ? (
-                  <div className="text-center py-4">
-                    <div className="spinner-border spinner-border-sm text-primary" role="status">
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
-                  </div>
-                ) : pendingRequests.length === 0 ? (
+                {pendingRequests.length === 0 ? (
                   <p className="text-center text-muted py-4">
                     <FaClock className="me-2" /> No pending requests
                   </p>
@@ -279,8 +243,8 @@ const FacilityUserDashboard = () => {
                       <thead>
                         <tr>
                           <th>Requisition ID</th>
-                          <th>Items</th>
                           <th>Priority</th>
+                          <th>Items</th>
                           <th>Remarks</th>
                           <th>Created At</th>
                           <th>Status</th>
@@ -288,23 +252,10 @@ const FacilityUserDashboard = () => {
                       </thead>
                       <tbody>
                         {pendingRequests.map((req) => (
-                          <tr key={req.id}>
-                            <td>#{req.id}</td>
-                            <td>
-                              {req.items && req.items.length > 0 ? (
-                                <div>
-                                  {req.items.map((item, index) => (
-                                    <div key={item.id}>
-                                      {item.item_name} ({item.quantity} {item.unit})
-                                      {index < req.items.length - 1 && <hr className="my-1" />}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                'No items'
-                              )}
-                            </td>
+                          <tr key={req.requisition_id}>
+                            <td>#{req.requisition_id}</td>
                             <td>{getPriorityBadge(req.priority)}</td>
+                            <td>{renderItemNames(req.items)}</td>
                             <td>{req.remarks || '-'}</td>
                             <td>{formatDate(req.created_at)}</td>
                             <td>{getStatusBadge(req.status)}</td>
@@ -325,13 +276,7 @@ const FacilityUserDashboard = () => {
                 </h5>
               </div>
               <div className="card-body">
-                {loadingRequisitions ? (
-                  <div className="text-center py-4">
-                    <div className="spinner-border spinner-border-sm text-primary" role="status">
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
-                  </div>
-                ) : approvedRequests.length === 0 ? (
+                {approvedRequests.length === 0 ? (
                   <p className="text-center text-muted py-4">
                     <FaCheck className="me-2" /> No approved requests
                   </p>
@@ -341,8 +286,8 @@ const FacilityUserDashboard = () => {
                       <thead>
                         <tr>
                           <th>Requisition ID</th>
-                          <th>Items</th>
                           <th>Priority</th>
+                          <th>Items</th>
                           <th>Remarks</th>
                           <th>Created At</th>
                           <th>Approved At</th>
@@ -351,23 +296,10 @@ const FacilityUserDashboard = () => {
                       </thead>
                       <tbody>
                         {approvedRequests.map((req) => (
-                          <tr key={req.id}>
-                            <td>#{req.id}</td>
-                            <td>
-                              {req.items && req.items.length > 0 ? (
-                                <div>
-                                  {req.items.map((item, index) => (
-                                    <div key={item.id}>
-                                      {item.item_name} ({item.quantity} {item.unit})
-                                      {index < req.items.length - 1 && <hr className="my-1" />}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                'No items'
-                              )}
-                            </td>
+                          <tr key={req.requisition_id}>
+                            <td>#{req.requisition_id}</td>
                             <td>{getPriorityBadge(req.priority)}</td>
+                            <td>{renderItemNames(req.items)}</td>
                             <td>{req.remarks || '-'}</td>
                             <td>{formatDate(req.created_at)}</td>
                             <td>{req.approved_at ? formatDate(req.approved_at) : '-'}</td>
@@ -387,4 +319,4 @@ const FacilityUserDashboard = () => {
   );
 };
 
-export default FacilityUserDashboard; 
+export default FacilityUserDashboard;

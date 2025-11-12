@@ -503,49 +503,53 @@ const handleReject = (req) => {
 
 
   const submitRaiseToWarehouse = async () => {
-    if (!selectedRequisition || !raiseRequiredQty || !facilityId) {
-      alert("Please fill all required fields");
-      return;
-    }
-  
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (!user) {
-      alert("User not logged in");
-      return;
-    }
-  
-    // ✅ Add user_name and item_name from selectedRequisition
-    const payload = {
-      requisition_id: parseInt(selectedRequisition.id.replace("REQ-", ""), 10),
-      facility_id: facilityId,
-      required_qty: parseInt(raiseRequiredQty, 10),
-      priority: raisePriority,
-      remarks: raiseRemarks.trim() || "Raised to warehouse",
-      user_name: selectedRequisition.user,      // ✅ "user28"
-      item_name: selectedRequisition.item,     // ✅ "Ibuprofen 400"
-    };
-  
-    try {
-      setLoading(true);
-      const response = await axios.post(`${BaseUrl}/warehouse-requisitions/raise-to-warehouse`, payload);
-      if (response.data.success) {
-        alert("✅ Requisition raised to warehouse successfully!");
-        window.location.reload();
-      } else {
-        alert("❌ Failed to raise to warehouse: " + (response.data.message || "Unknown error"));
-      }
-    } catch (err) {
-      console.error("Raise to warehouse error:", err);
-      alert("Error: " + (err.response?.data?.message || err.message || "Network error"));
-    } finally {
-      setLoading(false);
-      setShowRaiseModal(false);
-      setSelectedRequisition(null);
-      setRaiseRequiredQty("");
-      setRaisePriority("Normal");
-      setRaiseRemarks("");
-    }
+  if (!selectedRequisition || !raiseRequiredQty || !facilityId) {
+    alert("Please fill all required fields");
+    return;
+  }
+
+  const user = JSON.parse(localStorage.getItem("user"));
+  if (!user) {
+    alert("User not logged in");
+    return;
+  }
+
+  // Map selectedRequisition to MyRequisition-style payload
+  const payload = {
+    facility_id: facilityId,
+    priority: raisePriority.toLowerCase(),
+    remarks: raiseRemarks.trim() || `Raise to warehouse: ${selectedRequisition.item}`,
+    items: [
+      {
+        item_id: selectedRequisition.item_id,
+        quantity: parseInt(raiseRequiredQty, 10) || 1,
+        priority: raisePriority.toLowerCase(),
+      },
+    ],
   };
+
+  try {
+    setLoading(true);
+    const response = await axiosInstance.post(`${BaseUrl}/facility-requisitions`, payload);
+
+    if (response.data.success) {
+      alert("✅ Requisition raised to warehouse successfully!");
+      window.location.reload();
+    } else {
+      throw new Error(response.data.message || "Unknown error");
+    }
+  } catch (err) {
+    console.error("Raise to warehouse error:", err);
+    alert("Error: " + (err.message || "Submission failed"));
+  } finally {
+    setLoading(false);
+    setShowRaiseModal(false);
+    setSelectedRequisition(null);
+    setRaiseRequiredQty("");
+    setRaisePriority("Normal");
+    setRaiseRemarks("");
+  }
+};
   // ✅ ALL ACTION HANDLERS (handleDeliver, handleRaiseToWarehouse, submitDeliver, etc.) — COPY FROM YOUR ORIGINAL CODE BELOW
   // (They are long, so not repeated here for brevity — but they remain 100% unchanged)
 
@@ -821,16 +825,7 @@ const handleReject = (req) => {
           <td>{req.raisedOn}</td>
           <td className="text-center">
             <div className="d-flex justify-content-center gap-2 flex-wrap">
-              {/* Deliver */}
-              {((req.status === "Pending" || req.status === "Approved" || req.status === "Processing") && req.facilityStock >= req.qty) && (
-                <button
-                  className="btn btn-sm btn-success"
-                  onClick={() => handleDeliver(req)}
-                  title="Deliver from facility stock"
-                >
-                  Deliver
-                </button>
-              )}
+           
 
               {/* Raise to Warehouse & Add to Bulk (UNCHANGED) */}
               {isActionable && (

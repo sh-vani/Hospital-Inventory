@@ -12,286 +12,185 @@ import {
 } from "chart.js";
 import axios from "axios";
 import BaseUrl from "../Api/BaseUrl";
-import { FaCalendarAlt, FaFilter } from "react-icons/fa";
+import {
+  FaCalendarAlt,
+  FaFilter,
+  FaBoxes,
+  FaTruck,
+  FaExclamationTriangle,
+  FaUserFriends,
+  FaClipboardList,
+} from "react-icons/fa";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const ReportsAnalytics = () => {
-  const [reportType, setReportType] = useState("Requisition History");
+  const [reportType, setReportType] = useState("Low Stock");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [reportData, setReportData] = useState({
-    "Requisition History": [],
-    "Stock Level": [],
-    "Usage": [],
-    "Received Goods": [],
+    "Low Stock": [],
+    "Total Stock": [],
+    "Pending Requisition": [],
+    "Approved Requisition": [],
   });
-  const [dateFilter, setDateFilter] = useState({
-    startDate: "",
-    endDate: ""
-  });
-  const [statusFilter, setStatusFilter] = useState("all");
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Function to get facility ID from local storage
+  const [facilityMetrics, setFacilityMetrics] = useState({
+    total_items: 0,
+    total_stock: 0,
+    pending_requests: 0,
+    low_stock_items: 0,
+    todays_requests: 0,
+    facility_users: 0,
+  });
+
   const getFacilityId = () => {
     try {
-      // Get user object from local storage
       const userStr = localStorage.getItem("user");
-      if (!userStr) {
-        console.error("User not found in local storage");
-        return null;
-      }
-      
-      // Parse user object
+      if (!userStr) return null;
       const user = JSON.parse(userStr);
-      
-      // Return facility_id from user object
       return user.facility_id || null;
-    } catch (err) {
-      console.error("Error parsing user data:", err);
+    } catch {
       return null;
     }
   };
 
-  // Function to fetch requisition data
-  const fetchRequisitionData = async () => {
-    try {
-      const facilityId = getFacilityId();
-      if (!facilityId) {
-        throw new Error("Facility ID not found");
-      }
-      
-      const response = await axios.get(`${BaseUrl}/requisitions/facility/${facilityId}`);
-      
-      // Check if response has data
-      if (!response.data.success || !response.data.data) {
-        return [];
-      }
-      
-      // Transform API data to the format expected by the chart
-      const transformedData = response.data.data.map(item => {
-        // Extract date from created_at
-        const date = new Date(item.created_at).toLocaleDateString();
-        
-        // Calculate total requested and approved quantities from items
-        const totalRequested = item.items.reduce((sum, item) => sum + item.quantity, 0);
-        const totalApproved = item.items.reduce((sum, item) => sum + item.approved_quantity, 0);
-        
-        return {
-          label: date,
-          requested: totalRequested,
-          approved: totalApproved,
-          status: item.status,
-          priority: item.priority,
-          id: item.id,
-          // Keep the original date for filtering
-          originalDate: new Date(item.created_at)
-        };
-      });
-      
-      return transformedData;
-    } catch (err) {
-      console.error("Error fetching requisition data:", err);
-      throw err;
-    }
-  };
-
-  // Function to fetch inventory data
-  const fetchInventoryData = async () => {
-    try {
-      const facilityId = getFacilityId();
-      if (!facilityId) {
-        throw new Error("Facility ID not found");
-      }
-      
-      // Since only one API is working, we'll use mock data for inventory
-      // In a real scenario, this would be:
-      // const response = await axios.get(`${BaseUrl}/inventory/fasilities/${facilityId}`);
-      
-      // Mock data for demonstration
-      const mockInventoryData = {
-        stockLevels: [
-          { name: "Medicine A", quantity: 75 },
-          { name: "Medicine B", quantity: 60 },
-          { name: "PPE Kits", quantity: 85 },
-          { name: "Syringes", quantity: 50 },
-        ],
-        usage: [
-          { month: "Jan", quantity: 80 },
-          { month: "Feb", quantity: 75 },
-          { month: "Mar", quantity: 90 },
-          { month: "Apr", quantity: 85 },
-        ],
-        receivedGoods: [
-          { month: "Jan", quantity: 110 },
-          { month: "Feb", quantity: 95 },
-          { month: "Mar", quantity: 135 },
-          { month: "Apr", quantity: 100 },
-        ]
-      };
-      
-      // Transform API data to the format expected by the chart
-      const stockLevelData = mockInventoryData.stockLevels.map(item => ({
-        label: item.name,
-        stock: item.quantity,
-      }));
-      
-      const usageData = mockInventoryData.usage.map(item => ({
-        label: item.month,
-        used: item.quantity,
-      }));
-      
-      const receivedGoodsData = mockInventoryData.receivedGoods.map(item => ({
-        label: item.month,
-        received: item.quantity,
-      }));
-      
-      return {
-        "Stock Level": stockLevelData,
-        "Usage": usageData,
-        "Received Goods": receivedGoodsData,
-      };
-    } catch (err) {
-      console.error("Error fetching inventory data:", err);
-      // Return empty data if API fails
-      return {
-        "Stock Level": [],
-        "Usage": [],
-        "Received Goods": [],
-      };
-    }
-  };
-
-  // Function to fetch all report data
   const fetchReportData = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      // Check if facility ID exists
       const facilityId = getFacilityId();
       if (!facilityId) {
         setError("Facility information not found. Please log in again.");
+        setLoading(false);
         return;
       }
-      
-      // Fetch requisition data
-      const requisitionData = await fetchRequisitionData();
-      
-      // Fetch inventory data
-      const inventoryData = await fetchInventoryData();
-      
-      // Update state with fetched data
+
+      const response = await axios.get(`${BaseUrl}/reports/facility/${facilityId}`);
+      if (!response.data.success || !response.data.data) {
+        throw new Error("Invalid report data");
+      }
+
+      const apiData = response.data.data;
+
+      // Low Stock: [{ item_name, quantity }]
+      const lowStock = (apiData.low_stock_items || []).map((item) => ({
+        label: item.item_name,
+        stock: item.quantity,
+      }));
+
+      // Total Stock: [{ item_name, quantity }]
+      const totalStock = (apiData.total_stock_items || []).map((item) => ({
+        label: item.item_name,
+        stock: item.quantity,
+      }));
+
+      // Pending Requisitions: flatten items
+      const pendingRequisitions = (apiData.pending_requisitions || []).flatMap((req) =>
+        (req.items || []).map((item) => ({
+          label: item.item_name,
+          requested: item.quantity || 0,
+          approved: 0,
+          status: "pending",
+          originalDate: null,
+        }))
+      );
+
+      // Approved Requisitions
+      const approvedRequisitions = (apiData.approved_requisitions || []).flatMap((req) =>
+        (req.items || []).map((item) => ({
+          label: item.item_name,
+          requested: 0,
+          approved: item.approved_quantity || item.quantity || 0,
+          status: "approved",
+          originalDate: null,
+        }))
+      );
+
       setReportData({
-        "Requisition History": requisitionData,
-        "Stock Level": inventoryData["Stock Level"],
-        "Usage": inventoryData["Usage"],
-        "Received Goods": inventoryData["Received Goods"],
+        "Low Stock": lowStock,
+        "Total Stock": totalStock,
+        "Pending Requisition": pendingRequisitions,
+        "Approved Requisition": approvedRequisitions,
+      });
+
+      // Update facility metrics
+      const summary = apiData.total_stock_summary || {};
+      setFacilityMetrics({
+        total_items: summary.total_items || 0,
+        total_stock: summary.total_quantity || 0,
+        pending_requests: apiData.pending_requisitions?.length || 0,
+        low_stock_items: apiData.low_stock_items?.length || 0,
+        todays_requests: 0, // not in API
+        facility_users: 0,   // not in API
       });
     } catch (err) {
-      setError("Failed to fetch report data. Please try again.");
       console.error("Error fetching report data:", err);
+      setError("Failed to fetch report data. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch data when component mounts
   useEffect(() => {
     fetchReportData();
   }, [refreshKey]);
 
-  // Function to filter data based on date and status
+  // Since API doesn't provide dates, we skip filtering
   const getFilteredData = () => {
-    let data = [...reportData[reportType]];
-    
-    // Filter by date range if both dates are provided
-    if (dateFilter.startDate && dateFilter.endDate) {
-      data = data.filter(item => {
-        if (!item.originalDate) return true; // Skip if no date
-        
-        const itemDate = new Date(item.originalDate);
-        const startDate = new Date(dateFilter.startDate);
-        const endDate = new Date(dateFilter.endDate);
-        
-        // Set time to start and end of day to include all dates in range
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-        
-        return itemDate >= startDate && itemDate <= endDate;
-      });
-    }
-    
-    // Filter by status if not "all" and report type is Requisition History
-    if (statusFilter !== "all" && reportType === "Requisition History") {
-      data = data.filter(item => item.status === statusFilter);
-    }
-    
-    return data;
+    return reportData[reportType] || [];
   };
 
-  // Dynamic Chart Data based on selected report
   const getChartData = () => {
     const filteredData = getFilteredData();
-    
     switch (reportType) {
-      case "Requisition History":
+      case "Low Stock":
         return {
-          labels: filteredData.map((item) => item.label),
+          labels: filteredData.map((i) => i.label),
           datasets: [
             {
-              label: "Requested",
-              data: filteredData.map((item) => item.requested),
-              backgroundColor: "#0d6efd",
-              borderRadius: 4,
-              borderSkipped: false,
-            },
-            {
-              label: "Approved",
-              data: filteredData.map((item) => item.approved),
-              backgroundColor: "#198754",
-              borderRadius: 4,
-              borderSkipped: false,
-            },
-          ],
-        };
-      case "Stock Level":
-        return {
-          labels: filteredData.map((item) => item.label),
-          datasets: [
-            {
-              label: "Current Stock",
-              data: filteredData.map((item) => item.stock),
-              backgroundColor: "#ffc107",
-              borderRadius: 4,
-              borderSkipped: false,
-            },
-          ],
-        };
-      case "Usage":
-        return {
-          labels: filteredData.map((item) => item.label),
-          datasets: [
-            {
-              label: "Units Consumed",
-              data: filteredData.map((item) => item.used),
+              label: "Low Stock Quantity",
+              data: filteredData.map((i) => i.stock),
               backgroundColor: "#dc3545",
               borderRadius: 4,
-              borderSkipped: false,
             },
           ],
         };
-      case "Received Goods":
+      case "Total Stock":
         return {
-          labels: filteredData.map((item) => item.label),
+          labels: filteredData.map((i) => i.label),
           datasets: [
             {
-              label: "Goods Received",
-              data: filteredData.map((item) => item.received),
-              backgroundColor: "#20c997",
+              label: "Total Stock Quantity",
+              data: filteredData.map((i) => i.stock),
+              backgroundColor: "#0d6efd",
               borderRadius: 4,
-              borderSkipped: false,
+            },
+          ],
+        };
+      case "Pending Requisition":
+        return {
+          labels: filteredData.map((i) => i.label),
+          datasets: [
+            {
+              label: "Requested Quantity",
+              data: filteredData.map((i) => i.requested),
+              backgroundColor: "#ffc107",
+              borderRadius: 4,
+            },
+          ],
+        };
+      case "Approved Requisition":
+        return {
+          labels: filteredData.map((i) => i.label),
+          datasets: [
+            {
+              label: "Approved Quantity",
+              data: filteredData.map((i) => i.approved),
+              backgroundColor: "#198754",
+              borderRadius: 4,
             },
           ],
         };
@@ -300,49 +199,57 @@ const ReportsAnalytics = () => {
     }
   };
 
-  // Get facility name from local storage
   const getFacilityName = () => {
     try {
       const userStr = localStorage.getItem("user");
       if (!userStr) return "Unknown Facility";
-      
       const user = JSON.parse(userStr);
       return user.facility_name || "Unknown Facility";
-    } catch (err) {
-      console.error("Error parsing user data:", err);
+    } catch {
       return "Unknown Facility";
     }
   };
 
-  // Reset filters
   const resetFilters = () => {
-    setDateFilter({
-      startDate: "",
-      endDate: ""
-    });
-    setStatusFilter("all");
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((p) => p + 1);
   };
 
+  const MetricCard = ({ title, value, icon: Icon, color }) => (
+    <div className={`card text-white bg-${color} shadow-sm h-100`}>
+      <div className="card-body d-flex align-items-center">
+        <div className="me-3 fs-2">
+          <Icon />
+        </div>
+        <div>
+          <h6 className="card-title mb-0">{title}</h6>
+          <h4 className="card-text mb-0">{value}</h4>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="">
-      {/* Page Header */}
+    <div className="container-fluid px-3 px-md-4 py-3">
+      {/* Header */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
         <div>
           <h3 className="mb-0">Reports</h3>
-          <p className="text-muted mb-0">View analytics and insights for {getFacilityName()}</p>
+          <p className="text-muted mb-0">
+            View analytics and insights for {getFacilityName()}
+          </p>
         </div>
-        <button 
+        <button
           className="btn btn-outline-primary btn-sm"
-          onClick={() => setRefreshKey(prev => prev + 1)}
+          onClick={() => setRefreshKey((p) => p + 1)}
           disabled={loading}
         >
           {loading ? "Refreshing..." : "Refresh Data"}
         </button>
       </div>
 
+   
       <div className="row">
-        {/* Left Column - Report Filters */}
+        {/* Filters */}
         <div className="col-md-4">
           <div className="card shadow-sm">
             <div className="card-header">
@@ -353,79 +260,33 @@ const ReportsAnalytics = () => {
             <div className="card-body">
               <form>
                 <div className="mb-3">
-                  <label htmlFor="reportType" className="form-label">
-                    Report Type
-                  </label>
+                  <label className="form-label">Report Type</label>
                   <select
                     className="form-select"
-                    id="reportType"
                     value={reportType}
                     onChange={(e) => setReportType(e.target.value)}
                   >
-                    <option>Requisition History</option>
-                    <option>Stock Level</option>
-                    <option>Usage</option>
-                    <option>Received Goods</option>
+                    <option>Low Stock</option>
+                    <option>Total Stock</option>
+                    <option>Pending Requisition</option>
+                    <option>Approved Requisition</option>
                   </select>
                 </div>
 
-                {/* Date Range Filter */}
-                <div className="mb-3">
-                  <label className="form-label d-flex align-items-center gap-2">
-                    <FaCalendarAlt /> Date Range
-                  </label>
-                  <div className="row g-2">
-                    <div className="col-6">
-                      <input
-                        type="date"
-                        className="form-control"
-                        value={dateFilter.startDate}
-                        onChange={(e) => setDateFilter({...dateFilter, startDate: e.target.value})}
-                      />
-                    </div>
-                    <div className="col-6">
-                      <input
-                        type="date"
-                        className="form-control"
-                        value={dateFilter.endDate}
-                        onChange={(e) => setDateFilter({...dateFilter, endDate: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status Filter - Only show for Requisition History */}
-                {reportType === "Requisition History" && (
-                  <div className="mb-3">
-                    <label htmlFor="statusFilter" className="form-label">
-                      Status
-                    </label>
-                    <select
-                      className="form-select"
-                      id="statusFilter"
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                    >
-                      <option value="all">All Status</option>
-                      <option value="pending">Pending</option>
-                      <option value="approved">Approved</option>
-                      <option value="rejected">Rejected</option>
-                      <option value="delivered">Delivered</option>
-                    </select>
-                  </div>
-                )}
+                {/* ❌ Removed date filter since API doesn't support it */}
+                {/* You can re-enable later if backend adds created_at */}
 
                 <div className="d-grid gap-2">
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="btn btn-primary"
                     onClick={fetchReportData}
                     disabled={loading}
                   >
                     {loading ? "Loading..." : "Generate Report"}
                   </button>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="btn btn-outline-secondary"
                     onClick={resetFilters}
                     disabled={loading}
@@ -438,42 +299,23 @@ const ReportsAnalytics = () => {
           </div>
         </div>
 
-        {/* Right Column - Report Preview */} 
+        {/* Chart */}
         <div className="col-md-8">
           <div className="card shadow-sm">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Report Preview</h5>
-              <div className="d-flex gap-2">
-                {reportType === "Requisition History" && statusFilter !== "all" && (
-                  <span className="badge bg-info">
-                    Status: {statusFilter}
-                  </span>
-                )}
-                {dateFilter.startDate && dateFilter.endDate && (
-                  <span className="badge bg-info">
-                    {dateFilter.startDate} to {dateFilter.endDate}
-                  </span>
-                )}
-                <button className="btn btn-secondary btn-sm">Export</button>
-              </div>
+              <button className="btn btn-secondary btn-sm">Export</button>
             </div>
             <div className="card-body">
               <h6 className="mb-4">{reportType}</h6>
-
-              {error && (
-                <div className="alert alert-danger" role="alert">
-                  {error}
-                </div>
-              )}
+              {error && <div className="alert alert-danger">{error}</div>}
 
               {loading ? (
                 <div className="d-flex justify-content-center align-items-center" style={{ height: "300px" }}>
-                  <div className="spinner-border text-primary" role="status">
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
+                  <div className="spinner-border text-primary" role="status" />
                 </div>
               ) : (
-                <div style={{ height: "300px", position: "relative" }}>
+                <div style={{ height: "300px" }}>
                   {getFilteredData().length > 0 ? (
                     <Bar
                       data={getChartData()}
@@ -484,45 +326,25 @@ const ReportsAnalytics = () => {
                           legend: {
                             display: true,
                             position: "bottom",
-                            labels: {
-                              usePointStyle: true,
-                              padding: 20,
-                            },
-                          },
-                          tooltip: {
-                            callbacks: {
-                              label: function (context) {
-                                return `${context.dataset.label}: ${context.parsed.y}`;
-                              },
-                            },
+                            labels: { usePointStyle: true, padding: 20 },
                           },
                         },
                         scales: {
                           y: {
                             beginAtZero: true,
-                            grid: {
-                              color: "rgba(0, 0, 0, 0.05)",
-                            },
-                            ticks: {
-                              stepSize: 20,
-                              font: { size: 12 },
-                            },
+                            ticks: { stepSize: 20 },
                           },
                           x: {
                             grid: { display: false },
-                            ticks: { font: { size: 12, weight: "500" } },
                           },
                         },
                       }}
                     />
                   ) : (
                     <div className="d-flex justify-content-center align-items-center h-100 flex-column">
-                      <p className="text-muted">No data available with current filters.</p>
-                      <button 
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={resetFilters}
-                      >
-                        Reset Filters
+                      <p className="text-muted">No data available.</p>
+                      <button className="btn btn-sm btn-outline-primary" onClick={resetFilters}>
+                        Refresh
                       </button>
                     </div>
                   )}

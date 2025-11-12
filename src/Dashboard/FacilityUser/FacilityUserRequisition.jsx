@@ -128,35 +128,43 @@ const fetchRequisitionHistory = async (userId) => {
     const response = await axiosInstance.get(
       `${BaseUrl}/requisitions/user/${userId}`
     );
-    if (response.data.success && Array.isArray(response.data.data)) {
-      const formatted = response.data.data
-        .map((req) => {
-          const items = (req.items || []).map((item) => ({
-            item_id: item.item_id,
-            item_name: item.item_name || "Unnamed Item",
-            quantity: item.requested_quantity || 0, // ✅ Important: use requested_quantity
-            approved_quantity: item.approved_quantity || 0,
-            delivered_quantity: item.delivered_quantity || 0,
-            priority: (item.priority || "Normal").charAt(0).toUpperCase() + (item.priority || "Normal").slice(1),
-            description: item.description || "",
-          }));
 
-          const allItemNames = items.map(i => i.item_name).join(", ") || "N/A";
-          const totalQty = items.reduce((sum, i) => sum + (i.quantity || 0), 0);
+    if (response.data.success && Array.isArray(response.data.data)) {
+      // Wait a tick to ensure facilityItems is populated (or better: call after both are ready)
+      // But safer: enrich only after facilityItems is available
+      const enrichedHistory = response.data.data.map((req) => {
+        const enrichedItems = (req.items || []).map((item) => {
+          // Find corresponding item in facilityItems by item_id
+          const matchingFacilityItem = facilityItems.find(
+            (fi) => fi.id === item.item_id
+          );
 
           return {
-            id: req.id,
-            item_name: allItemNames,
-            total_quantity: totalQty,
-            status: (req.status || "").charAt(0).toUpperCase() + (req.status || "").slice(1),
-            priority: getHighestPriorityFromItems(items),
-            remarks: req.remarks || "",
-            items: items,
+            item_id: item.item_id,
+            item_name: matchingFacilityItem?.item_name || `Item ID: ${item.item_id}`,
+            quantity: item.quantity || 0,
+            approved_quantity: item.approved_quantity || 0,
+            delivered_quantity: item.delivered_quantity || 0,
+            priority: (item.priority || "normal").charAt(0).toUpperCase() + (item.priority || "normal").slice(1),
+            description: matchingFacilityItem?.description || "",
           };
-        })
-        .sort((a, b) => b.id - a.id);
+        });
 
-      setRequisitionHistory(formatted);
+        const allItemNames = enrichedItems.map(i => i.item_name).join(", ") || "N/A";
+        const totalQty = enrichedItems.reduce((sum, i) => sum + (i.quantity || 0), 0);
+
+        return {
+          id: req.requisition_id,
+          item_name: allItemNames,
+          total_quantity: totalQty,
+          status: (req.status || "").charAt(0).toUpperCase() + (req.status || "").slice(1),
+          priority: getHighestPriorityFromItems(enrichedItems),
+          remarks: req.remarks || "",
+          items: enrichedItems,
+        };
+      }).sort((a, b) => b.id - a.id);
+
+      setRequisitionHistory(enrichedHistory);
     } else {
       setRequisitionHistory([]);
     }
@@ -170,7 +178,6 @@ const fetchRequisitionHistory = async (userId) => {
     });
   }
 };
-
 
 
 const getHighestPriorityFromItems = (items) => {
@@ -187,19 +194,68 @@ const getHighestPriorityFromItems = (items) => {
 };
 useEffect(() => {
   const user = getUserFromStorage();
-  if (user) {
-    setDepartment(user.department || "N/A");
-    setUsername(user.name || "User");
-    if (user.id) {
-      fetchRequisitionHistory(user.id);
-    }
-  } else {
-    console.error("User not found in localStorage");
-  }
+  if (!user?.id) return;
 
-  // ✅ Fetch ALL inventory items (no facility_id)
-  fetchInventoryItems();
+  setDepartment(user.department || "N/A");
+  setUsername(user.name || "User");
+
+  // Fetch both in parallel
+  Promise.all([
+    fetchInventoryItems(),
+    axiosInstance.get(`${BaseUrl}/requisitions/user/${user.id}`)
+  ]).then(([, historyRes]) => {
+    // Now facilityItems is set, so we can enrich safely
+    // But we need to access updated facilityItems → so use a ref or refetch history after
+  });
 }, []);
+
+
+
+
+// Add this new useEffect
+useEffect(() => {
+  if (facilityItems.length > 0) {
+    // Re-process requisition history with item names
+    const user = getUserFromStorage();
+    if (!user?.id) return;
+
+    // Re-fetch or re-map using current facilityItems
+    const reEnrichHistory = async () => {
+      try {
+        const response = await axiosInstance.get(
+          `${BaseUrl}/requisitions/user/${user.id}`
+        );
+        if (response.data.success && Array.isArray(response.data.data)) {
+          const enriched = response.data.data.map((req) => {
+            const enrichedItems = (req.items || []).map((item) => {
+              const match = facilityItems.find(fi => fi.id === item.item_id);
+              return {
+                item_id: item.item_id,
+                item_name: match?.item_name || `Item ID: ${item.item_id}`,
+                quantity: item.quantity || 0,
+                priority: (item.priority || "normal").charAt(0).toUpperCase() + (item.priority || "normal").slice(1),
+              };
+            });
+            return {
+              id: req.requisition_id,
+              item_name: enrichedItems.map(i => i.item_name).join(", ") || "N/A",
+              total_quantity: enrichedItems.reduce((sum, i) => sum + (i.quantity || 0), 0),
+              status: (req.status || "").charAt(0).toUpperCase() + (req.status || "").slice(1),
+              priority: getHighestPriorityFromItems(enrichedItems),
+              remarks: req.remarks || "",
+              items: enrichedItems,
+            };
+          }).sort((a, b) => b.id - a.id);
+          setRequisitionHistory(enriched);
+        }
+      } catch (err) {
+        console.error("Re-enrich failed:", err);
+      }
+    };
+
+    reEnrichHistory();
+  }
+}, [facilityItems]); // Only runs when facilityItems is populated
   // ✅ Add to Bulk Cart
   const addToBulkCart = (item) => {
     const existing = bulkCart.find((i) => i.item_id === item.id);

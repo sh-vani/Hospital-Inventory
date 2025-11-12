@@ -72,11 +72,11 @@ useEffect(() => {
         icon: faTruck,
         path: "/superadmin/dispatches",
       },
-      {
-        name: "Reports",
-        icon: faChartLine,
-        path: "/superadmin/reports",
-      },
+      // {
+      //   name: "Reports",
+      //   icon: faChartLine,
+      //   path: "/superadmin/reports",
+      // },
       {
         name: "Assets",
         icon: faArchive,
@@ -118,11 +118,11 @@ useEffect(() => {
         icon: faWarehouse,
         path: "/warehouse/main-inventory",
       },
-      {
-        name: "Inventory",
-        icon: faWarehouse,
-        path: "/warehouse/inventory",
-      },
+      // {
+      //   name: "Inventory",
+      //   icon: faWarehouse,
+      //   path: "/warehouse/inventory",
+      // },
       {
         name: "Requisitions",
         icon: faClipboardList,
@@ -133,11 +133,11 @@ useEffect(() => {
         icon: faTruck,
         path: "/warehouse/dispatches",
       },
-      {
-        name: "Reports & Analytics",
-        icon: faChartLine,
-        path: "/warehouse/reports",
-      },
+      // {
+      //   name: "Reports & Analytics",
+      //   icon: faChartLine,
+      //   path: "/warehouse/reports",
+      // },
       // {
       //   name: " Returns & Recalls",
       //   icon: faRotateLeft,

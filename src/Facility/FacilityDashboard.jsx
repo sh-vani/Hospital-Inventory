@@ -63,10 +63,24 @@ const FacilityDashboard = () => {
         const result = await response.json();
 
         if (result.success && result.data) {
-          const { stats, low_stock_items = [], top_requested_items = [] } = result.data;
-          setStats(stats || {});
-          setLowStockItems(low_stock_items);
-          setTopRequestedItems(top_requested_items);
+          const apiData = result.data;
+
+          // ✅ Map API field names to your state keys
+          const mappedStats = {
+            facility_items: apiData.total_items || 0,
+            total_stock: apiData.total_stock || "0",
+            pending_user_requests: apiData.pending_requests || 0,
+            low_stock_items: apiData.low_stock_items || 0,
+            today_requests: apiData.todays_requests || 0,
+            incoming_dispatches: 0, // not in current API
+            facility_users: apiData.facility_users || 0,
+            facility_assets: 0, // not in current API
+          };
+
+          setStats(mappedStats);
+          // ✅ API only returns counts, not item lists — so keep these empty for now
+          setLowStockItems([]);
+          setTopRequestedItems([]);
         } else {
           throw new Error("Invalid API response structure");
         }
@@ -82,20 +96,24 @@ const FacilityDashboard = () => {
     fetchDashboardData();
   }, []);
 
-  // === DYNAMIC CHART DATA ===
+  // === DYNAMIC CHART DATA (with safe fallbacks) ===
   const topRequestedChartData = {
-    labels: topRequestedItems.map((item, index) => 
-      item.item_name || item.item_code || `Item ${index + 1}`
-    ),
+    labels: topRequestedItems.length > 0
+      ? topRequestedItems.map((item, index) => 
+          item.item_name || item.item_code || `Item ${index + 1}`
+        )
+      : ['No data'],
     datasets: [
       {
         label: 'Requests',
-        data: topRequestedItems.map(item => 
-          item.total_requests || 
-          item.request_count || 
-          item.quantity || 
-          0
-        ),
+        data: topRequestedItems.length > 0
+          ? topRequestedItems.map(item => 
+              item.total_requests || 
+              item.request_count || 
+              item.quantity || 
+              0
+            )
+          : [0],
         backgroundColor: 'rgba(54, 162, 235, 0.7)',
         borderColor: 'rgba(54, 162, 235, 1)',
         borderWidth: 1,
@@ -218,116 +236,125 @@ const FacilityDashboard = () => {
         </Col>
       </Row>
 
-{/* Facility Metrics Overview Chart */}
-<Row className="mb-4">
-  <Col>
-    <Card className="border-0 shadow-sm">
-      <Card.Body>
-        <Card.Title className="fw-semibold mb-3">Facility Metrics Overview</Card.Title>
-        <div style={{ height: '320px' }}>
-          <Bar
-            data={{
-              labels: [
-                'Total Items',
-                'Total Stock',
-                'Pending Requests',
-                'Low Stock Items',
-                'Today\'s Requests',
-                'Facility Users'
-              ],
-              datasets: [
-                {
-                  label: 'Count',
-                  data: [
-                    stats.facility_items,
-                    parseInt(stats.total_stock) || 0,
-                    stats.pending_user_requests,
-                    stats.low_stock_items,
-                    stats.today_requests,
-                    stats.facility_users
-                  ],
-                  backgroundColor: [
-                    '#0d6efd', // Total Items → matches blue card
-                    '#6610f2', // Total Stock → matches indigo card
-                    '#198754', // Pending Requests → green
-                    '#dc3545', // Low Stock → red
-                    '#ffc107', // Today's Requests → yellow
-                    '#0dcaf0'  // Facility Users → cyan
-                  ],
-                  borderColor: 'transparent',
-                  borderWidth: 0,
-                  borderRadius: 4,
-                  hoverBackgroundColor: [
-                    '#0b5ed7',
-                    '#5a0fb8',
-                    '#157347',
-                    '#d32f2f',
-                    '#e0a800',
-                    '#0bacd6'
-                  ],
-                },
-              ],
-            }}
-            options={{
-              indexAxis: 'y',
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: { display: false },
-                tooltip: {
-                  enabled: true,
-                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                  titleFont: { size: 14 },
-                  bodyFont: { size: 13 },
-                  padding: 10,
-                  displayColors: false,
-                },
-                datalabels: {
-                  display: true,
-                  color: '#000',
-                  font: { weight: 'bold', size: 13 },
-                  formatter: (value) => value,
-                  anchor: 'end',
-                  align: 'right',
-                  offset: -10,
-                }
-              },
-              scales: {
-                x: {
-                  beginAtZero: true,
-                  grid: {
-                    display: false,
-                    drawBorder: false,
-                  },
-                  ticks: {
-                    display: false, // Hide x-axis numbers (shown on bars)
-                    precision: 0,
-                  },
-                },
-                y: {
-                  grid: {
-                    display: false,
-                  },
-                  ticks: {
-                    font: { size: 13 },
-                    padding: 8,
-                  },
-                },
-              },
-              layout: {
-                padding: {
-                  right: 40, // Extra space for data labels
-                }
-              }
-            }}
-          />
-        </div>
-      </Card.Body>
-    </Card>
-  </Col>
-</Row>
+      {/* Facility Metrics Overview Chart */}
+      <Row className="mb-4">
+        <Col>
+          <Card className="border-0 shadow-sm">
+            <Card.Body>
+              <Card.Title className="fw-semibold mb-3">Facility Metrics Overview</Card.Title>
+              <div style={{ height: '320px' }}>
+                <Bar
+                  data={{
+                    labels: [
+                      'Total Items',
+                      'Total Stock',
+                      'Pending Requests',
+                      'Low Stock Items',
+                      'Today\'s Requests',
+                      'Facility Users'
+                    ],
+                    datasets: [
+                      {
+                        label: 'Count',
+                        data: [
+                          stats.facility_items,
+                          parseFloat(stats.total_stock) || 0,
+                          stats.pending_user_requests,
+                          stats.low_stock_items,
+                          stats.today_requests,
+                          stats.facility_users
+                        ],
+                        backgroundColor: [
+                          '#0d6efd',
+                          '#6610f2',
+                          '#198754',
+                          '#dc3545',
+                          '#ffc107',
+                          '#0dcaf0'
+                        ],
+                        borderColor: 'transparent',
+                        borderWidth: 0,
+                        borderRadius: 4,
+                        hoverBackgroundColor: [
+                          '#0b5ed7',
+                          '#5a0fb8',
+                          '#157347',
+                          '#d32f2f',
+                          '#e0a800',
+                          '#0bacd6'
+                        ],
+                      },
+                    ],
+                  }}
+                  options={{
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { display: false },
+                      tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                        titleFont: { size: 14 },
+                        bodyFont: { size: 13 },
+                        padding: 10,
+                        displayColors: false,
+                      },
+                      // ❌ Remove datalabels if you don't have 'chartjs-plugin-datalabels' installed
+                      // datalabels: { ... } ← causes error if plugin not registered
+                    },
+                    scales: {
+                      x: {
+                        beginAtZero: true,
+                        grid: {
+                          display: false,
+                          drawBorder: false,
+                        },
+                        ticks: {
+                          display: false,
+                          precision: 0,
+                        },
+                      },
+                      y: {
+                        grid: {
+                          display: false,
+                        },
+                        ticks: {
+                          font: { size: 13 },
+                          padding: 8,
+                        },
+                      },
+                    },
+                    layout: {
+                      padding: {
+                        right: 40,
+                      }
+                    }
+                  }}
+                />
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
 
-      {/* Low Stock Items Table */}
+      {/* Optional: Hide Top Requested Items Chart if no data (or remove if unused) */}
+      {topRequestedItems.length > 0 && (
+        <Row className="mb-4">
+          <Col>
+            <Card className="border-0 shadow-sm">
+              <Card.Body>
+                <Card.Title className="fw-semibold mb-3">Top Requested Items</Card.Title>
+                <div style={{ height: '250px' }}>
+                  <Bar data={topRequestedChartData} options={chartOptions} />
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
+      )}
+
+      {/* Low Stock Items Table (only shown if data exists) */}
       {lowStockItems.length > 0 && (
         <Row>
           <Col>

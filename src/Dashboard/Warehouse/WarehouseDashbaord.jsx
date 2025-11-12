@@ -42,67 +42,35 @@ const WarehouseDashboard = () => {
         
         if (response.data.success) {
           const data = response.data.data;
-          
-          // Update KPI data
+  
+          // ✅ KPI Data
           setKpiData({
-            totalStock: data.stats.total_stock,
-            lowStock: data.stats.low_stock_items.toString(),
-            pendingReqs: data.stats.pending_approvals.toString(),
+            totalStock: data.totalStock?.total_quantity?.toString() || "0",
+            lowStock: data.lowStock?.length?.toString() || "0",
+            pendingReqs: data.pendingRequisitions?.length?.toString() || "0",
           });
-          
-          // For now, we'll keep the mock dispatch data since the API doesn't provide monthly dispatch data
-          setDispatchData([
-            { month: "Jan", dispatched: 120 },
-            { month: "Feb", dispatched: 95 },
-            { month: "Mar", dispatched: 140 },
-            { month: "Apr", dispatched: 180 },
-            { month: "May", dispatched: 160 },
-            { month: "Jun", dispatched: 200 },
-            { month: "Jul", dispatched: 175 },
-            { month: "Aug", dispatched: 190 },
-            { month: "Sep", dispatched: 210 },
-            { month: "Oct", dispatched: 230 },
-          ]);
-          
-          // Mock consumption data for facilities
-          setConsumptionData([
-            { 
-              facility: "City General Hospital", 
-              "Surgical Gloves": 45, 
-              "Face Masks": 120, 
-              "Syringes": 85 
-            },
-            { 
-              facility: "Community Health Center", 
-              "Surgical Gloves": 30, 
-              "Face Masks": 90, 
-              "Syringes": 65 
-            },
-            { 
-              facility: "District Medical Facility", 
-              "Surgical Gloves": 60, 
-              "Face Masks": 150, 
-              "Syringes": 110 
-            },
-            { 
-              facility: "Rural Health Clinic", 
-              "Surgical Gloves": 25, 
-              "Face Masks": 70, 
-              "Syringes": 45 
-            },
-            { 
-              facility: "Emergency Medical Center", 
-              "Surgical Gloves": 75, 
-              "Face Masks": 180, 
-              "Syringes": 130 
-            },
-            { 
-              facility: "Pediatric Hospital", 
-              "Surgical Gloves": 40, 
-              "Face Masks": 100, 
-              "Syringes": 70 
-            }
-          ]);
+  
+          // ✅ Monthly Dispatch Chart → from consumptionTrend
+          const dispatchChartData = (data.consumptionTrend || []).map(item => ({
+            month: new Date(`${item.month}-01`).toLocaleString('default', { month: 'short' }), // Ensures valid date
+            dispatched: item.total_consumed || 0,
+          }));
+  
+          setDispatchData(dispatchChartData);
+  
+          // ✅ Consumption Trend: Group by facility (with safe fallbacks)
+          const facilityMap = (data.consumptionTrend || []).reduce((acc, item) => {
+            const name = item.facility_name?.trim() || "Unknown Facility";
+            acc[name] = (acc[name] || 0) + (item.total_consumed || 0);
+            return acc;
+          }, {});
+  
+          const consumptionChartData = Object.entries(facilityMap).map(([facility, total]) => ({
+            facility,
+            "Total Consumed": total,
+          }));
+  
+          setConsumptionData(consumptionChartData);
         }
         setLoading(false);
       } catch (err) {
@@ -110,7 +78,7 @@ const WarehouseDashboard = () => {
         setLoading(false);
       }
     };
-
+  
     fetchData();
   }, []);
 
@@ -139,6 +107,11 @@ const WarehouseDashboard = () => {
       </div>
     );
   }
+
+  // Fallback data to prevent Recharts from showing "item1", etc.
+  const chartConsumptionData = consumptionData.length > 0 
+    ? consumptionData 
+    : [{ facility: "No Data", "Total Consumed": 0 }];
 
   return (
     <div className="container-fluid py-4" style={{ minHeight: "100vh" }}>
@@ -185,16 +158,15 @@ const WarehouseDashboard = () => {
               style={{
                 borderRadius: "12px",
                 transition: "all 0.3s ease",
+                cursor: item.clickable ? "pointer" : "default",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-5px)";
-                e.currentTarget.style.boxShadow =
-                  "0 10px 25px rgba(0,0,0,0.08)";
+                e.currentTarget.style.boxShadow = "0 10px 25px rgba(0,0,0,0.08)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow =
-                  "0 2px 10px rgba(0,0,0,0.05)";
+                e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.05)";
               }}
               onClick={item.onClick}
             >
@@ -212,8 +184,7 @@ const WarehouseDashboard = () => {
                   style={{
                     width: "36px",
                     height: "36px",
-                    backgroundColor: `var(--bs-${item.bg}-rgb)`,
-                    opacity: 0.9,
+                    backgroundColor: `rgba(var(--bs-${item.bg}-rgb), 0.15)`,
                   }}
                 >
                   {item.icon}
@@ -260,6 +231,7 @@ const WarehouseDashboard = () => {
                     stroke="#3498db"
                     strokeWidth={2}
                     dot={{ r: 4 }}
+                    activeDot={{ r: 6 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -277,35 +249,33 @@ const WarehouseDashboard = () => {
             <div className="card-body" style={{ height: 350 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={consumptionData}
+                  data={chartConsumptionData}
                   margin={{
                     top: 20,
                     right: 30,
                     left: 20,
-                    bottom: 50,
+                    bottom: 80,
                   }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="facility" angle={-45} textAnchor="end" height={70} />
-                  <YAxis />
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: "8px",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                    }}
+                  <XAxis
+                    dataKey="facility"
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                    interval={0} // 👈 Ensures ALL facility names are shown
+                    tick={{ fontSize: 12 }}
                   />
+                  <YAxis />
+                  <Tooltip />
                   <Legend />
-                  <Bar dataKey="Surgical Gloves" fill="#8884d8" name="Surgical Gloves" />
-                  <Bar dataKey="Face Masks" fill="#82ca9d" name="Face Masks" />
-                  <Bar dataKey="Syringes" fill="#ffc658" name="Syringes" />
+                  <Bar dataKey="Total Consumed" fill="#8884d8" name="Total Consumed" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
         </div>
       </div>
-
-
     </div>
   );
 };

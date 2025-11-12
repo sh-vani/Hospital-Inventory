@@ -13,27 +13,36 @@ const WarehouseReturn = () => {
   const [action, setAction] = useState(""); // "Accept" or "Reject"
   const [remarks, setRemarks] = useState("");
 
-  // Fetch returns from API
   const fetchReturns = async () => {
     try {
       setLoading(true);
       setError(null);
       const response = await axios.get(`${BaseUrl}/returns-recall`);
 
-      const mappedReturns = (response.data || []).map((ret) => ({
-        id: `RET-${String(ret.id).padStart(3, "0")}`,
-        apiId: ret.id,
-        facility: ret.facility_name || `Facility ${ret.facility_id}`,
-        item: ret.item_name || `Item ${ret.item_id}`,
-        quantity: ret.quantity,
-        reason: ret.reason,
-        status: ret.status === "Pending" ? "Pending Verification" : ret.status,
-        remarks: ret.remark || "",
-        reject_reason: ret.reject_reason || "",
-        date: ret.created_at ? new Date(ret.created_at).toISOString().split("T")[0] : "N/A",
-        facility_id: ret.facility_id,
-        item_id: ret.item_id,
-      }));
+      if (!response.data?.success) {
+        throw new Error(response.data?.message || "Failed to fetch returns.");
+      }
+
+      const mappedReturns = (response.data.data || []).map((ret) => {
+        let uiStatus;
+        if (ret.status === "approved") uiStatus = "Processed";
+        else if (ret.status === "rejected") uiStatus = "Rejected";
+        else uiStatus = "Pending Verification"; // for "pending"
+
+        return {
+          id: `RET-${String(ret.id).padStart(3, "0")}`,
+          apiId: ret.id,
+          facility: `Facility ${ret.facility_id}`,
+          item: ret.item_name,
+          quantity: ret.quantity,
+          reason: ret.reason,
+          status: uiStatus,
+          remark: ret.remark || "",
+          reject_reason: ret.reject_reason || "",
+          accept_reason: ret.accept_reason || "",
+          date: ret.created_at ? new Date(ret.created_at).toISOString().split("T")[0] : "N/A",
+        };
+      });
 
       setReturns(mappedReturns);
     } catch (err) {
@@ -58,28 +67,31 @@ const WarehouseReturn = () => {
 
   const handleSubmitAction = async () => {
     if (!selectedReturn) return;
-  
-    // Validation: Reject must have a reason
-    if (action === "Reject" && !remarks.trim()) {
+
+    const trimmedRemarks = remarks.trim();
+    if (action === "Reject" && !trimmedRemarks) {
       alert("Please provide a rejection reason.");
       return;
     }
-  
+
     try {
       setLoading(true);
-  
+
+      let payload;
+      let endpoint;
+
       if (action === "Accept") {
-        const payload = {
-          accept_reason: remarks.trim() || "Items verified and accepted.",
-        };
-        await axios.patch(`${BaseUrl}/returns-recall/${selectedReturn.apiId}/accept`, payload);
+        payload = { accept_reason: trimmedRemarks || "Items verified and accepted." };
+        endpoint = `${BaseUrl}/returns-recall/${selectedReturn.apiId}/accept`;
       } else if (action === "Reject") {
-        const payload = {
-          reject_reason: remarks.trim(),
-        };
-        await axios.patch(`${BaseUrl}/returns-recall/${selectedReturn.apiId}/reject`, payload);
+        payload = { reject_reason: trimmedRemarks };
+        endpoint = `${BaseUrl}/returns-recall/${selectedReturn.apiId}/reject`;
+      } else {
+        throw new Error("Invalid action");
       }
-  
+
+      await axios.patch(endpoint, payload);
+
       // Optimistic UI update
       setReturns((prev) =>
         prev.map((r) =>
@@ -88,15 +100,15 @@ const WarehouseReturn = () => {
                 ...r,
                 status: action === "Accept" ? "Processed" : "Rejected",
                 ...(action === "Accept"
-                  ? { remarks: remarks.trim() || "Accepted", reject_reason: "" }
-                  : { reject_reason: remarks.trim() }),
+                  ? { accept_reason: payload.accept_reason, reject_reason: "" }
+                  : { reject_reason: payload.reject_reason, accept_reason: "" }),
               }
             : r
         )
       );
-  
+
       setShowModal(false);
-      alert(`${action}ed return successfully!`);
+      alert(`Return successfully ${action.toLowerCase()}ed!`);
     } catch (err) {
       console.error("Action submission error:", err);
       alert(`Failed to ${action.toLowerCase()} return. Please try again.`);
@@ -108,7 +120,7 @@ const WarehouseReturn = () => {
   const getStatusVariant = (status) => {
     if (status === "Processed") return "success";
     if (status === "Rejected") return "danger";
-    return "warning";
+    return "warning"; // Pending Verification
   };
 
   return (
@@ -229,7 +241,7 @@ const WarehouseReturn = () => {
           <Button
             variant={action === "Accept" ? "success" : "danger"}
             onClick={handleSubmitAction}
-            disabled={loading}
+            disabled={loading || (action === "Reject" && !remarks.trim())}
           >
             {loading ? "Processing..." : "Confirm"}
           </Button>

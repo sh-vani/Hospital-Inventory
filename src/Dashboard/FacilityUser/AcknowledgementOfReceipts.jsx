@@ -1,346 +1,288 @@
-import React, { useState, useEffect } from 'react';
-import { FaCheck, FaTimes, FaCamera, FaPaperclip, FaClock, FaBox, FaTruck, FaCalendarAlt, FaExclamationTriangle, FaCheckCircle, FaEye } from 'react-icons/fa';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import React, { useEffect, useState, useRef } from "react";
+import { Table, Card, Button, Spinner, Alert, Modal } from "react-bootstrap";
+import { FaSync, FaEye, FaPrint } from "react-icons/fa";
+import axios from "axios";
+import BaseUrl from "../../Api/BaseUrl";
 
-const AcknowledgementOfReceipts = () => {
-  // State for dispatched items
+const ApprovedReceipts = () => {
   const [receipts, setReceipts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [viewModalData, setViewModalData] = useState(null); // holds data for modal
+  const printRefs = useRef({});
 
-  // ✅ Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const entriesPerPage = 10;
+  const fetchApprovedReceipts = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-  // Simulate fetching data
-  useEffect(() => {
-    // In a real app, this would come from an API
-    const mockData = [
-      {
-        id: 'RCPT-001',
-        reqId: 'REQ-001',
-        itemName: 'Paracetamol 500mg',
-        batch: 'B789',
-        lot: 'L456',
-        expiryDate: '2024-06-15',
-        quantity: 100,
-        dispatchDate: '2023-10-25',
-        status: 'Confirmed',
-        warehouse: 'Main Warehouse',
-        condition: 'Good',
-        receiptDate: '2023-10-26',
-        notes: 'All items received in good condition',
-        attachment: 'photo1.jpg'
-      },
-      {
-        id: 'RCPT-002',
-        reqId: 'REQ-002',
-        itemName: 'Amoxicillin 500mg',
-        batch: 'B234',
-        lot: 'L789',
-        expiryDate: '2024-05-20',
-        quantity: 150,
-        dispatchDate: '2023-10-24',
-        status: 'Confirmed',
-        warehouse: 'Main Warehouse',
-        condition: 'Partially Damaged',
-        receiptDate: '2023-10-25',
-        notes: '2 boxes damaged during transit',
-        attachment: 'damage_report.pdf'
-      },
-      {
-        id: 'RCPT-003',
-        reqId: 'REQ-003',
-        itemName: 'Surgical Gloves',
-        batch: 'B567',
-        lot: 'L123',
-        expiryDate: '2025-01-10',
-        quantity: 200,
-        dispatchDate: '2023-10-23',
-        status: 'Pending',
-        warehouse: 'Main Warehouse',
-        condition: '',
-        receiptDate: '',
-        notes: '',
-        attachment: null
+      const userStr = localStorage.getItem("user");
+      if (!userStr) {
+        setError("User not logged in. Please log in again.");
+        setLoading(false);
+        return;
       }
-    ];
 
-    // Simulate API delay
-    setTimeout(() => {
-      setReceipts(mockData);
+      const user = JSON.parse(userStr);
+      const userId = user?.id;
+      if (!userId) {
+        setError("User ID not found.");
+        setLoading(false);
+        return;
+      }
+
+      const response = await axios.get(`${BaseUrl}/receipts/approved-receipts/${userId}`);
+
+      if (response.data?.success) {
+        const apiData = Array.isArray(response.data.data) ? response.data.data : [];
+        const normalized = apiData.map((req) => ({
+          requisition_id: req.requisition_id,
+          facility_id: req.facility_id,
+          status: req.status,
+          priority: req.priority || "normal",
+          total_approved_value: req.total_approved_value || 0,
+          items: Array.isArray(req.items) ? req.items : [],
+          created_at: req.created_at,
+        }));
+        setReceipts(normalized);
+      } else {
+        setError("Failed to fetch approved receipts");
+      }
+    } catch (err) {
+      console.error("API Error:", err);
+      setError("Error fetching approved receipts. Please try again later.");
+    } finally {
       setLoading(false);
-    }, 800);
+    }
+  };
+
+  useEffect(() => {
+    fetchApprovedReceipts();
   }, []);
 
-  // Handle view detail
-  const handleViewDetail = (receipt) => {
-    setSelectedReceipt(receipt);
-    setShowDetailModal(true);
+  const openViewModal = (receipt) => {
+    setViewModalData(receipt);
   };
 
-  // Get status badge class
-  const getStatusBadgeClass = (status) => {
-    switch (status) {
-      case 'Confirmed':
-        return 'bg-success';
-      case 'Pending':
-        return 'bg-secondary';
-      default:
-        return 'bg-secondary';
-    }
+  const closeViewModal = () => {
+    setViewModalData(null);
   };
 
-  // Format date for display
-  const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-  };
+  const handlePrint = (id) => {
+    const printContent = printRefs.current[id]?.innerHTML;
+    if (!printContent) return;
 
-  // ✅ Pagination logic
-  const totalPages = Math.ceil(receipts.length / entriesPerPage);
-  const indexOfLastEntry = currentPage * entriesPerPage;
-  const currentEntries = receipts.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
-
-  const handlePageChange = (page) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-    }
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Receipt #${id}</title>
+          <style>
+            body { 
+              font-family: 'Poppins', Arial, sans-serif; 
+              padding: 20px; 
+              max-width: 900px;
+              margin: 0 auto;
+            }
+            table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin-top: 10px; 
+            }
+            th, td { 
+              border: 1px solid #ddd; 
+              padding: 10px; 
+              text-align: left; 
+            }
+            th { 
+              background-color: #e9f7ef; 
+              color: #155724; 
+            }
+            .header { margin-bottom: 15px; }
+            .details { margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 4px; }
+          </style>
+        </head>
+        <body>
+          ${printContent}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
   };
 
   return (
-    <div className="">
-      {/* Header Section - Responsive */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
-        <div className="mb-3 mb-md-0">
-          <h3 className="fw-bold mb-1">Acknowledgement of Receipts</h3>
-          <p className="text-muted mb-0">Confirm receipt of items dispatched from warehouse</p>
-        </div>
-        <div className="d-flex align-items-center">
-          <div className="text-end me-3">
-            <div className="text-muted small">Department: Pharmacy</div>
-            <div>User: Dr. Sharma</div>
-          </div>
-          <div className="bg-light rounded-circle p-2 flex-shrink-0">
-            <FaTruck size={24} className="text-primary" />
-          </div>
-        </div>
-      </div>
+    <div className="container mt-4">
+      <Card className="shadow-sm">
+        <Card.Header className="d-flex justify-content-between align-items-center bg-light text-black">
+          <h5 className="mb-0">Approved Receipts</h5>
+          <Button
+            variant="light"
+            size="sm"
+            onClick={fetchApprovedReceipts}
+            disabled={loading}
+          >
+            <FaSync className={loading ? "spin" : ""} /> Refresh
+          </Button>
+        </Card.Header>
 
-      {/* Main Card - Responsive */}
-      <div className="card border-0 shadow-sm">
-        <div className="card-body p-0">
-          {loading ? (
-            <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-              <p className="mt-2 text-muted">Loading receipts...</p>
+        <Card.Body>
+          {loading && (
+            <div className="text-center">
+              <Spinner animation="border" variant="success" />
+              <p>Loading receipts...</p>
             </div>
-          ) : (
-            <>
-              <div className="table-responsive">
-                <table className="table table-hover mb-0">
-                  <thead className="table-light">
+          )}
+
+          {error && <Alert variant="danger">{error}</Alert>}
+
+          {!loading && receipts.length === 0 && !error && (
+            <Alert variant="info">No approved receipts found.</Alert>
+          )}
+
+          {!loading &&
+            receipts.length > 0 &&
+            receipts.map((req) => (
+              <div key={req.requisition_id} className="mb-4">
+                {/* Summary Bar */}
+                <div className="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                  <h6 className="mb-0 text-dark">
+                    <strong>Requisition ID:</strong> {req.requisition_id} |{" "}
+                    <strong>Priority:</strong> {req.priority.toUpperCase()} |{" "}
+                  
+                  </h6>
+                  <div>
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      className="me-2"
+                      onClick={() => openViewModal(req)}
+                    >
+                      <FaEye className="me-1" /> View Details
+                    </Button>
+                    <Button
+                      variant="outline-success"
+                      size="sm"
+                      onClick={() => handlePrint(req.requisition_id)}
+                    >
+                      <FaPrint className="me-1" /> Print
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Always-visible item table */}
+                <Table striped bordered hover responsive className="mt-2">
+                  <thead className="table-success">
                     <tr>
-                      <th>Receipt ID</th>
-                      <th>Req ID</th>
-                      <th>Item</th>
-                      <th>Qty</th>
-                      <th>Status</th>
-                      <th>Date</th>
-                      <th>Actions</th>
+                      <th>#</th>
+                      <th>Item Name</th>
+                      <th>Category</th>
+                      <th>Unit</th>
+                      <th>Requested Qty</th>
+                      <th>Approved Qty</th>
+                      <th>Item Cost (₹)</th>
+                      <th>Total Value (₹)</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {currentEntries.length > 0 ? (
-                      currentEntries.map((receipt) => (
-                        <tr key={receipt.id}>
-                          <td>{receipt.id}</td>
-                          <td>{receipt.reqId}</td>
-                          <td>
-                            <div className="d-flex align-items-center">
-                              <div className="me-2">
-                                <FaBox className="text-muted" />
-                              </div>
-                              <div>
-                                <div>{receipt.itemName}</div>
-                                {/* <small className="text-muted">Batch: {receipt.batch} | Lot: {receipt.lot}</small> */}
-                              </div>
-                            </div>
-                          </td>
-                          <td>{receipt.quantity} units</td>
-                          <td>
-                            <span className={`badge ${getStatusBadgeClass(receipt.status)}`}>
-                              {receipt.status}
-                            </span>
-                          </td>
-                          <td>{formatDate(receipt.receiptDate || receipt.dispatchDate)}</td>
-                          <td>
-                            <button
-                              className="btn btn-sm btn-outline-primary"
-                              onClick={() => handleViewDetail(receipt)}
-                            >
-                              <FaEye /> <span className="d-none d-md-inline-block ms-1">View</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="7" className="text-center py-4 text-muted">
-                          No receipts found.
-                        </td>
+                    {req.items.map((item, index) => (
+                      <tr key={item.item_id}>
+                        <td>{index + 1}</td>
+                        <td>{item.item_name}</td>
+                        <td>{item.category}</td>
+                        <td>{item.unit}</td>
+                        <td>{item.quantity}</td>
+                        <td>{item.approved_quantity}</td>
+                        <td>{item.item_cost}</td>
+                        <td>{item.item_cost * item.approved_quantity}</td>
                       </tr>
-                    )}
+                    ))}
                   </tbody>
-                </table>
+                </Table>
+
+                {/* Hidden print container */}
+                <div ref={(el) => (printRefs.current[req.requisition_id] = el)} style={{ display: "none" }}>
+                  <div className="header">
+                    <h4>Approved Receipt</h4>
+                    <p><strong>Requisition ID:</strong> {req.requisition_id}</p>
+                    <p><strong>Date:</strong> {new Date(req.created_at).toLocaleDateString()}</p>
+                    <p><strong>Total Approved Value:</strong> ₹{req.total_approved_value}</p>
+                  </div>
+                  <div className="details">
+                    <p><strong>Facility ID:</strong> {req.facility_id}</p>
+                    <p><strong>Status:</strong> {req.status}</p>
+                    <p><strong>Priority:</strong> {req.priority.toUpperCase()}</p>
+                  </div>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Item Name</th>
+                        <th>Category</th>
+                        <th>Unit</th>
+                        <th>Approved Qty</th>
+                        <th>Item Cost (₹)</th>
+                        <th>Total Value (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {req.items.map((item, index) => (
+                        <tr key={item.item_id}>
+                          <td>{index + 1}</td>
+                          <td>{item.item_name}</td>
+                          <td>{item.category}</td>
+                          <td>{item.unit}</td>
+                          <td>{item.approved_quantity}</td>
+                          <td>{item.item_cost}</td>
+                          <td>{(item.item_cost * item.approved_quantity).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+            ))}
+        </Card.Body>
+      </Card>
 
-
+      {/* View Details Modal */}
+      <Modal show={!!viewModalData} onHide={closeViewModal} size="lg">
+        <Modal.Header closeButton>
+          <Modal.Title>Requisition Details</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {viewModalData && (
+            <>
+              <p><strong>Requisition ID:</strong> {viewModalData.requisition_id}</p>
+              <p><strong>Facility ID:</strong> {viewModalData.facility_id}</p>
+              <p><strong>Status:</strong> {viewModalData.status}</p>
+              <p><strong>Priority:</strong> {viewModalData.priority.toUpperCase()}</p>
+              <p><strong>Created At:</strong> {new Date(viewModalData.created_at).toLocaleString()}</p>
+              <p><strong>Total Approved Value:</strong> ₹{viewModalData.total_approved_value}</p>
             </>
           )}
-        </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={closeViewModal}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
-      </div>
-      {/* ✅ PAGINATION UI — Always shown when not loading */}
-      <div className="d-flex justify-content-end mt-3">
-        <nav>
-          <ul className="pagination mb-0">
-            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-              <button
-                className="page-link"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </button>
-            </li>
-
-            {[...Array(totalPages)].map((_, i) => {
-              const page = i + 1;
-              return (
-                <li
-                  key={page}
-                  className={`page-item ${currentPage === page ? 'active' : ''}`}
-                >
-                  <button
-                    className="page-link"
-                    onClick={() => handlePageChange(page)}
-                  >
-                    {page}
-                  </button>
-                </li>
-              );
-            })}
-
-            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
-              <button
-                className="page-link"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages || totalPages === 0}
-              >
-                Next
-              </button>
-            </li>
-          </ul>
-        </nav>
-      </div>
-
-      {/* Receipt Detail Modal */}
-      <div className={`modal fade ${showDetailModal ? 'show' : ''}`} style={{ display: showDetailModal ? 'block' : 'none' }} tabIndex="-1">
-        <div className="modal-dialog modal-dialog-centered modal-lg">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">Receipt Details</h5>
-              <button type="button" className="btn-close" onClick={() => setShowDetailModal(false)}></button>
-            </div>
-            <div className="modal-body">
-              {selectedReceipt && (
-                <div className="row">
-                  <div className="col-12 mb-3">
-                    <h4 className="mb-0">{selectedReceipt.itemName}</h4>
-                    <div className="text-muted small">
-                      Receipt ID: {selectedReceipt.id} | Req ID: {selectedReceipt.reqId}
-                    </div>
-                  </div>
-
-                  <div className="col-md-6 mb-3">
-                    <strong>Batch/Lot:</strong>
-                    <div>Batch: {selectedReceipt.batch}</div>
-                    <div>Lot: {selectedReceipt.lot}</div>
-                  </div>
-
-                  <div className="col-md-6 mb-3">
-                    <strong>Expiry Date:</strong>
-                    <div>{formatDate(selectedReceipt.expiryDate)}</div>
-                  </div>
-
-                  <div className="col-md-6 mb-3">
-                    <strong>Quantity:</strong>
-                    <div>{selectedReceipt.quantity} units</div>
-                  </div>
-
-                  <div className="col-md-6 mb-3">
-                    <strong>Status:</strong>
-                    <div>
-                      <span className={`badge ${getStatusBadgeClass(selectedReceipt.status)}`}>
-                        {selectedReceipt.status}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="col-md-6 mb-3">
-                    <strong>Dispatch Date:</strong>
-                    <div>{formatDate(selectedReceipt.dispatchDate)}</div>
-                  </div>
-
-                  <div className="col-md-6 mb-3">
-                    <strong>Receipt Date:</strong>
-                    <div>{formatDate(selectedReceipt.receiptDate)}</div>
-                  </div>
-
-                  <div className="col-md-6 mb-3">
-                    <strong>Warehouse:</strong>
-                    <div>{selectedReceipt.warehouse}</div>
-                  </div>
-
-                  <div className="col-md-6 mb-3">
-                    <strong>Condition:</strong>
-                    <div>{selectedReceipt.condition || '-'}</div>
-                  </div>
-
-                  <div className="col-12 mb-3">
-                    <strong>Notes:</strong>
-                    <div>{selectedReceipt.notes || '-'}</div>
-                  </div>
-
-                  {selectedReceipt.attachment && (
-                    <div className="col-12 mb-3">
-                      <strong>Attachment:</strong>
-                      <div>
-                        <span className="badge bg-success">
-                          <FaCheckCircle className="me-1" /> {selectedReceipt.attachment}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowDetailModal(false)}>Close</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Modal Backdrop */}
-      {showDetailModal && <div className="modal-backdrop fade show"></div>}
+      <style>{`
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };
 
-export default AcknowledgementOfReceipts;
+export default ApprovedReceipts;

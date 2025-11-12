@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import {
-  FaClipboardList,
-  FaPlus,
-  FaEye,
-} from "react-icons/fa";
+import { FaClipboardList, FaPlus, FaEye } from "react-icons/fa";
 import BaseUrl from "../../src/Api/BaseUrl";
 
 const FacilityReturns = () => {
@@ -30,7 +26,7 @@ const FacilityReturns = () => {
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
-        return user.facility_id || 11; // 11 as fallback
+        return user.facility_id || 11;
       } catch (e) {
         console.warn("Invalid user in localStorage");
       }
@@ -38,25 +34,38 @@ const FacilityReturns = () => {
     return 11;
   };
 
-  // === FETCH INVENTORY (same logic as FacilityInventory) ===
+  // === FETCH INVENTORY (UPDATED LOGIC) ===
   const fetchInventory = async () => {
     try {
       const facilityId = getFacilityId();
-      const response = await axios.get(`${BaseUrl}/inventory/fasilities/${facilityId}`);
+      const response = await axios.get(`${BaseUrl}/inventory-facility/${facilityId}`);
 
-      let inventoryData = [];
+      let rawData = [];
       if (Array.isArray(response.data.data)) {
-        inventoryData = response.data.data;
+        rawData = response.data.data;
       } else if (response.data.data && typeof response.data.data === "object") {
-        inventoryData = [response.data.data];
+        rawData = [response.data.data];
       }
 
-      const normalized = inventoryData.map((item) => ({
-        id: item.id,
-        name: item.item_name || "Unnamed Item",
-        quantity: item.quantity || 0,
-        item_code: item.item_code || "N/A",
-      }));
+      const normalized = rawData
+        .filter((item) => {
+          if (!item.hasOwnProperty('id') || !item.hasOwnProperty('quantity')) return false;
+          const qty = typeof item.quantity === 'string'
+            ? parseFloat(item.quantity)
+            : item.quantity;
+          return typeof item.id === 'number' && !isNaN(qty) && qty >= 0;
+        })
+        .map((item) => {
+          const parsedQty = typeof item.quantity === 'string'
+            ? parseFloat(item.quantity)
+            : item.quantity;
+          return {
+            id: item.id,
+            name: item.item_name || "Unnamed Item",
+            quantity: isNaN(parsedQty) ? 0 : parsedQty,
+            item_code: item.item_code || "N/A",
+          };
+        });
 
       setInventoryItems(normalized);
     } catch (err) {
@@ -65,48 +74,44 @@ const FacilityReturns = () => {
     }
   };
 
-// === FETCH RETURN REQUESTS FOR THIS FACILITY ===
-const fetchReturnRequests = async () => {
-  try {
-    setLoading(true);
-    setError(null);
+  // === FETCH RETURN REQUESTS FOR THIS FACILITY ===
+  const fetchReturnRequests = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    const facilityId = getFacilityId();
-    const response = await axios.get(`${BaseUrl}/returns-recall/facility/${facilityId}`);
+      const facilityId = getFacilityId();
+      const response = await axios.get(`${BaseUrl}/returns-recall/facility/${facilityId}`);
 
-    // ✅ Handle both formats: response.data OR response.data.data
-    let returnData = [];
-    if (Array.isArray(response.data)) {
-      // Format: [ {...}, {...} ]
-      returnData = response.data;
-    } else if (response.data && Array.isArray(response.data.data)) {
-      // Format: { data: [ {...}, {...} ] }
-      returnData = response.data.data;
-    } else if (response.data && response.data.data && typeof response.data.data === 'object') {
-      // Single object case (unlikely for list, but safe)
-      returnData = [response.data.data];
+      let returnData = [];
+      if (Array.isArray(response.data)) {
+        returnData = response.data;
+      } else if (response.data && Array.isArray(response.data.data)) {
+        returnData = response.data.data;
+      } else if (response.data && response.data.data && typeof response.data.data === 'object') {
+        returnData = [response.data.data];
+      }
+
+      const mapped = returnData.map((req) => ({
+        id: `RET-${String(req.id).padStart(3, "0")}`,
+        apiId: req.id,
+        item: req.item_name || "Unknown Item",
+        quantity: req.quantity != null ? parseInt(req.quantity, 10) : 0,
+        reason: req.reason || "",
+        remarks: req.remark || "",
+        status: req.status === "Pending" ? "Pending Verification" : req.status || "Unknown",
+        date: req.created_at ? new Date(req.created_at).toISOString().split("T")[0] : "N/A",
+      }));
+
+      setReturnRequests(mapped);
+    } catch (err) {
+      console.error("Error fetching return requests:", err);
+      setError("Failed to load return requests.");
+      alert("Could not load your return history.");
+    } finally {
+      setLoading(false);
     }
-
-    const mapped = returnData.map((req) => ({
-      id: `RET-${String(req.id).padStart(3, "0")}`,
-      apiId: req.id,
-      item: req.item_name || "Unknown Item", // Now this will work!
-      quantity: req.quantity,
-      reason: req.reason,
-      remarks: req.remark || "",
-      status: req.status === "Pending" ? "Pending Verification" : req.status,
-      date: req.created_at ? new Date(req.created_at).toISOString().split("T")[0] : "N/A",
-    }));
-
-    setReturnRequests(mapped);
-  } catch (err) {
-    console.error("Error fetching return requests:", err);
-    setError("Failed to load return requests.");
-    alert("Could not load your return history.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // On component mount: fetch both inventory & returns
   useEffect(() => {
@@ -134,18 +139,23 @@ const fetchReturnRequests = async () => {
       return;
     }
 
-    const item = inventoryItems.find((i) => i.id == selectedItem);
     const qty = parseInt(quantity, 10);
-    if (!item || qty <= 0 || qty > item.quantity) {
+    if (isNaN(qty) || qty <= 0) {
+      alert("Please enter a valid quantity.");
+      return;
+    }
+
+    const selectedItemInt = parseInt(selectedItem, 10);
+    const item = inventoryItems.find((i) => i.id === selectedItemInt);
+    if (!item || qty > item.quantity) {
       alert("Invalid quantity or item.");
       return;
     }
 
     const facilityId = getFacilityId();
-
     const payload = {
       facility_id: facilityId,
-      item_id: parseInt(selectedItem, 10),
+      item_id: selectedItemInt,
       quantity: qty,
       reason: reason,
       remark: remarks || "",
@@ -155,11 +165,11 @@ const fetchReturnRequests = async () => {
       setLoading(true);
       await axios.post(`${BaseUrl}/returns-recall`, payload);
 
-      // ✅ REFRESH both inventory (stock reduced) and return list
+      // Refresh data
       await fetchInventory();
       await fetchReturnRequests();
 
-      // Reset form & close modal
+      // Reset & close
       setShowCreateModal(false);
       setSelectedItem("");
       setQuantity("");
@@ -230,9 +240,7 @@ const fetchReturnRequests = async () => {
               </div>
             </div>
           ) : returnRequests.length === 0 ? (
-            <p className="text-center text-muted py-3">
-              No return requests found
-            </p>
+            <p className="text-center text-muted py-3">No return requests found</p>
           ) : (
             <div className="table-responsive">
               <table className="table table-hover mb-0 align-middle">

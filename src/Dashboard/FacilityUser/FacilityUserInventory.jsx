@@ -117,6 +117,8 @@ const FacilityInventory = () => {
 
   // ✅ Modal handlers
   const openViewModal = (item) => {
+
+    
     setViewItem(item);
     setShowViewModal(true);
   };

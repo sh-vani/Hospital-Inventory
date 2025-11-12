@@ -90,8 +90,9 @@ const WarehouseMainInventory = () => {
 
   // Categorize items whenever inventory changes
   useEffect(() => {
+    // ✅ FIXED: Include ALL items where quantity < reorder_level (even negative!)
     const lowStock = inventory.filter(
-      (item) => item.quantity > 0 && item.quantity < item.reorder_level
+      (item) => item.quantity < item.reorder_level
     );
     const outOfStock = inventory.filter((item) => item.quantity === 0);
     const nearExpiry = inventory.filter((item) => {
@@ -103,6 +104,25 @@ const WarehouseMainInventory = () => {
     setOutOfStockItems(outOfStock);
     setNearExpiryItems(nearExpiry);
   }, [inventory]);
+  const openEditModal = (item) => {
+    setCurrentItem(item);
+    setEditForm({
+      item_code: item.item_code || "",
+      item_name: item.item_name || "",
+      category: item.category || "",
+      description: item.description || "",
+      unit: item.unit || "",
+      quantity: item.quantity?.toString() || "0",
+      reorder_level: item.reorder_level?.toString() || "0",
+      item_cost: item.item_cost?.toString() || "0",
+      // ✅ ISO string को input-friendly format में बदलें
+      expiry_date: formatDateForInput(item.expiry_date),
+    });
+    setShowEditModal(true);
+  };
+
+
+
 
   const filteredInventory = inventory.filter((item) => {
     const q = searchTerm.trim().toLowerCase();
@@ -113,8 +133,8 @@ const WarehouseMainInventory = () => {
       item.category.toLowerCase().includes(q);
     if (!matchesSearch) return false;
     if (filterType === "out_of_stock") return item.quantity === 0;
-    if (filterType === "low_stock")
-      return item.quantity > 0 && item.quantity < item.reorder_level;
+    // ✅ FIXED: Match same logic as lowStockItems
+    if (filterType === "low_stock") return item.quantity < item.reorder_level;
     if (filterType === "near_expiry") {
       if (!item.expiry_date) return false;
       const days = daysUntilExpiry(item.expiry_date);
@@ -161,7 +181,15 @@ const WarehouseMainInventory = () => {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString();
   };
-
+// ISO string या Date object को YYYY-MM-DD में बदले
+const formatDateForInput = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
   // === MODAL HANDLERS ===
   const openViewModal = async (item) => {
     setLoading(true);
@@ -172,8 +200,6 @@ const WarehouseMainInventory = () => {
       setShowViewModal(true);
     }
   };
-
-
 
   const openHistoryModal = (item) => {
     setCurrentItem(item);
@@ -220,34 +246,44 @@ const WarehouseMainInventory = () => {
       alert("Item ID not found.");
       return;
     }
-
+  
+    const safeParseInt = (value) => (value === "" || value == null ? 0 : parseInt(value, 10));
+    const safeParseFloat = (value) => (value === "" || value == null ? 0 : parseFloat(value));
+  
+    // ✅ expiry_date पहले से ही "YYYY-MM-DD" या "" है
+    const expiryDate = editForm.expiry_date === "" ? null : editForm.expiry_date;
+  
     const payload = {
-      item_code: editForm.item_code,
-      item_name: editForm.item_name,
-      category: editForm.category,
-      description: editForm.description || "",
-      unit: editForm.unit,
-      quantity: parseInt(editForm.quantity, 10) || 0,
-      reorder_level: parseInt(editForm.reorder_level, 10) || 0,
-      item_cost: parseFloat(editForm.item_cost) || 0,
-      expiry_date: editForm.expiry_date || null,
+      item_code: editForm.item_code?.trim() || "",
+      item_name: editForm.item_name?.trim() || "",
+      category: editForm.category?.trim() || "",
+      description: editForm.description?.trim() || "",
+      unit: editForm.unit?.trim() || "",
+      quantity: safeParseInt(editForm.quantity),
+      reorder_level: safeParseInt(editForm.reorder_level),
+      item_cost: safeParseFloat(editForm.item_cost),
+      expiry_date: expiryDate, // ✅ अब यह "2025-12-05" या null होगा
     };
-
+  
     try {
+      setLoading(true);
       const response = await axiosInstance.put(`${BaseUrl}/inventory/${currentItem.id}`, payload);
+  
       if (response.data?.success) {
         const updatedItem = { id: currentItem.id, ...payload };
         setInventory((prev) =>
           prev.map((item) => (item.id === currentItem.id ? updatedItem : item))
         );
-        alert(`Item ${editForm.item_code} updated successfully!`);
+        alert(`Item ${payload.item_code || 'N/A'} updated successfully!`);
         closeAllModals();
       } else {
         alert("Update failed: " + (response.data?.message || "Unknown error"));
       }
     } catch (err) {
       console.error("Edit error:", err);
-      alert("Error updating item: " + (err.response?.data?.message || err.message));
+      alert("Error updating item: " + (err.response?.data?.message || err.message || "Network error"));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -303,6 +339,7 @@ const WarehouseMainInventory = () => {
       setAddingItem(false);
     }
   };
+
   const handleDeleteItem = async (id) => {
     if (!window.confirm("Are you sure you want to delete this item?")) return;
   
@@ -322,6 +359,7 @@ const WarehouseMainInventory = () => {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (hoverRef.current && !hoverRef.current.contains(event.target)) {
@@ -333,6 +371,7 @@ const WarehouseMainInventory = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
   const goToPage = (page) => {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
@@ -401,145 +440,146 @@ const WarehouseMainInventory = () => {
           Clear Filter
         </button>
       </div>
-{/* Stats Cards */}
-<div className="row mb-4 g-3" ref={hoverRef}>
-  {/* Low Stock Card */}
-  <div className="col-md-4">
-    <div
-      className="card border-warning bg-warning bg-opacity-10 h-100"
-      onMouseEnter={() => setHoveredCard("lowStock")}
-      onClick={() => setHoveredCard("lowStock")}
-      style={{ cursor: "pointer" }}
-    >
-      <div className="card-body d-flex align-items-center">
-        <FaExclamationTriangle className="text-warning fs-2 me-3" />
-        <div className="flex-grow-1">
-          <h6 className="mb-0">Low Stock Items</h6>
-          <span className="fw-bold fs-5">{lowStockItems.length}</span>
-          {hoveredCard === "lowStock" && lowStockItems.length > 0 && (
-            <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
-              <h6 className="text-warning mb-2">Items Low in Stock</h6>
-              <div className="table-responsive">
-                <table className="table table-sm mb-0">
-                  <thead>
-                    <tr>
-                      <th>Item Name</th>
-                      <th>Qty</th>
-                      <th>Reorder</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lowStockItems.slice(0, 5).map((item) => (
-                      <tr key={item.id}>
-                        <td>{item.item_name}</td>
-                        <td className="text-warning">{item.quantity}</td>
-                        <td>{item.reorder_level}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {lowStockItems.length > 5 && (
-                <div className="text-center mt-2">
-                  <small className="text-muted">+{lowStockItems.length - 5} more</small>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  </div>
 
-  {/* Out of Stock Card */}
-  <div className="col-md-4">
-    <div
-      className="card border-danger bg-danger bg-opacity-10 h-100"
-      onMouseEnter={() => setHoveredCard("outOfStock")}
-      onClick={() => setHoveredCard("outOfStock")}
-      style={{ cursor: "pointer" }}
-    >
-      <div className="card-body d-flex align-items-center">
-        <FaTimes className="text-danger fs-2 me-3" />
-        <div className="flex-grow-1">
-          <h6 className="mb-0">Out of Stock</h6>
-          <span className="fw-bold fs-5">{outOfStockItems.length}</span>
-          {hoveredCard === "outOfStock" && outOfStockItems.length > 0 && (
-            <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
-              <h6 className="text-danger mb-2">Out of Stock Items</h6>
-              <div className="table-responsive">
-                <table className="table table-sm mb-0">
-                  <thead>
-                    <tr>
-                      <th>Code</th>
-                      <th>Name</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {outOfStockItems.map((item) => (
-                      <tr key={item.id}>
-                        <td>{item.item_code}</td>
-                        <td>{item.item_name}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+      {/* Stats Cards */}
+      <div className="row mb-4 g-3" ref={hoverRef}>
+        {/* Low Stock Card */}
+        <div className="col-md-4">
+          <div
+            className="card border-warning bg-warning bg-opacity-10 h-100"
+            onMouseEnter={() => setHoveredCard("lowStock")}
+            onClick={() => setHoveredCard("lowStock")}
+            style={{ cursor: "pointer" }}
+          >
+            <div className="card-body d-flex align-items-center">
+              <FaExclamationTriangle className="text-warning fs-2 me-3" />
+              <div className="flex-grow-1">
+                <h6 className="mb-0">Low Stock Items</h6>
+                <span className="fw-bold fs-5">{lowStockItems.length}</span>
+                {hoveredCard === "lowStock" && lowStockItems.length > 0 && (
+                  <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
+                    <h6 className="text-warning mb-2">Items Low in Stock</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm mb-0">
+                        <thead>
+                          <tr>
+                            <th>Item Name</th>
+                            <th>Qty</th>
+                            <th>Reorder</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lowStockItems.slice(0, 5).map((item) => (
+                            <tr key={item.id}>
+                              <td>{item.item_name}</td>
+                              <td className="text-warning">{item.quantity}</td>
+                              <td>{item.reorder_level}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {lowStockItems.length > 5 && (
+                      <div className="text-center mt-2">
+                        <small className="text-muted">+{lowStockItems.length - 5} more</small>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
-          )}
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
 
-  {/* Near Expiry Card */}
-  <div className="col-md-4">
-    <div
-      className="card border-info bg-info bg-opacity-10 h-100"
-      onMouseEnter={() => setHoveredCard("nearExpiry")}
-      onClick={() => setHoveredCard("nearExpiry")}
-      style={{ cursor: "pointer" }}
-    >
-      <div className="card-body d-flex align-items-center">
-        <FaClock className="text-info fs-2 me-3" />
-        <div className="flex-grow-1">
-          <h6 className="mb-0">Near Expiry</h6>
-          <span className="fw-bold fs-5">{nearExpiryItems.length}</span>
-          {hoveredCard === "nearExpiry" && nearExpiryItems.length > 0 && (
-            <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
-              <h6 className="text-info mb-2">Expiring Soon</h6>
-              <div className="table-responsive">
-                <table className="table table-sm mb-0">
-                  <thead>
-                    <tr>
-                      <th>Item</th>
-                      <th>Expiry</th>
-                      <th>Days</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {nearExpiryItems.map((item) => {
-                      const daysLeft = daysUntilExpiry(item.expiry_date);
-                      return (
-                        <tr key={item.id}>
-                          <td>{item.item_name}</td>
-                          <td>{formatDate(item.expiry_date)}</td>
-                          <td className={daysLeft <= 7 ? "text-danger fw-bold" : "text-warning"}>
-                            {daysLeft}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+        {/* Out of Stock Card */}
+        <div className="col-md-4">
+          <div
+            className="card border-danger bg-danger bg-opacity-10 h-100"
+            onMouseEnter={() => setHoveredCard("outOfStock")}
+            onClick={() => setHoveredCard("outOfStock")}
+            style={{ cursor: "pointer" }}
+          >
+            <div className="card-body d-flex align-items-center">
+              <FaTimes className="text-danger fs-2 me-3" />
+              <div className="flex-grow-1">
+                <h6 className="mb-0">Out of Stock</h6>
+                <span className="fw-bold fs-5">{outOfStockItems.length}</span>
+                {hoveredCard === "outOfStock" && outOfStockItems.length > 0 && (
+                  <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
+                    <h6 className="text-danger mb-2">Out of Stock Items</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm mb-0">
+                        <thead>
+                          <tr>
+                            <th>Code</th>
+                            <th>Name</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {outOfStockItems.map((item) => (
+                            <tr key={item.id}>
+                              <td>{item.item_code}</td>
+                              <td>{item.item_name}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          )}
+          </div>
+        </div>
+
+        {/* Near Expiry Card */}
+        <div className="col-md-4">
+          <div
+            className="card border-info bg-info bg-opacity-10 h-100"
+            onMouseEnter={() => setHoveredCard("nearExpiry")}
+            onClick={() => setHoveredCard("nearExpiry")}
+            style={{ cursor: "pointer" }}
+          >
+            <div className="card-body d-flex align-items-center">
+              <FaClock className="text-info fs-2 me-3" />
+              <div className="flex-grow-1">
+                <h6 className="mb-0">Near Expiry</h6>
+                <span className="fw-bold fs-5">{nearExpiryItems.length}</span>
+                {hoveredCard === "nearExpiry" && nearExpiryItems.length > 0 && (
+                  <div className="position-absolute top-100 start-0 mt-2 p-3 bg-white border rounded shadow-sm z-1 w-300px">
+                    <h6 className="text-info mb-2">Expiring Soon</h6>
+                    <div className="table-responsive">
+                      <table className="table table-sm mb-0">
+                        <thead>
+                          <tr>
+                            <th>Item</th>
+                            <th>Expiry</th>
+                            <th>Days</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {nearExpiryItems.map((item) => {
+                            const daysLeft = daysUntilExpiry(item.expiry_date);
+                            return (
+                              <tr key={item.id}>
+                                <td>{item.item_name}</td>
+                                <td>{formatDate(item.expiry_date)}</td>
+                                <td className={daysLeft <= 7 ? "text-danger fw-bold" : "text-warning"}>
+                                  {daysLeft}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
-</div>
 
       {/* Net Worth Card */}
       <div className="row mb-4 g-3">
@@ -616,9 +656,15 @@ const WarehouseMainInventory = () => {
                       <td>{getStatusBadge(calculateStatus(item))}</td>
                       <td>
   <div className="btn-group">
-
     <button className="btn btn-sm btn-outline-success" onClick={() => openViewModal(item)}>
       View
+    </button>
+    <button 
+      className="btn btn-sm btn-outline-primary" 
+      onClick={() => openEditModal(item)}
+      title="Edit Item"
+    >
+      <FaEdit />
     </button>
     <button 
       className="btn btn-sm btn-outline-danger" 
@@ -797,7 +843,6 @@ const WarehouseMainInventory = () => {
         </div>
       )}
 
-
       {/* ===== VIEW MODAL ===== */}
       {showViewModal && viewItem && (
         <div className="modal show d-block" tabIndex="-1">
@@ -902,7 +947,134 @@ const WarehouseMainInventory = () => {
           </div>
         </div>
       )}
-
+{/* ===== EDIT MODAL ===== */}
+{showEditModal && currentItem && (
+  <div className="modal show d-block" tabIndex="-1">
+    <div className="modal-dialog modal-lg">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">Edit Inventory Item</h5>
+          <button type="button" className="btn-close" onClick={closeAllModals}></button>
+        </div>
+        <div className="modal-body">
+          <form>
+            <div className="row g-3">
+              <div className="col-md-6">
+                <label className="form-label">Item Code</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="item_code"
+                  value={editForm.item_code}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label">Category</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="category"
+                  value={editForm.category}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="col-md-12">
+                <label className="form-label">Item Name</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="item_name"
+                  value={editForm.item_name}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="col-md-12">
+                <label className="form-label">Description</label>
+                <textarea
+                  className="form-control"
+                  name="description"
+                  value={editForm.description || ""}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label">Unit</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  name="unit"
+                  value={editForm.unit}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label">Quantity</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  name="quantity"
+                  value={editForm.quantity}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label">Reorder Level</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  name="reorder_level"
+                  value={editForm.reorder_level || ""}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="col-md-3">
+                <label className="form-label">Item Cost (GHS)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="form-control"
+                  name="item_cost"
+                  value={editForm.item_cost}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label">Expiry Date</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  name="expiry_date"
+                  value={editForm.expiry_date || ""}
+                  onChange={handleInputChange}
+                />
+              </div>
+            </div>
+          </form>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={closeAllModals}>
+            Cancel
+          </button>
+          <button
+            className="btn btn-primary"
+            onClick={handleSaveEdit}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                Saving...
+              </>
+            ) : (
+              "Save Changes"
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
       {/* Modal Backdrop */}
       {(showAddModal || showEditModal || showViewModal || showHistoryModal) && (
         <div className="modal-backdrop fade show"></div>
