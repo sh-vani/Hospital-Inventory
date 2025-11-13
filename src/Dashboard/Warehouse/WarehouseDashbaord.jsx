@@ -45,11 +45,10 @@ const WarehouseDashboard = () => {
   
           // ✅ KPI Data
           setKpiData({
-            totalStock: data.totalStock?.total_quantity?.toString() || "0",
+            totalStock: data.totalStock?.total_value?.toString() || "0",
             lowStock: data.lowStock?.length?.toString() || "0",
             pendingReqs: data.pendingRequisitions?.length?.toString() || "0",
           });
-  
           // ✅ Monthly Dispatch Chart → from consumptionTrend
           const dispatchChartData = (data.consumptionTrend || []).map(item => ({
             month: new Date(`${item.month}-01`).toLocaleString('default', { month: 'short' }), // Ensures valid date
