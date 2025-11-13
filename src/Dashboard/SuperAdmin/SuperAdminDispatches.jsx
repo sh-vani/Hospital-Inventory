@@ -36,8 +36,22 @@ const SuperAdminDispatches = () => {
       setError(null);
       const response = await axiosInstance.get(`${BaseUrl}/dispatches?page=${page}&limit=10`);
       if (response.data.success) {
-        setDispatches(response.data.data);
-        setPagination(response.data.data);
+        // Transform the data to match what your component expects
+        const transformedData = response.data.data.map(item => ({
+          ...item,
+          items: [{  // Create an items array with the current item
+            item_name: item.item_name,
+            quantity: 1, // Default quantity since it's not in the response
+            unit: 'N/A' // Default unit since it's not in the response
+          }]
+        }));
+        setDispatches(transformedData);
+        setPagination({
+          currentPage: page,
+          totalPages: Math.ceil(response.data.count / 10),
+          totalItems: response.data.count,
+          itemsPerPage: 10
+        });
       } else {
         setError('Failed to fetch dispatches');
       }
@@ -64,7 +78,8 @@ const SuperAdminDispatches = () => {
       'in_transit': 'bg-warning text-dark',
       'processing': 'bg-info text-dark',
       'pending': 'bg-primary',
-      'cancelled': 'bg-danger'
+      'cancelled': 'bg-danger',
+      'dispatched': 'bg-warning text-dark'
     };
     const displayStatus = status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Unknown';
     return <span className={`badge ${map[status] || 'bg-secondary'}`}>{displayStatus}</span>;
@@ -108,7 +123,7 @@ const SuperAdminDispatches = () => {
     return (
       (d.id && d.id.toString().toLowerCase().includes(q)) ||
       (d.facility_name && d.facility_name.toLowerCase().includes(q)) ||
-      (d.dispatched_by && d.dispatched_by.toLowerCase().includes(q)) ||
+      (d.tracking_number && d.tracking_number.toLowerCase().includes(q)) ||
       (d.status && d.status.toLowerCase().includes(q)) ||
       (d.items && d.items.some(item => item.item_name && item.item_name.toLowerCase().includes(q)))
     );
@@ -129,7 +144,7 @@ const SuperAdminDispatches = () => {
 
   // Calculate stats for cards
   const totalDispatches = dispatches.length;
-  const inTransitCount = dispatches.filter(d => d.status === 'in_transit').length;
+  const inTransitCount = dispatches.filter(d => d.status === 'in_transit' || d.status === 'dispatched').length;
   const deliveredCount = dispatches.filter(d => d.status === 'delivered').length;
   const pendingCount = dispatches.filter(d => d.status === 'pending').length;
 
@@ -242,12 +257,12 @@ const SuperAdminDispatches = () => {
             <table className="table table-hover mb-0 align-middle">
               <thead className="bg-light">
                 <tr>
-                  <th>Dispatch ID</th>
+                  <th>Tracking Number</th>
                   <th>Facility</th>
                   <th>Items</th>
                   <th>Qty</th>
                   <th>Status</th>
-                  <th>Date</th>
+                  {/* <th>Date</th> */}
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -257,12 +272,12 @@ const SuperAdminDispatches = () => {
                 ) : (
                   filtered.map((dispatch, index) => (
                     <tr key={dispatch.id || index}>
-                      <td className="fw-bold">Tracking Number:{index+1}</td>
+                      <td className="fw-bold">{dispatch.tracking_number || `#${dispatch.id}`}</td>
                       <td>{dispatch.facility_name || 'Unknown Facility'}</td>
                       <td>{getItemsPreview(dispatch.items)}</td>
                       <td>{getTotalQty(dispatch.items)}</td>
                       <td><StatusBadge status={dispatch.status} /></td>
-                      <td>{dispatch.created_at ? new Date(dispatch.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}</td>
+                      {/* <td>{dispatch.created_at ? new Date(dispatch.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}</td> */}
                       <td>
                         <button
                           className="btn btn-sm btn-outline-primary"
@@ -292,7 +307,7 @@ const SuperAdminDispatches = () => {
                   <div className="card">
                     <div className="card-body">
                       <div className="d-flex justify-content-between align-items-center mb-2">
-                        <span className="fw-bold">#{d.id}</span>
+                        <span className="fw-bold">{d.tracking_number || `#${d.id}`}</span>
                         <StatusBadge status={d.status} />
                       </div>
 
@@ -366,7 +381,7 @@ const SuperAdminDispatches = () => {
           <div className="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Dispatch Details: #{currentDispatch.id}</h5>
+                <h5 className="modal-title">Dispatch Details: {currentDispatch.tracking_number || `#${currentDispatch.id}`}</h5>
                 <button type="button" className="btn-close" onClick={() => setShowViewModal(false)}></button>
               </div>
               <div className="modal-body">
@@ -378,7 +393,7 @@ const SuperAdminDispatches = () => {
                     </div>
                     <div className="d-flex align-items-center mb-2">
                       <FaUser className="text-primary me-2" />
-                      <p className="mb-0"><strong>Dispatched By:</strong> {currentDispatch.dispatched_by || 'N/A'}</p>
+                      <p className="mb-0"><strong>Tracking Number:</strong> {currentDispatch.tracking_number || 'N/A'}</p>
                     </div>
                     <div className="d-flex align-items-center mb-2">
                       <FaCalendarAlt className="text-primary me-2" />
@@ -386,8 +401,9 @@ const SuperAdminDispatches = () => {
                     </div>
                   </div>
                   <div className="col-12 col-md-6">
-                 
                     <p className="mb-1"><strong>Status:</strong> <StatusBadge status={currentDispatch.status} /></p>
+                    <p className="mb-1"><strong>Requisition ID:</strong> {currentDispatch.requisition_id || 'N/A'}</p>
+                    <p className="mb-1"><strong>Remark:</strong> {currentDispatch.remark || 'N/A'}</p>
                   </div>
                 </div>
 
@@ -430,7 +446,7 @@ const SuperAdminDispatches = () => {
                   <h6 className="mb-2">Notes:</h6>
                   <div className="card bg-light">
                     <div className="card-body">
-                      {currentDispatch.notes || '—'}
+                      {currentDispatch.notes || currentDispatch.remark || '—'}
                     </div>
                   </div>
                 </div>

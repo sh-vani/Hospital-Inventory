@@ -341,110 +341,101 @@ useEffect(() => {
     }
   };
 
-// Handle individual submission
-const handleIndividualSubmit = async (e) => {
-  e.preventDefault();
-
-  if (!selectedItem || !quantity || parseInt(quantity) <= 0) {
-    Swal.fire({
-      icon: "warning",
-      title: "Incomplete Form",
-      text: "Please select an item and enter a valid quantity.",
-    });
-    return;
-  }
-
-  const user = getUserFromStorage();
-
-  // 🔍 Debug: Log user object
-  console.log("User from localStorage:", user);
-
-  // ✅ Strict validation for user session
-  if (!user || !user.id || !user.facility_id) {
-    Swal.fire({
-      icon: "error",
-      title: "Session Error",
-      text: "User session invalid. Please log in again.",
-    });
-    return;
-  }
-
-  // ✅ Ensure user.id is a number (not string)
-  const userId = Number(user.id);
-  const facilityId = Number(user.facility_id);
-
-  if (isNaN(userId) || isNaN(facilityId)) {
-    Swal.fire({
-      icon: "error",
-      title: "Invalid User Data",
-      text: "User ID or Facility ID is invalid. Please log in again.",
-    });
-    return;
-  }
-
-  setLoading(true);
-  try {
-    const payload = {
-      user_id: userId, // ✅ Ensure number
-      facility_id: facilityId, // ✅ Ensure number
-      priority: priority.toLowerCase(),
-      remarks: remarks.trim() || "",
-      items: [
-        {
-          item_id: parseInt(selectedItem, 10),
-          quantity: parseInt(quantity, 10),
-          priority: priority.toLowerCase(),
-        },
-      ],
-    };
-
-    // 🔍 Debug: Log final payload
-    console.log("Submitting payload:", payload);
-
-    const response = await axiosInstance.post(
-      `${BaseUrl}/requisitions`,
-      payload
-    );
-
-    if (response.data.success) {
-      setSuccess(true);
-      await fetchRequisitionHistory(userId); // ✅ Use userId directly
-      resetIndividualForm();
-      setShowRequisitionModal(false);
+  const handleIndividualSubmit = async (e) => {
+    e.preventDefault();
+  
+    if (!selectedItem || !quantity || parseInt(quantity) <= 0) {
       Swal.fire({
-        icon: "success",
-        title: "Submitted!",
-        text: "Your requisition has been submitted to Facility Admin.",
-        timer: 3000,
-        showConfirmButton: false,
+        icon: "warning",
+        title: "Incomplete Form",
+        text: "Please select an item and enter a valid quantity.",
       });
-    } else {
+      return;
+    }
+  
+    const user = getUserFromStorage();
+    if (!user || !user.id || !user.facility_id) {
       Swal.fire({
         icon: "error",
-        title: "Submission Failed",
-        text:
-          "Failed to submit requisition: " +
-          (response.data.message || "Unknown error"),
+        title: "Session Error",
+        text: "User session invalid. Please log in again.",
       });
+      return;
     }
-  } catch (error) {
-    console.error("Submission error:", error);
-    const msg =
-      error.response?.data?.message ||
-      error.message ||
-      "Network error. Please try again.";
-    Swal.fire({
-      icon: "error",
-      title: "Error",
-      text: msg,
-    });
-  } finally {
-    setLoading(false);
-    setTimeout(() => setSuccess(false), 3000);
-  }
-};
+  
+    const userId = Number(user.id);
+    const facilityId = Number(user.facility_id);
+    if (isNaN(userId) || isNaN(facilityId)) {
+      Swal.fire({
+        icon: "error",
+        title: "Invalid User Data",
+        text: "User ID or Facility ID is invalid. Please log in again.",
+      });
+      return;
+    }
+  
+    setLoading(true);
+    try {
+      const payload = {
+        user_id: userId,
+        facility_id: facilityId,
+        priority: priority.toLowerCase(),
+        remarks: remarks.trim() || "",
+        items: [
+          {
+            item_id: parseInt(selectedItem, 10),
+            quantity: parseInt(quantity, 10),
+            priority: priority.toLowerCase(),
+          },
+        ],
+      };
+  
+      const response = await axiosInstance.post(
+        `${BaseUrl}/requisitions`,
+        payload
+      );
+  
+      const backendMessage = response.data.message || "";
+      const isSuccess = response.data.success;
+  
+      // ✅ SMART CHECK: Even if success=false, if message says "created", treat as success
+      if (isSuccess || backendMessage.toLowerCase().includes("created successfully")) {
+        setSuccess(true);
+        await fetchRequisitionHistory(userId);
+        resetIndividualForm();
+        setShowRequisitionModal(false);
+        Swal.fire({
+          icon: "success",
+          title: "Submitted!",
+          text: "Your requisition has been submitted to Facility Admin.",
+          timer: 3000,
+          showConfirmButton: false,
+        });
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Submission Failed",
+          text: "Failed to submit requisition: " + backendMessage,
+        });
+      }
+    } catch (error) {
+      console.error("Submission error:", error);
+      const msg =
+        error.response?.data?.message ||
+        error.message ||
+        "Network error. Please try again.";
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: msg,
+      });
+    } finally {
+      setLoading(false);
+      setTimeout(() => setSuccess(false), 3000);
+    }
+  };
  // Handle bulk submission
-const handleBulkSubmit = async (e) => {
+ const handleBulkSubmit = async (e) => {
   e.preventDefault();
   const validItems = bulkItems.filter(
     (item) => item.item && item.quantity && parseInt(item.quantity) > 0
@@ -457,6 +448,7 @@ const handleBulkSubmit = async (e) => {
     });
     return;
   }
+
   const user = getUserFromStorage();
   if (!user || !user.facility_id || !user.id) {
     Swal.fire({
@@ -467,7 +459,6 @@ const handleBulkSubmit = async (e) => {
     return;
   }
 
-  // ✅ Helper: Get highest priority from validItems
   const getHighestPriority = (items) => {
     const order = { urgent: 3, high: 2, normal: 1 };
     let max = "normal";
@@ -478,14 +469,14 @@ const handleBulkSubmit = async (e) => {
     return max;
   };
 
-  const rootPriority = getHighestPriority(validItems); // ✅
+  const rootPriority = getHighestPriority(validItems);
 
   setLoading(true);
   try {
     const payload = {
       user_id: user.id,
       facility_id: user.facility_id,
-      priority: rootPriority, // ✅ Root-level priority added
+      priority: rootPriority,
       remarks: bulkRemarks.trim() || "",
       items: validItems.map((item) => ({
         item_id: parseInt(item.item),
@@ -493,11 +484,17 @@ const handleBulkSubmit = async (e) => {
         priority: item.priority.toLowerCase(),
       })),
     };
+
     const response = await axiosInstance.post(
       `${BaseUrl}/requisitions`,
       payload
     );
-    if (response.data.success) {
+
+    const backendMessage = response.data.message || "";
+    const isSuccess = response.data.success;
+
+    // ✅ SMART CHECK: Handle misleading "created successfully" with success=false
+    if (isSuccess || backendMessage.toLowerCase().includes("created successfully")) {
       setSuccess(true);
       fetchRequisitionHistory(user.id);
       resetBulkForm();
@@ -513,9 +510,7 @@ const handleBulkSubmit = async (e) => {
       Swal.fire({
         icon: "error",
         title: "Submission Failed",
-        text:
-          "Failed to submit requisition: " +
-          (response.data.message || "Unknown error"),
+        text: "Failed to submit requisition: " + backendMessage,
       });
     }
   } catch (error) {

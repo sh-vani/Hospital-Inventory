@@ -1,397 +1,200 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Bar } from 'react-chartjs-2';
-import { 
-  FaDownload, FaChartLine, FaTable, FaSearch, FaBuilding,
-  FaFilePdf, FaFileExcel
-} from 'react-icons/fa';
-import BaseUrl from '../../Api/BaseUrl';
 import axiosInstance from '../../Api/axiosInstance';
-import Swal from 'sweetalert2'; // Import SweetAlert2
+import BaseUrl from '../../Api/BaseUrl';
+import { Bar } from 'react-chartjs-2';
+import {
+  FaDownload, FaChartLine, FaSearch, FaBuilding,
+  FaFilePdf
+} from 'react-icons/fa';
+import Swal from 'sweetalert2';
+
+// Chart.js
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
 const SuperAdminReports = () => {
-  // State for form inputs
   const [reportType, setReportType] = useState('Requisition Summary');
-  const [facility, setFacility] = useState('All Facilities');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  // State for modals
-  const [showRequisitionModal, setShowRequisitionModal] = useState(false);
+  const [facility, setFacility] = useState('All Facilities');
   const [showGeneratedModal, setShowGeneratedModal] = useState(false);
-  
-  // State for generated report data
   const [generatedReport, setGeneratedReport] = useState(null);
-  
-  // State for API data
-  const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  
-  // Chart options (shared)
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false
-      },
-      title: {
-        display: true,
-        font: {
-          size: 16,
-          weight: 'bold'
-        },
-        padding: {
-          top: 10,
-          bottom: 20
-        }
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        grid: {
-          color: 'rgba(0, 0, 0, 0.05)'
-        }
-      },
-      x: {
-        grid: {
-          display: false
-        }
-      }
-    }
-  };
-  
-  // Mock data for different report types
-  const requisitionData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    datasets: [
-      {
-        label: 'Requisition Count',
-        data: [42, 38, 55, 32, 48, 60],
-        backgroundColor: '#e74a3b',
-        borderRadius: 8,
-        barThickness: 30
-      }
-    ]
-  };
-  
-  // === FETCH REPORT DATA ===
-  const fetchReportData = async (filters = {}) => {
+
+  // Fetch data from DASHBOARD API (as per your request)
+  const fetchDashboardReport = async () => {
     try {
       setLoading(true);
-      setError(null);
-      
-      // Build query parameters
-      const params = new URLSearchParams();
-      if (filters.facility_id && filters.facility_id !== 'All Facilities') {
-        params.append('facility_id', filters.facility_id);
-      }
-      if (filters.status) {
-        params.append('status', filters.status);
-      }
-      if (filters.date_from) {
-        params.append('date_from', filters.date_from);
-      }
-      if (filters.date_to) {
-        params.append('date_to', filters.date_to);
-      }
-      
-      const response = await axiosInstance.get(`${BaseUrl}/reports/requisitions?${params.toString()}`);
+      const response = await axiosInstance.get(`${BaseUrl}/dashboard/getSuperAdminDashboard`);
       if (response.data.success) {
-        setReportData(response.data.data);
+        return response.data.data;
       } else {
-        setError('Failed to fetch report data');
-        Swal.fire({
-          icon: 'error',
-          title: 'Fetch Failed',
-          text: 'Failed to fetch report data',
-          confirmButtonColor: '#e74a3b'
-        });
+        throw new Error('Failed to load data');
       }
     } catch (err) {
-      setError('Error fetching report data: ' + err.message);
       Swal.fire({
         icon: 'error',
-        title: 'Network Error',
-        text: 'Error fetching report data: ' + err.message,
+        title: 'Fetch Failed',
+        text: 'Could not load dashboard data for report.',
         confirmButtonColor: '#e74a3b'
       });
+      return null;
     } finally {
       setLoading(false);
     }
   };
-  
-  // === EXPORT TO PDF ===
-  const exportToPDF = (reportData, reportType) => {
-    // Show confirmation alert
+
+  // Generate report using dashboard data
+  const handleGenerateReport = async (e) => {
+    e.preventDefault();
+
+    const data = await fetchDashboardReport();
+    if (!data) return;
+
+    // Mock chart data using dashboard KPIs
+    const mockChartData = {
+      labels: ['Inventory', 'Facilities', 'Pending Reqs', 'Dispatches'],
+      datasets: [{
+        label: 'Metrics',
+        data: [
+          data.total_inventory_items,
+          data.total_facilities,
+          data.pending_requisitions,
+          data.dispatches_today
+        ],
+        backgroundColor: ['#2563eb', '#3b82f6', '#f59e0b', '#10b981'],
+        borderRadius: 6,
+        barThickness: 40
+      }]
+    };
+
+    setGeneratedReport({
+      type: reportType,
+      facility: facility,
+      dateFrom: dateFrom || 'N/A',
+      dateTo: dateTo || 'N/A',
+      summary: {
+        total_inventory_items: data.total_inventory_items,
+        total_facilities: data.total_facilities,
+        pending_requisitions: data.pending_requisitions,
+        dispatches_today: data.dispatches_today,
+        total_net_worth: data.total_net_worth
+      },
+      chartData: mockChartData,
+      generatedAt: new Date().toLocaleString()
+    });
+
+    setShowGeneratedModal(true);
+
     Swal.fire({
-      title: 'Export Report?',
-      text: "This will generate a PDF report in a new window",
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Yes, export!'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        // Create a new window for printing
-        const printWindow = window.open('', '_blank');
-        
-        // Create HTML content for the report
-        let htmlContent = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>${reportType} Report</title>
-            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-            <style>
-              body { font-family: Arial, sans-serif; }
-              .header { text-align: center; margin-bottom: 20px; }
-              .summary-card { border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin-bottom: 20px; }
-              .table { width: 100%; border-collapse: collapse; }
-              .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-              .table th { background-color: #f2f2f2; }
-              .badge { display: inline-block; padding: 3px 7px; font-size: 12px; font-weight: bold; border-radius: 4px; }
-              .badge-success { background-color: #28a745; color: white; }
-              .badge-warning { background-color: #ffc107; color: black; }
-              .badge-danger { background-color: #dc3545; color: white; }
-              @media print {
-                .no-print { display: none; }
-              }
-            </style>
-          </head>
-          <body>
-            <div class="container-fluid">
-              <div class="header">
-                <h2>${reportType} Report</h2>
-                <p>Generated on: ${new Date().toLocaleDateString()}</p>
-              </div>
-        `;
-        
-        // Add summary cards if available
-        if (reportData?.summary && reportType === 'Requisition Summary') {
-          htmlContent += `
-            <div class="row mb-4">
-              <div class="col-md-3">
-                <div class="summary-card">
-                  <h5 class="text-primary">${reportData.summary.total_requisitions}</h5>
-                  <p class="mb-0">Total Requisitions</p>
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="summary-card">
-                  <h5 class="text-warning">${reportData.summary.pending_count}</h5>
-                  <p class="mb-0">Pending</p>
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="summary-card">
-                  <h5 class="text-success">${reportData.summary.approved_count}</h5>
-                  <p class="mb-0">Approved</p>
-                </div>
-              </div>
-              <div class="col-md-3">
-                <div class="summary-card">
-                  <h5 class="text-info">${reportData.summary.avg_processing_days}</h5>
-                  <p class="mb-0">Avg. Processing Days</p>
-                </div>
-              </div>
+      icon: 'success',
+      title: 'Report Generated!',
+      text: 'Report created using dashboard data.',
+      confirmButtonColor: '#28a745'
+    });
+  };
+
+  const exportToPDF = () => {
+    const printWindow = window.open('', '_blank');
+    const summary = generatedReport.summary;
+
+    let htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${generatedReport.type} Report</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .header { text-align: center; margin-bottom: 30px; }
+          .card { border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+          .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+          @media print {
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container-fluid">
+          <div class="header">
+            <h2>${generatedReport.type}</h2>
+            <p>Generated on: ${generatedReport.generatedAt}</p>
+            <p><strong>Date Range:</strong> ${generatedReport.dateFrom} to ${generatedReport.dateTo}</p>
+            <p><strong>Facility:</strong> ${generatedReport.facility}</p>
+          </div>
+
+          <div class="summary-grid">
+            <div class="card">
+              <h5>Total Inventory Items</h5>
+              <p class="fw-bold fs-4">${summary.total_inventory_items}</p>
             </div>
-          `;
-        }
-        
-        // Add chart image placeholder
-        htmlContent += `
-          <div class="mb-4 text-center">
-            <h4>Chart Visualization</h4>
-            <div class="alert alert-info">
-              Chart visualization would appear here in the actual application
+            <div class="card">
+              <h5>Total Facilities</h5>
+              <p class="fw-bold fs-4">${summary.total_facilities}</p>
+            </div>
+            <div class="card bg-warning bg-opacity-10">
+              <h5>Pending Requisitions</h5>
+              <p class="fw-bold fs-4 text-warning">${summary.pending_requisitions}</p>
+            </div>
+            <div class="card bg-success bg-opacity-10">
+              <h5>Dispatches Today</h5>
+              <p class="fw-bold fs-4 text-success">${summary.dispatches_today}</p>
+            </div>
+            <div class="card bg-purple bg-opacity-10">
+              <h5>Total Net Worth</h5>
+              <p class="fw-bold fs-4">GHS ${Number(summary.total_net_worth).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </div>
           </div>
-        `;
-        
-        // Add table based on report type
-        if (reportType === 'Requisition Summary' && reportData?.requisitions) {
-          htmlContent += `
-            <h4>Requisition Details</h4>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Req ID</th>
-                  <th>Facility</th>
-                  <th>User</th>
-                  <th>Items</th>
-                  <th>Status</th>
-                  <th>Date</th>
-                  <th>Processing Days</th>
-                </tr>
-              </thead>
-              <tbody>
-          `;
-          
-          reportData.requisitions.forEach(req => {
-            const statusClass = req.status === 'approved' ? 'badge-success' : 
-                                 req.status === 'pending' ? 'badge-warning' : 'badge-danger';
-            
-            htmlContent += `
-              <tr>
-                <td>#${req.id}</td>
-                <td>${req.facility_name}</td>
-                <td>${req.user_name}</td>
-                <td>${req.item_count}</td>
-                <td><span class="badge ${statusClass}">${req.status.charAt(0).toUpperCase() + req.status.slice(1)}</span></td>
-                <td>${new Date(req.created_at).toLocaleDateString()}</td>
-                <td>${req.processing_days}</td>
-              </tr>
-            `;
-          });
-          
-          htmlContent += `
-              </tbody>
-            </table>
-          `;
-        }
-        
-        // Add summary section
-        htmlContent += `
+
           <div class="mt-4 p-3 bg-light rounded">
-            <h5>Report Summary</h5>
-        `;
-        
-        if (reportType === 'Requisition Summary' && reportData?.summary) {
-          htmlContent += `
-            <p>Total Requisitions: <span class="fw-bold">${reportData.summary.total_requisitions}</span></p>
-            <p>Pending: <span class="fw-bold">${reportData.summary.pending_count}</span>, Approved: <span class="fw-bold">${reportData.summary.approved_count}</span>, Delivered: <span class="fw-bold">${reportData.summary.delivered_count}</span>, Rejected: <span class="fw-bold">${reportData.summary.rejected_count}</span></p>
-            <p>Average Processing Days: <span class="fw-bold">${reportData.summary.avg_processing_days}</span></p>
-          `;
-        }
-        
-        htmlContent += `
+            <p><strong>Note:</strong> This report is generated from Super Admin Dashboard API and includes only aggregated metrics.</p>
           </div>
+
           <div class="no-print mt-4">
             <button class="btn btn-primary" onclick="window.print()">Print Report</button>
             <button class="btn btn-secondary" onclick="window.close()">Close</button>
           </div>
         </div>
-        </body>
-        </html>
-        `;
-        
-        // Write the HTML content to the new window
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
-        
-        // Show success alert
-        Swal.fire({
-          icon: 'success',
-          title: 'PDF Exported!',
-          text: 'Your report has been exported successfully',
-          confirmButtonColor: '#28a745'
-        });
-      }
-    });
-  };
-  
-  // Modal handlers
-  const openRequisitionModal = async () => {
-    await fetchReportData();
-    setShowRequisitionModal(true);
-  };
-  
-  const handleGenerateReport = async (e) => {
-    e.preventDefault();
-    
-    // Build filters based on form inputs
-    const filters = {};
-    if (facility !== 'All Facilities') {
-      filters.facility_id = facility;
-    }
-    if (dateFrom) {
-      filters.date_from = dateFrom;
-    }
-    if (dateTo) {
-      filters.date_to = dateTo;
-    }
-    
-    // Fetch data with filters
-    await fetchReportData(filters);
-    
-    setGeneratedReport({
-      type: reportType,
-      facility: facility,
-      dateFrom: dateFrom,
-      dateTo: dateTo,
-      data: reportData?.requisitions || [],
-      summary: reportData?.summary || null
-    });
-    setShowGeneratedModal(true);
-    
-    // Show success alert
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+
     Swal.fire({
       icon: 'success',
-      title: 'Report Generated!',
-      text: 'Your custom report has been generated successfully',
+      title: 'PDF Export Ready!',
+      text: 'Your report is ready to print or save as PDF.',
       confirmButtonColor: '#28a745'
     });
   };
-  
-  // Filter data based on search term
-  const filterData = (data) => {
-    if (!searchTerm.trim()) return data;
-    
-    const term = searchTerm.toLowerCase();
-    return data.filter(req => 
-      req.id.toString().includes(term) ||
-      req.facility_name.toLowerCase().includes(term) ||
-      req.status.toLowerCase().includes(term) ||
-      req.user_name.toLowerCase().includes(term)
-    );
-  };
-  
-  // Get chart data based on report type
-  const getChartData = (type) => {
-    switch(type) {
-      case 'Requisition Summary': return requisitionData;
-      default: return requisitionData;
-    }
-  };
 
-  // Get chart title based on report type
-  const getChartTitle = (type) => {
-    switch(type) {
-      case 'Requisition Summary': return 'Monthly Requisition Count';
-      default: return 'Report Data';
-    }
-  };
-  
-  // Close modals
-  const closeRequisitionModal = () => {
-    setShowRequisitionModal(false);
-    setSearchTerm(''); // Reset search term
-  };
-  
   const closeGeneratedModal = () => {
     setShowGeneratedModal(false);
-    setSearchTerm(''); // Reset search term
   };
-  
+
   return (
     <div className="fade-in">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="fw-bold">Reports & Analytics</h2>
-        <button className="btn btn-primary d-flex align-items-center">
+        <button className="btn btn-primary d-flex align-items-center" disabled>
           <FaDownload className="me-2" /> Export Report
         </button>
       </div>
-      
+
       <div className="row">
         <div className="col-md-6 mb-4">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-header bg-white border-0 pt-4">
-              <h5 className="mb-0 fw-bold">Generate Custom Report</h5>
+              <h5 className="mb-0 fw-bold">Generate Report from Dashboard</h5>
             </div>
             <div className="card-body">
               <form onSubmit={handleGenerateReport}>
@@ -401,12 +204,13 @@ const SuperAdminReports = () => {
                     className="form-select" 
                     value={reportType}
                     onChange={(e) => setReportType(e.target.value)}
+                    disabled
                   >
-                    <option>Requisition Summary</option>
+                    <option>Requisition Summary (Dashboard-Based)</option>
                   </select>
                 </div>
                 <div className="mb-3">
-                  <label className="form-label fw-bold">Date Range</label>
+                  <label className="form-label fw-bold">Date Range (for reference only)</label>
                   <div className="input-group">
                     <input 
                       type="date" 
@@ -422,6 +226,7 @@ const SuperAdminReports = () => {
                       onChange={(e) => setDateTo(e.target.value)}
                     />
                   </div>
+                  <small className="text-muted">Note: Dashboard API returns live data (not filtered by date)</small>
                 </div>
                 <div className="mb-3">
                   <label className="form-label fw-bold">Facility</label>
@@ -438,330 +243,92 @@ const SuperAdminReports = () => {
                     <option value="5">Cape Coast Hospital</option>
                   </select>
                 </div>
-                <button type="submit" className="btn btn-primary w-100 d-flex align-items-center justify-content-center">
-                  <FaChartLine className="me-2" /> Generate Report
+                <button 
+                  type="submit" 
+                  className="btn btn-primary w-100 d-flex align-items-center justify-content-center"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2"></span> Generating...
+                    </>
+                  ) : (
+                    <>
+                      <FaChartLine className="me-2" /> Generate Report
+                    </>
+                  )}
                 </button>
               </form>
             </div>
           </div>
         </div>
+
         <div className="col-md-6 mb-4">
           <div className="card border-0 shadow-sm h-100">
             <div className="card-header bg-white border-0 pt-4">
-              <h5 className="mb-0 fw-bold">Report Preview</h5>
+              <h5 className="mb-0 fw-bold">Preview (Static)</h5>
             </div>
-            <div className="card-body" style={{ height: '300px' }}>
-              <Bar 
-                data={getChartData(reportType)} 
-                options={{
-                  ...chartOptions,
-                  plugins: {
-                    ...chartOptions.plugins,
-                    title: {
-                      ...chartOptions.plugins.title,
-                      text: getChartTitle(reportType)
-                    }
-                  }
-                }} 
-              />
+            <div className="card-body text-center d-flex flex-column justify-content-center">
+              <FaBuilding size={48} className="text-muted mb-3" />
+              <p className="text-muted">
+                Live dashboard metrics will appear in the report.
+              </p>
             </div>
           </div>
         </div>
       </div>
-      
-      {/* Quick Reports */}
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-header bg-white border-0 pt-4">
-          <h5 className="mb-0 fw-bold">Quick Reports</h5>
-        </div>
-        <div className="card-body">
-          <div className="row">
-            <div className="col-md-4 col-sm-6 mb-3">
-              <div className="card border-0 shadow-sm h-100">
-                <div className="card-body text-center p-3">
-                  <div className="bg-danger bg-opacity-10 p-3 rounded-circle d-inline-block mb-3">
-                    <FaSearch className="text-danger fa-2x" />
-                  </div>
-                  <h6 className="fw-bold">Requisition Summary</h6>
-                  <button className="btn btn-sm btn-outline-primary mt-2" onClick={openRequisitionModal}>Generate</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Requisition Summary Modal */}
-      {showRequisitionModal && (
-        <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-xl">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Requisition Summary Report</h5>
-                <button type="button" className="btn-close" onClick={closeRequisitionModal}></button>
-              </div>
-              <div className="modal-body">
-                {loading && (
-                  <div className="d-flex justify-content-center my-5">
-                    <div className="spinner-border text-primary" role="status">
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
-                  </div>
-                )}
-                
-                {error && (
-                  <div className="alert alert-danger" role="alert">
-                    {error}
-                  </div>
-                )}
-                
-                {!loading && !error && (
-                  <>
-                    <div className="mb-4">
-                      <Bar 
-                        data={requisitionData} 
-                        options={{
-                          ...chartOptions,
-                          plugins: {
-                            ...chartOptions.plugins,
-                            title: {
-                              ...chartOptions.plugins.title,
-                              text: 'Monthly Requisition Count'
-                            }
-                          }
-                        }} 
-                      />
-                    </div>
-                    
-                    {reportData && (
-                      <div className="row mb-4">
-                        <div className="col-md-3">
-                          <div className="card bg-primary bg-opacity-10 border-0">
-                            <div className="card-body text-center">
-                              <h5 className="text-primary">{reportData.summary.total_requisitions}</h5>
-                              <p className="mb-0">Total Requisitions</p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="col-md-3">
-                          <div className="card bg-warning bg-opacity-10 border-0">
-                            <div className="card-body text-center">
-                              <h5 className="text-warning">{reportData.summary.pending_count}</h5>
-                              <p className="mb-0">Pending</p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="col-md-3">
-                          <div className="card bg-success bg-opacity-10 border-0">
-                            <div className="card-body text-center">
-                              <h5 className="text-success">{reportData.summary.approved_count}</h5>
-                              <p className="mb-0">Approved</p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="col-md-3">
-                          <div className="card bg-info bg-opacity-10 border-0">
-                            <div className="card-body text-center">
-                              <h5 className="text-info">{reportData.summary.avg_processing_days}</h5>
-                              <p className="mb-0">Avg. Processing Days</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Search */}
-                    <div className="mb-3">
-                      <div className="input-group">
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="Search requisitions..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                        <button className="btn btn-outline-secondary" type="button">
-                          <FaSearch />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="table-responsive">
-                      <table className="table table-sm">
-                        <thead>
-                          <tr>
-                            <th>Req ID</th>
-                            <th>Facility</th>
-                            <th>User</th>
-                            <th>Items</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <th>Processing Days</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filterData(reportData?.requisitions || []).map((item, index) => (
-                            <tr key={index}>
-                              <td>#{item.id}</td>
-                              <td>{item.facility_name}</td>
-                              <td>{item.user_name}</td>
-                              <td>{item.item_count}</td>
-                              <td>
-                                <span className={`badge ${
-                                  item.status === 'approved' ? 'bg-success' : 
-                                  item.status === 'pending' ? 'bg-warning' : 'bg-danger'
-                                }`}>
-                                  {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                                </span>
-                              </td>
-                              <td>{new Date(item.created_at).toLocaleDateString()}</td>
-                              <td>{item.processing_days}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    
-                    <div className="d-flex justify-content-between mt-4">
-                      <div>
-                        <h6>Summary</h6>
-                        {reportData ? (
-                          <>
-                            <p>Total Requisitions: <span className="fw-bold">{reportData.summary.total_requisitions}</span></p>
-                            <p>Pending: <span className="fw-bold">{reportData.summary.pending_count}</span>, Approved: <span className="fw-bold">{reportData.summary.approved_count}</span>, Delivered: <span className="fw-bold">{reportData.summary.delivered_count}</span>, Rejected: <span className="fw-bold">{reportData.summary.rejected_count}</span></p>
-                            <p>Average Processing Days: <span className="fw-bold">{reportData.summary.avg_processing_days}</span></p>
-                          </>
-                        ) : (
-                          <p>No data available</p>
-                        )}
-                      </div>
-                      <div className="d-flex align-items-end">
-                        <button className="btn btn-primary me-2" onClick={() => exportToPDF(reportData, 'Requisition Summary')}>
-                          <FaFilePdf className="me-2" /> Export PDF
-                        </button>
-                        <button className="btn btn-success">
-                          <FaFileExcel className="me-2" /> Export Excel
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Generated Report Modal */}
       {showGeneratedModal && generatedReport && (
         <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-xl">
+          <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">{generatedReport.type} - {generatedReport.facility}</h5>
+                <h5 className="modal-title">{generatedReport.type}</h5>
                 <button type="button" className="btn-close" onClick={closeGeneratedModal}></button>
               </div>
               <div className="modal-body">
-                <div className="d-flex justify-content-between mb-4">
-                  <div>
-                    <p><strong>Date Range:</strong> {generatedReport.dateFrom || 'N/A'} to {generatedReport.dateTo || 'N/A'}</p>
-                    <p><strong>Generated On:</strong> {new Date().toLocaleDateString()}</p>
-                  </div>
-                  <div>
-                    <button className="btn btn-primary me-2" onClick={() => exportToPDF(reportData, generatedReport.type)}>
-                      <FaFilePdf className="me-2" /> Export PDF
-                    </button>
-                    <button className="btn btn-success">
-                      <FaFileExcel className="me-2" /> Export Excel
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="mb-4">
-                  <Bar 
-                    data={getChartData(generatedReport.type)} 
-                    options={{
-                      ...chartOptions,
-                      plugins: {
-                        ...chartOptions.plugins,
-                        title: {
-                          ...chartOptions.plugins.title,
-                          text: getChartTitle(generatedReport.type)
-                        }
-                      }
-                    }} 
-                  />
-                </div>
-                
-                {/* Search */}
                 <div className="mb-3">
-                  <div className="input-group">
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Search requisitions..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                    <button className="btn btn-outline-secondary" type="button">
-                      <FaSearch />
-                    </button>
-                  </div>
+                  <strong>Date Range:</strong> {generatedReport.dateFrom} to {generatedReport.dateTo} <br />
+                  <strong>Facility:</strong> {generatedReport.facility} <br />
+                  <strong>Generated:</strong> {generatedReport.generatedAt}
                 </div>
-                
-                <div className="table-responsive">
-                  <table className="table table-sm">
-                    <thead>
-                      <tr>
-                        <th>Req ID</th>
-                        <th>Facility</th>
-                        <th>User</th>
-                        <th>Items</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                        <th>Processing Days</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filterData(generatedReport.data).map((item, index) => (
-                        <tr key={index}>
-                          <td>#{item.id}</td>
-                          <td>{item.facility_name}</td>
-                          <td>{item.user_name}</td>
-                          <td>{item.item_count}</td>
-                          <td>
-                            <span className={`badge ${
-                              item.status === 'approved' ? 'bg-success' : 
-                              item.status === 'pending' ? 'bg-warning' : 'bg-danger'
-                            }`}>
-                              {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                            </span>
-                          </td>
-                          <td>{new Date(item.created_at).toLocaleDateString()}</td>
-                          <td>{item.processing_days}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+
+                <div style={{ height: '250px', marginBottom: '20px' }}>
+                  <Bar data={generatedReport.chartData} options={{ 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                      y: { beginAtZero: true },
+                      x: { grid: { display: false } }
+                    }
+                  }} />
                 </div>
-                
-                <div className="mt-4 p-3 bg-light rounded">
-                  <h6>Report Summary</h6>
-                  {generatedReport.type === 'Requisition Summary' && (
-                    <>
-                      {generatedReport.summary ? (
-                        <>
-                          <p>Total Requisitions: <span className="fw-bold">{generatedReport.summary.total_requisitions}</span></p>
-                          <p>Pending: <span className="fw-bold">{generatedReport.summary.pending_count}</span>, Approved: <span className="fw-bold">{generatedReport.summary.approved_count}</span>, Delivered: <span className="fw-bold">{generatedReport.summary.delivered_count}</span>, Rejected: <span className="fw-bold">{generatedReport.summary.rejected_count}</span></p>
-                          <p>Average Processing Days: <span className="fw-bold">{generatedReport.summary.avg_processing_days}</span></p>
-                        </>
-                      ) : (
-                        <>
-                          <p>Total Requisitions: <span className="fw-bold">{generatedReport.data.length}</span></p>
-                        </>
-                      )}
-                    </>
-                  )}
+
+                <div className="row text-center">
+                  {[
+                    { label: 'Inventory Items', value: generatedReport.summary.total_inventory_items, color: 'primary' },
+                    { label: 'Facilities', value: generatedReport.summary.total_facilities, color: 'info' },
+                    { label: 'Pending Reqs', value: generatedReport.summary.pending_requisitions, color: 'warning' },
+                    { label: 'Dispatches Today', value: generatedReport.summary.dispatches_today, color: 'success' },
+                    { label: 'Net Worth (GHS)', value: Number(generatedReport.summary.total_net_worth).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), color: 'purple' }
+                  ].map((item, i) => (
+                    <div className="col-md-4 mb-3" key={i}>
+                      <div className={`card bg-${item.color} bg-opacity-10 border-0`}>
+                        <div className="card-body">
+                          <div className={`text-${item.color} fw-bold fs-5`}>{item.value}</div>
+                          <small>{item.label}</small>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="d-flex justify-content-end mt-3">
+                  <button className="btn btn-primary" onClick={exportToPDF}>
+                    <FaFilePdf className="me-2" /> Export PDF
+                  </button>
                 </div>
               </div>
             </div>
@@ -769,10 +336,8 @@ const SuperAdminReports = () => {
         </div>
       )}
 
-      {/* Modal Backdrop */}
-      {(showRequisitionModal || showGeneratedModal) && (
-        <div className="modal-backdrop show"></div>
-      )}
+      {/* Backdrop */}
+      {showGeneratedModal && <div className="modal-backdrop show"></div>}
     </div>
   );
 };

@@ -163,27 +163,24 @@ const WarehouseRequisitions = () => {
     setShowBulkApproveModal(true);
   };
 
-// NEW: handleApprove function that sends correctly structured payload
-const handleApprove = async (approvedItems, remarks) => {
+// Simplified handleApprove — only sends requisition_id and remark
+const handleApprove = async (remarks) => {
   if (!currentRequisition) return;
 
-  // Ensure we use "approved_quantity", not "approved_qty"
   const payload = {
-    requisition_id: currentRequisition.id, // ✅ Use .id
-    approvedItems: approvedItems.map(item => ({
-      item_id: item.item_id,
-      approved_quantity: item.approved_qty, // ✅ rename to backend-expected key
-    })),
-    remarks: remarks.trim() || "Approved by warehouse admin",
+    requisition_id: currentRequisition.id, // number
+    remark: remarks.trim() || "Approved for dispatch", // note: "remark", not "remarks"
   };
 
   try {
     setLoading(true);
-    await axios.post(`${BaseUrl}/facility-requisitions/approve`, payload); // ✅ Correct endpoint
 
-    // Update UI: mark as approved
-    setRequisitions(prev =>
-      prev.map(req =>
+    // ✅ POST to /facility-requisitions/approve (no ID in URL)
+    await axios.post(`${BaseUrl}/facility-requisitions/approve`, payload);
+
+    // Update UI
+    setRequisitions((prev) =>
+      prev.map((req) =>
         req.id === currentRequisition.id
           ? { ...req, status: "approved" }
           : req
@@ -192,6 +189,7 @@ const handleApprove = async (approvedItems, remarks) => {
 
     setShowApproveModal(false);
     setCurrentRequisition(null);
+    setRemarks(""); // optional: clear remarks
   } catch (err) {
     setError("Approval failed: " + (err.response?.data?.message || err.message));
     console.error("Approve error:", err);
@@ -200,46 +198,40 @@ const handleApprove = async (approvedItems, remarks) => {
   }
 };
 
-// Updated: handleApproveSubmit now builds correct item list
+// Simplified submit handler — no item mapping needed
 const handleApproveSubmit = async () => {
   if (!currentRequisition) return;
-
-  const approvedItems = currentRequisition.items.map(item => ({
-    item_id: item.item_id, // integer
-    approved_qty: item.available_quantity || item.quantity, // temporary key
-  }));
-
-  await handleApprove(approvedItems, remarks);
+  await handleApprove(remarks); // only pass remarks
 };
-
-// ✅ PARTIAL APPROVAL - सिर्फ partial के लिए
+// ✅ PARTIAL APPROVAL — updated to match your API spec
 const handlePartialApprove = async (approvedItems, remarks) => {
   if (!currentRequisition) return;
 
-  // कम से कम एक आइटम का approved qty > 0 होना चाहिए
-  const validItems = approvedItems.filter(item => (item.approved_qty || 0) > 0);
-  if (validItems.length === 0) {
-    setError("कम से कम एक आइटम की मात्रा 0 से अधिक होनी चाहिए।");
+  // Optional: ensure at least one item has quantity > 0 (you can keep or remove)
+  const hasAtLeastOne = approvedItems.some(item => (item.approved_qty || 0) > 0);
+  if (!hasAtLeastOne) {
+    setError("At least one item must have approved quantity greater than 0.");
     return;
   }
 
+  // ✅ Build payload exactly as required
   const payload = {
-    requisition_id: currentRequisition.id, // ✅ number
-    approvedItems: validItems.map(item => ({
-      item_id: item.item_id, // ✅ number
-      approved_quantity: item.approved_qty, // ✅ backend के अनुसार
+    requisition_id: currentRequisition.id,
+    remark: remarks.trim() || "Partially approved by warehouse",
+    items: approvedItems.map(item => ({
+      item_id: item.item_id,
+      approved_quantity: item.approved_qty || 0, // include even if 0
     })),
-    remarks: remarks.trim() || "Partially approved by warehouse",
   };
 
   try {
     setLoading(true);
-    // ✅ सही endpoint: /approve/partial
+    // ✅ Correct endpoint
     await axios.post(`${BaseUrl}/facility-requisitions/approve/partial`, payload);
 
-    // UI अपडेट: status = "partially approved"
-    setRequisitions(prev =>
-      prev.map(req =>
+    // Update UI
+    setRequisitions((prev) =>
+      prev.map((req) =>
         req.id === currentRequisition.id
           ? { ...req, status: "partially approved" }
           : req
@@ -251,7 +243,7 @@ const handlePartialApprove = async (approvedItems, remarks) => {
     setRemarks("");
     setPartialApproveQuantities({});
   } catch (err) {
-    setError("आंशिक स्वीकृति विफल: " + (err.response?.data?.message || err.message));
+    setError("Partial approval failed: " + (err.response?.data?.message || err.message));
     console.error("Partial approve error:", err);
   } finally {
     setLoading(false);
@@ -310,10 +302,10 @@ const handleBulkApprove = async () => {
     return;
   }
 
-  // सिर्फ pending requisitions चुनें
+  // Only pending requisitions
   const pendingReqs = requisitions.filter(
-    req => 
-      selectedRequisitions.includes(req.id) && 
+    (req) =>
+      selectedRequisitions.includes(req.id) &&
       req.status?.toLowerCase() === "pending"
   );
 
@@ -322,29 +314,20 @@ const handleBulkApprove = async () => {
     return;
   }
 
-  // ✅ नया payload structure: requisitions array
-  const requisitionsPayload = pendingReqs.map(req => ({
-    requisition_id: req.id, // ✅ .id, not .requisition_id
-    remarks: bulkRemarks.trim() || "Approved via bulk action",
-    approvedItems: req.items.map(item => ({
-      item_id: item.item_id,
-      approved_quantity: item.available_quantity || item.quantity,
-    })),
-  }));
-
   const payload = {
-    requisitions: requisitionsPayload,
+    requisition_ids: pendingReqs.map((req) => req.id), // ✅ array of IDs
+    remark: bulkRemarks.trim() || "Approved via bulk action", // ✅ single remark
   };
 
   try {
     setLoading(true);
-    // ✅ नया endpoint
+    // ✅ POST to correct endpoint with simplified payload
     await axios.post(`${BaseUrl}/facility-requisitions/approve-bulk`, payload);
 
-    // UI अपडेट: सभी को "approved" बनाएं
-    setRequisitions(prev =>
-      prev.map(req =>
-        pendingReqs.some(p => p.id === req.id)
+    // Update UI: mark all as approved
+    setRequisitions((prev) =>
+      prev.map((req) =>
+        pendingReqs.some((p) => p.id === req.id)
           ? { ...req, status: "approved" }
           : req
       )
@@ -355,7 +338,9 @@ const handleBulkApprove = async () => {
     setShowBulkApproveModal(false);
     setBulkRemarks("");
   } catch (err) {
-    setError("Bulk approval failed: " + (err.response?.data?.message || err.message));
+    setError(
+      "Bulk approval failed: " + (err.response?.data?.message || err.message)
+    );
     console.error("Bulk approve error:", err);
   } finally {
     setLoading(false);

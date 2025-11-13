@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import BaseUrl from "../Api/BaseUrl";
-
+import axiosInstance from "../Api/axiosInstance";
 function FacilityRequisitions() {
   // State for facility info (from localStorage)
   const [adminFacility, setAdminFacility] = useState("Your Facility");

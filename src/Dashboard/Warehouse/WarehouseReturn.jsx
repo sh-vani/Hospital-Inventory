@@ -1,54 +1,60 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Modal, Form, Badge } from "react-bootstrap";
+import { Table, Button, Modal, Form, Badge, Alert } from "react-bootstrap";
 import axios from "axios";
 import BaseUrl from "../../Api/BaseUrl";
 import { FaClipboardList } from "react-icons/fa";
 
 const WarehouseReturn = () => {
   const [returns, setReturns] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedReturn, setSelectedReturn] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [action, setAction] = useState(""); // "Accept" or "Reject"
+  const [action, setAction] = useState(""); // Accept or Reject
   const [remarks, setRemarks] = useState("");
+  const [actionMessage, setActionMessage] = useState({ type: "", text: "" });
 
+  // ✅ Fetch all returns from API
   const fetchReturns = async () => {
     try {
       setLoading(true);
       setError(null);
+      setActionMessage({ type: "", text: "" });
+
       const response = await axios.get(`${BaseUrl}/returns-recall`);
 
       if (!response.data?.success) {
         throw new Error(response.data?.message || "Failed to fetch returns.");
       }
 
-      const mappedReturns = (response.data.data || []).map((ret) => {
+      const mapped = (response.data.data || []).map((r) => {
+        // 🔥 Correct mapping based on actual API status
         let uiStatus;
-        if (ret.status === "approved") uiStatus = "Processed";
-        else if (ret.status === "rejected") uiStatus = "Rejected";
-        else uiStatus = "Pending Verification"; // for "pending"
+        if (r.status === "Accepted") uiStatus = "Processed";
+        else if (r.status === "Rejected") uiStatus = "Rejected";
+        else uiStatus = "Pending Verification";
 
         return {
-          id: `RET-${String(ret.id).padStart(3, "0")}`,
-          apiId: ret.id,
-          facility: `Facility ${ret.facility_id}`,
-          item: ret.item_name,
-          quantity: ret.quantity,
-          reason: ret.reason,
+          id: `RET-${String(r.id).padStart(3, "0")}`,
+          apiId: r.id,
+          facility: `Facility ${r.facility_id}`,
+          item: r.item_name || "Unknown Item",
+          quantity: r.quantity,
+          reason: r.reason,
           status: uiStatus,
-          remark: ret.remark || "",
-          reject_reason: ret.reject_reason || "",
-          accept_reason: ret.accept_reason || "",
-          date: ret.created_at ? new Date(ret.created_at).toISOString().split("T")[0] : "N/A",
+          remark: r.remark || "",
+          reject_reason: r.reject_reason || "",
+          accept_reason: r.accept_reason || "",
+          date: r.created_at
+            ? new Date(r.created_at).toISOString().split("T")[0]
+            : "N/A",
         };
       });
 
-      setReturns(mappedReturns);
+      setReturns(mapped);
     } catch (err) {
       console.error("Error fetching returns:", err);
-      setError("Failed to load return requests.");
-      alert("Failed to load data. Please try again.");
+      setError("Failed to load return requests. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -58,6 +64,7 @@ const WarehouseReturn = () => {
     fetchReturns();
   }, []);
 
+  // ✅ Handle Accept/Reject button click
   const handleActionClick = (ret, act) => {
     setSelectedReturn(ret);
     setAction(act);
@@ -65,53 +72,61 @@ const WarehouseReturn = () => {
     setShowModal(true);
   };
 
+  // ✅ Submit action to backend
   const handleSubmitAction = async () => {
     if (!selectedReturn) return;
-
     const trimmedRemarks = remarks.trim();
+
     if (action === "Reject" && !trimmedRemarks) {
-      alert("Please provide a rejection reason.");
+      setActionMessage({ type: "danger", text: "Please provide a rejection reason." });
       return;
     }
 
     try {
       setLoading(true);
+      setActionMessage({ type: "", text: "" });
 
-      let payload;
-      let endpoint;
+      let endpoint = "";
+      let payload = {};
 
       if (action === "Accept") {
-        payload = { accept_reason: trimmedRemarks || "Items verified and accepted." };
         endpoint = `${BaseUrl}/returns-recall/${selectedReturn.apiId}/accept`;
+        payload = { accept_reason: trimmedRemarks || "Items verified and accepted." };
+        await axios.put(endpoint, payload);
       } else if (action === "Reject") {
-        payload = { reject_reason: trimmedRemarks };
         endpoint = `${BaseUrl}/returns-recall/${selectedReturn.apiId}/reject`;
-      } else {
-        throw new Error("Invalid action");
+        payload = { reject_reason: trimmedRemarks };
+        await axios.patch(endpoint, payload);
       }
 
-      await axios.patch(endpoint, payload);
-
-      // Optimistic UI update
+      // ✅ Instantly update in UI
       setReturns((prev) =>
         prev.map((r) =>
           r.apiId === selectedReturn.apiId
             ? {
                 ...r,
                 status: action === "Accept" ? "Processed" : "Rejected",
-                ...(action === "Accept"
-                  ? { accept_reason: payload.accept_reason, reject_reason: "" }
-                  : { reject_reason: payload.reject_reason, accept_reason: "" }),
+                remark: action === "Accept" ? trimmedRemarks : r.remark,
+                reject_reason: action === "Reject" ? trimmedRemarks : r.reject_reason,
               }
             : r
         )
       );
 
       setShowModal(false);
-      alert(`Return successfully ${action.toLowerCase()}ed!`);
+      setActionMessage({
+        type: "success",
+        text: `Return ${action.toLowerCase()}ed successfully!`,
+      });
+
+      // ✅ Refresh from backend after short delay for consistency
+      setTimeout(() => fetchReturns(), 1200);
     } catch (err) {
-      console.error("Action submission error:", err);
-      alert(`Failed to ${action.toLowerCase()} return. Please try again.`);
+      console.error("Action error:", err);
+      setActionMessage({
+        type: "danger",
+        text: `Failed to ${action.toLowerCase()} return. Please try again.`,
+      });
     } finally {
       setLoading(false);
     }
@@ -120,16 +135,27 @@ const WarehouseReturn = () => {
   const getStatusVariant = (status) => {
     if (status === "Processed") return "success";
     if (status === "Rejected") return "danger";
-    return "warning"; // Pending Verification
+    return "warning";
   };
 
   return (
     <div className="container-fluid py-3">
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
         <h2 className="fw-bold">
-          <FaClipboardList className="me-2" /> Warehouse Returns & Recalls
+          <FaClipboardList className="me-2" />
+          Warehouse Returns & Recalls
         </h2>
       </div>
+
+      {actionMessage.text && (
+        <Alert
+          variant={actionMessage.type}
+          onClose={() => setActionMessage({ type: "", text: "" })}
+          dismissible
+        >
+          {actionMessage.text}
+        </Alert>
+      )}
 
       {loading && (
         <div className="text-center py-4">
@@ -139,7 +165,7 @@ const WarehouseReturn = () => {
         </div>
       )}
 
-      {error && <div className="alert alert-danger">{error}</div>}
+      {error && <Alert variant="danger">{error}</Alert>}
 
       {!loading && !error && (
         <Table striped bordered hover responsive>
@@ -175,7 +201,7 @@ const WarehouseReturn = () => {
                   </td>
                   <td>{ret.date}</td>
                   <td>
-                    {ret.status === "Pending Verification" && (
+                    {ret.status === "Pending Verification" ? (
                       <>
                         <Button
                           size="sm"
@@ -195,6 +221,10 @@ const WarehouseReturn = () => {
                           Reject
                         </Button>
                       </>
+                    ) : (
+                      <Badge bg={getStatusVariant(ret.status)}>
+                        {ret.status}
+                      </Badge>
                     )}
                   </td>
                 </tr>
@@ -204,7 +234,7 @@ const WarehouseReturn = () => {
         </Table>
       )}
 
-      {/* Action Modal */}
+      {/* ✅ Action Modal */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>
@@ -213,12 +243,13 @@ const WarehouseReturn = () => {
         </Modal.Header>
         <Modal.Body>
           <p>
-            Are you sure you want to <strong>{action.toLowerCase()}</strong> this return for{" "}
+            Are you sure you want to{" "}
+            <strong>{action.toLowerCase()}</strong> this return for{" "}
             <strong>{selectedReturn?.item}</strong>?
           </p>
           <Form.Group className="mt-3">
             <Form.Label>
-              {action === "Reject" ? "Rejection Reason *" : "Acceptance Remarks (Optional)"}
+              {action === "Reject" ? "Rejection Reason *" : "Remarks (Optional)"}
             </Form.Label>
             <Form.Control
               as="textarea"
@@ -227,15 +258,24 @@ const WarehouseReturn = () => {
               onChange={(e) => setRemarks(e.target.value)}
               placeholder={
                 action === "Reject"
-                  ? "Enter reason for rejection..."
+                  ? "Enter rejection reason..."
                   : "Add optional remarks..."
               }
-              required={action === "Reject"}
+              isInvalid={action === "Reject" && !remarks.trim()}
             />
+            {action === "Reject" && !remarks.trim() && (
+              <Form.Control.Feedback type="invalid">
+                Rejection reason is required.
+              </Form.Control.Feedback>
+            )}
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)} disabled={loading}>
+          <Button
+            variant="secondary"
+            onClick={() => setShowModal(false)}
+            disabled={loading}
+          >
             Cancel
           </Button>
           <Button

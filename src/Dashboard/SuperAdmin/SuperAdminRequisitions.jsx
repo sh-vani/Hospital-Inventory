@@ -5,6 +5,7 @@ import {
 } from 'react-icons/fa';
 import BaseUrl from '../../Api/BaseUrl';
 import axiosInstance from '../../Api/axiosInstance';
+import Swal from 'sweetalert2'; // ✅ Step 1: SweetAlert इम्पोर्ट करें
 
 const SuperAdminRequisitions = () => {
   // === STATE ===
@@ -53,9 +54,21 @@ const SuperAdminRequisitions = () => {
         });
       } else {
         setError('Failed to fetch requisitions');
+        // ✅ Step 2: Error के लिए SweetAlert
+        Swal.fire({
+          icon: 'error',
+          title: 'Oops...',
+          text: 'Failed to fetch requisitions!',
+        });
       }
     } catch (err) {
       setError('Error fetching requisitions: ' + err.message);
+      // ✅ Step 3: Catch block में SweetAlert
+      Swal.fire({
+        icon: 'error',
+        title: 'Network Error',
+        text: 'Could not connect to the server. Please check your connection.',
+      });
     } finally {
       setLoading(false);
     }
@@ -78,12 +91,29 @@ const SuperAdminRequisitions = () => {
         
         fetchRequisitions(statusParam, pagination.currentPage);
         setShowOverrideModal(false);
-        alert(`Status updated successfully to: ${status}`);
+        // ✅ Step 4: Success के लिए SweetAlert
+        Swal.fire({
+          icon: 'success',
+          title: 'Updated!',
+          text: `Status updated successfully to: ${status}`,
+          timer: 2000, // 2 सेकंड के बाद ऑटो-क्लोज़ होगा
+          showConfirmButton: false
+        });
       } else {
-        alert('Failed to update status');
+        // ✅ Step 5: API Response Error के लिए SweetAlert
+        Swal.fire({
+          icon: 'error',
+          title: 'Update Failed',
+          text: response.data.message || 'Failed to update status',
+        });
       }
     } catch (err) {
-      alert('Error updating status: ' + err.message);
+      // ✅ Step 6: Catch block में SweetAlert
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: 'Error updating status: ' + err.message,
+      });
     } finally {
       setUpdatingStatus(false);
     }
@@ -155,7 +185,15 @@ const SuperAdminRequisitions = () => {
 
   // === ACTION HANDLERS ===
   const handleOverrideStatus = () => {
-    if (!overrideStatus.trim()) return;
+    if (!overrideStatus.trim()) {
+      // ✅ Step 7: Validation Error के लिए SweetAlert
+      Swal.fire({
+        icon: 'warning',
+        title: 'Invalid Input',
+        text: 'Please select a status before confirming.',
+      });
+      return;
+    }
     updateRequisitionStatus(currentRequisition.id, overrideStatus, overrideRemarks);
   };
 

@@ -11,6 +11,7 @@ import {
 } from "react-icons/fa";
 import axiosInstance from "../../Api/axiosInstance";
 import BaseUrl from "../../Api/BaseUrl";
+import Swal from "sweetalert2"; // SweetAlert import करें
 
 const SuperAdminInventory = () => {
   // === STATE ===
@@ -76,7 +77,11 @@ const SuperAdminInventory = () => {
       }
     } catch (err) {
       console.error("Failed to fetch item:", err);
-      alert("Failed to load item: " + (err.response?.data?.message || err.message));
+      Swal.fire({
+        icon: "error",
+        title: "Failed to load item",
+        text: err.response?.data?.message || err.message,
+      });
       return null;
     }
   };
@@ -103,9 +108,19 @@ const SuperAdminInventory = () => {
           );
         } else {
           setError("Failed to load inventory");
+          Swal.fire({
+            icon: "error",
+            title: "Failed to load inventory",
+            text: "Please try again later",
+          });
         }
       } catch (err) {
         setError("Error loading inventory");
+        Swal.fire({
+          icon: "error",
+          title: "Error loading inventory",
+          text: "Please check your connection and try again",
+        });
       } finally {
         setLoading(false);
       }
@@ -171,16 +186,19 @@ const SuperAdminInventory = () => {
     .reduce((sum, item) => sum + (item.quantity || 0) * (parseFloat(item.item_cost) || 0), 0)
     .toFixed(2);
 
-  // === MODAL HANDLERS ===
-  const openViewModal = async (item) => {
-    setLoading(true);
-    const fetchedItem = await fetchItemById(item.id);
-    if (fetchedItem) {
-      setViewItem(fetchedItem); // ✅ यहाँ set करें
-      setShowViewModal(true);
-    }
-    setLoading(false); // ✅ अंत में loading false करें
-  };
+    const openViewModal = async (item) => {
+      setLoading(true);
+      try {
+        const fetchedItem = await fetchItemById(item.id);
+        if (fetchedItem) {
+          setViewItem(fetchedItem);
+          setShowViewModal(true); // ✅ केवल तभी modal खोलें जब डेटा मिल जाए
+        }
+        // अगर fetchedItem null है, तो modal नहीं खुलेगा — और alert पहले से ही fetchItemById में दिख चुका होगा
+      } finally {
+        setLoading(false);
+      }
+    };
 
   const openEditModal = (item) => {
     setCurrentItem(item);
@@ -235,7 +253,11 @@ const SuperAdminInventory = () => {
   const handleAddSingle = async () => {
     const { item_code, item_name, category, unit } = addForm;
     if (!item_code || !item_name || !category || !unit) {
-      alert("Please fill all required fields.");
+      Swal.fire({
+        icon: "warning",
+        title: "Missing Information",
+        text: "Please fill all required fields.",
+      });
       return;
     }
 
@@ -256,7 +278,11 @@ const SuperAdminInventory = () => {
       const res = await axiosInstance.post(`${BaseUrl}/inventory/create`, payload);
       if (res.data?.success) {
         setInventory((prev) => [...prev, { id: res.data.data?.id, ...payload }]);
-        alert("✅ Item added successfully!");
+        Swal.fire({
+          icon: "success",
+          title: "Success!",
+          text: "Item added successfully!",
+        });
         closeModal();
         setAddForm({
           item_code: "",
@@ -270,10 +296,18 @@ const SuperAdminInventory = () => {
           expiry_date: "",
         });
       } else {
-        alert("❌ " + (res.data?.message || "Failed to add item"));
+        Swal.fire({
+          icon: "error",
+          title: "Failed to add item",
+          text: res.data?.message || "Unknown error occurred",
+        });
       }
     } catch (err) {
-      alert("⚠️ " + (err.response?.data?.message || err.message || "Network error"));
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: err.response?.data?.message || err.message || "Network error",
+      });
     } finally {
       setAddingSingle(false);
     }
@@ -282,7 +316,11 @@ const SuperAdminInventory = () => {
   // === EDIT ===
   const handleSaveEdit = async () => {
     if (!currentItem?.id) {
-      alert("Item ID not found.");
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Item ID not found.",
+      });
       return;
     }
 
@@ -310,14 +348,26 @@ const SuperAdminInventory = () => {
         setInventory((prev) =>
           prev.map((item) => (item.id === currentItem.id ? updatedItem : item))
         );
-        alert(`Item ${payload.item_code || 'N/A'} updated successfully!`);
+        Swal.fire({
+          icon: "success",
+          title: "Success!",
+          text: `Item ${payload.item_code || 'N/A'} updated successfully!`,
+        });
         closeModal();
       } else {
-        alert("Update failed: " + (response.data?.message || "Unknown error"));
+        Swal.fire({
+          icon: "error",
+          title: "Update failed",
+          text: response.data?.message || "Unknown error",
+        });
       }
     } catch (err) {
       console.error("Edit error:", err);
-      alert("Error updating item: " + (err.response?.data?.message || err.message || "Network error"));
+      Swal.fire({
+        icon: "error",
+        title: "Error updating item",
+        text: err.response?.data?.message || err.message || "Network error",
+      });
     } finally {
       setLoading(false);
     }
@@ -325,19 +375,42 @@ const SuperAdminInventory = () => {
 
   // === DELETE ===
   const handleDeleteItem = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this item?")) return;
+    const result = await Swal.fire({
+      title: "Are you sure?",
+      text: "You won't be able to revert this!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, delete it!",
+    });
+
+    if (!result.isConfirmed) return;
+
     try {
       setLoading(true);
       const response = await axiosInstance.delete(`${BaseUrl}/inventory/${id}`);
       if (response.data?.success) {
         setInventory(prev => prev.filter(item => item.id !== id));
-        alert("Item deleted successfully!");
+        Swal.fire({
+          icon: "success",
+          title: "Deleted!",
+          text: "Item has been deleted.",
+        });
       } else {
-        alert("Failed to delete item: " + (response.data?.message || "Unknown error"));
+        Swal.fire({
+          icon: "error",
+          title: "Failed to delete item",
+          text: response.data?.message || "Unknown error",
+        });
       }
     } catch (err) {
       console.error("Delete error:", err);
-      alert("Error deleting item: " + (err.response?.data?.message || err.message));
+      Swal.fire({
+        icon: "error",
+        title: "Error deleting item",
+        text: err.response?.data?.message || err.message,
+      });
     } finally {
       setLoading(false);
     }
@@ -369,15 +442,21 @@ const SuperAdminInventory = () => {
     }
   };
 
+  // === BULK ADD (UPDATED) ===
   const handleAddBulk = async () => {
     const invalid = bulkItems.some(
       (item) => !item.item_code || !item.item_name || !item.category || !item.unit
     );
     if (invalid) {
-      alert("All rows must have Item Code, Name, Category, and Unit.");
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid Data",
+        text: "All rows must have Item Code, Name, Category, and Unit.",
+      });
       return;
     }
 
+    // ✅ Step 1: Payload को आपके दिए गए फॉर्मेट में बनाएं
     const payload = bulkItems.map((item) => ({
       item_code: item.item_code,
       item_name: item.item_name,
@@ -392,20 +471,38 @@ const SuperAdminInventory = () => {
 
     try {
       setAddingBulk(true);
-      const res = await axiosInstance.post(`${BaseUrl}/inventory/create`, payload);
+      // ✅ Step 2: नया एंडपॉइंट `/inventory/createBulk` का उपयोग करें
+      const res = await axiosInstance.post(`${BaseUrl}/inventory/createBulk`, payload);
+      
       if (res.data?.success) {
+        // ✅ Step 3: रिस्पॉन्स को संभालने का तरीका अपडेट करें
+        // मान लें कि API सफलता पर बनाई गई आइटम्स की अरे वापस करती है
         const newItems = res.data.data || payload.map((p, i) => ({ id: Date.now() + i, ...p }));
         setInventory((prev) => [...prev, ...newItems]);
-        alert("✅ Bulk items added successfully!");
+        
+        Swal.fire({
+          icon: "success",
+          title: "Success!",
+          text: "Bulk items added successfully!",
+        });
         closeModal();
+        // फॉर्म को रीसेट करें
         setBulkItems([
           { item_code: "", item_name: "", category: "", description: "", unit: "", quantity: "", reorder_level: "", item_cost: "", expiry_date: "" },
         ]);
       } else {
-        alert("❌ " + (res.data?.message || "Bulk add failed"));
+        Swal.fire({
+          icon: "error",
+          title: "Bulk add failed",
+          text: res.data?.message || "Unknown error occurred",
+        });
       }
     } catch (err) {
-      alert("⚠️ " + (err.response?.data?.message || err.message || "Network error"));
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: err.response?.data?.message || err.message || "Network error",
+      });
     } finally {
       setAddingBulk(false);
     }
