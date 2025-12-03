@@ -571,7 +571,7 @@ const [editFacility, setEditFacility] = useState({
                 value={filterStatus} 
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
-                <option value="all">All Statuses</option>
+         
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
               </select>

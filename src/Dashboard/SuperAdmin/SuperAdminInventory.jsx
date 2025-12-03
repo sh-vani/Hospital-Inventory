@@ -168,20 +168,27 @@ const SuperAdminInventory = () => {
     const q = searchTerm.trim().toLowerCase();
     const matchesSearch =
       !q ||
-      item.item_code.toLowerCase().includes(q) ||
-      item.item_name.toLowerCase().includes(q) ||
-      item.category.toLowerCase().includes(q);
-    if (!matchesSearch) return false;
-
+      (item.item_code?.toLowerCase() || "").includes(q) ||
+      (item.item_name?.toLowerCase() || "").includes(q) ||
+      (item.category?.toLowerCase() || "").includes(q);
+  
+    // If searching, ignore filterType
+    if (q) {
+      return matchesSearch;
+    }
+  
+    // Apply filterType only when no search term
     if (filterType === "out_of_stock") return item.quantity === 0;
-    if (filterType === "low_stock") return item.quantity < item.reorder_level;
+    if (filterType === "low_stock")
+      return item.quantity > 0 && item.quantity < item.reorder_level;
     if (filterType === "near_expiry") {
+      if (!item.expiry_date) return false;
       const days = daysUntilExpiry(item.expiry_date);
       return days !== null && days <= 30;
     }
+  
     return true;
   });
-
   const totalNetWorth = inventory
     .reduce((sum, item) => sum + (item.quantity || 0) * (parseFloat(item.item_cost) || 0), 0)
     .toFixed(2);

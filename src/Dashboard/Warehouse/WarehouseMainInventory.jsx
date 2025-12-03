@@ -122,26 +122,35 @@ const WarehouseMainInventory = () => {
   };
 
 
+// ✅ Pehle define karo
+const daysUntilExpiry = (expiryDate) => {
+  if (!expiryDate) return null;
+  const expiry = new Date(expiryDate);
+  const today = new Date();
+  const diffTime = expiry - today;
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
 
+// ✅ Ab use karo
+const filteredInventory = inventory.filter((item) => {
+  const q = searchTerm.trim().toLowerCase();
+  const matchesSearch =
+    !q ||
+    (item.item_code ?? "").toLowerCase().includes(q) ||
+    (item.item_name ?? "").toLowerCase().includes(q) ||
+    (item.category ?? "").toLowerCase().includes(q);
 
-  const filteredInventory = inventory.filter((item) => {
-    const q = searchTerm.trim().toLowerCase();
-    const matchesSearch =
-      !q ||
-      item.item_code.toLowerCase().includes(q) ||
-      item.item_name.toLowerCase().includes(q) ||
-      item.category.toLowerCase().includes(q);
-    if (!matchesSearch) return false;
-    if (filterType === "out_of_stock") return item.quantity === 0;
-    // ✅ FIXED: Match same logic as lowStockItems
-    if (filterType === "low_stock") return item.quantity < item.reorder_level;
-    if (filterType === "near_expiry") {
-      if (!item.expiry_date) return false;
-      const days = daysUntilExpiry(item.expiry_date);
-      return days !== null && days <= 30;
-    }
-    return true;
-  });
+  if (!matchesSearch) return false;
+
+  if (filterType === "out_of_stock") return item.quantity === 0;
+  if (filterType === "low_stock") return item.quantity < item.reorder_level;
+  if (filterType === "near_expiry") {
+    if (!item.expiry_date) return false;
+    const days = daysUntilExpiry(item.expiry_date); // ✅ Ab safe hai
+    return days !== null && days <= 30;
+  }
+  return true;
+});
 
   const totalPages = Math.ceil(filteredInventory.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -149,14 +158,7 @@ const WarehouseMainInventory = () => {
 
   useEffect(() => setCurrentPage(1), [searchTerm]);
 
-  // Helper functions
-  const daysUntilExpiry = (expiryDate) => {
-    if (!expiryDate) return null;
-    const expiry = new Date(expiryDate);
-    const today = new Date();
-    const diffTime = expiry - today;
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
+
 
   const calculateStatus = (item) => {
     if (item.quantity === 0) return "out_of_stock";

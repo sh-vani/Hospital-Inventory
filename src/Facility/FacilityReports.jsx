@@ -213,7 +213,39 @@ const ReportsAnalytics = () => {
   const resetFilters = () => {
     setRefreshKey((p) => p + 1);
   };
+// Helper: Export current report data as CSV
+const exportToCSV = () => {
+  const data = getFilteredData();
+  if (data.length === 0) {
+    alert("No data to export.");
+    return;
+  }
 
+  let csvContent = "";
+
+  // Define headers and row mapping based on report type
+  if (reportType === "Low Stock" || reportType === "Total Stock") {
+    csvContent = "Item Name,Quantity\n";
+    csvContent += data.map(item => `"${item.label}",${item.stock}`).join("\n");
+  } else if (reportType === "Pending Requisition") {
+    csvContent = "Item Name,Requested Quantity\n";
+    csvContent += data.map(item => `"${item.label}",${item.requested}`).join("\n");
+  } else if (reportType === "Approved Requisition") {
+    csvContent = "Item Name,Approved Quantity\n";
+    csvContent += data.map(item => `"${item.label}",${item.approved}`).join("\n");
+  }
+
+  // Create and trigger download
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `${reportType.replace(/\s+/g, "_")}_Report.csv`);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
   const MetricCard = ({ title, value, icon: Icon, color }) => (
     <div className={`card text-white bg-${color} shadow-sm h-100`}>
       <div className="card-body d-flex align-items-center">
@@ -304,7 +336,9 @@ const ReportsAnalytics = () => {
           <div className="card shadow-sm">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h5 className="mb-0">Report Preview</h5>
-              <button className="btn btn-secondary btn-sm">Export</button>
+              <button className="btn btn-secondary btn-sm" onClick={exportToCSV}>
+  Export CSV
+</button>
             </div>
             <div className="card-body">
               <h6 className="mb-4">{reportType}</h6>

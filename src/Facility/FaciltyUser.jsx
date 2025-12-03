@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Row, Col, Button } from 'react-bootstrap';
+import { Modal, Form, Row, Col, Button, InputGroup } from 'react-bootstrap';
+import { FaSearch } from 'react-icons/fa';
 import axiosInstance from '../Api/axiosInstance';
 
 const FacilityUser = () => {
@@ -13,17 +14,17 @@ const FacilityUser = () => {
     name: '',
     email: '',
     password: '',
-    role: 'facility_user', // always fixed
+    role: 'facility_user',
     phone: '',
     department: '',
-
   });
 
-  // ✅ Pagination state
+  // ✅ Search & Pagination
+  const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 10;
 
-  // ✅ Get logged-in user info from localStorage
+  // Get logged-in user
   const getLoggedInUser = () => {
     const userData = localStorage.getItem('user');
     if (!userData) return {};
@@ -37,7 +38,7 @@ const FacilityUser = () => {
 
   const loggedInUser = getLoggedInUser();
 
-  // ✅ Fetch departments and users
+  // Fetch data
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
@@ -62,6 +63,19 @@ const FacilityUser = () => {
     fetchUsers();
   }, [loggedInUser.id]);
 
+  // ✅ Apply search filter
+  const filteredUsers = users.filter(user =>
+    (user.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (user.email?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (user.phone?.includes(searchTerm)) ||
+    (user.department_name?.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -75,7 +89,6 @@ const FacilityUser = () => {
       role: 'facility_user',
       phone: '',
       department: '',
-
     });
     setModalType('add');
     setShowModal(true);
@@ -89,7 +102,6 @@ const FacilityUser = () => {
       password: '',
       role: 'facility_user',
       phone: user.phone,
-
       department: String(user.department_id),
     });
     setModalType('edit');
@@ -98,24 +110,22 @@ const FacilityUser = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     let facility_id, facility_admin_id;
-  
+
     if (modalType === 'add') {
-      // Add: logged-in user की facility
       facility_id = loggedInUser.facility_id ? Number(loggedInUser.facility_id) : null;
       facility_admin_id = loggedInUser.id ? Number(loggedInUser.id) : null;
     } else {
-      // Edit: existing user की facility (preserve original)
       facility_id = selectedUser.facility_id;
       facility_admin_id = selectedUser.facility_admin_id;
     }
-  
+
     if (!facility_id || isNaN(facility_id)) {
       alert('Facility ID is missing or invalid.');
       return;
     }
-  
+
     const payload = {
       name: formData.name,
       email: formData.email,
@@ -125,18 +135,18 @@ const FacilityUser = () => {
       facility_id: Number(facility_id),
       facility_admin_id: Number(facility_admin_id),
     };
-  
+
     if (formData.password) {
       payload.password = formData.password;
     }
-  
+
     try {
       if (modalType === 'add') {
         await axiosInstance.post('/users', payload);
       } else {
         await axiosInstance.put(`/users/${selectedUser.id}`, payload);
       }
-  
+
       setShowModal(false);
       const res = await axiosInstance.get(`/users/facility-admin/users/${loggedInUser.id}`);
       setUsers(res.data.data);
@@ -159,10 +169,10 @@ const FacilityUser = () => {
     }
   };
 
-  // ✅ Pagination logic
-  const totalPages = Math.ceil(users.length / entriesPerPage);
+  // ✅ Pagination based on filteredUsers
+  const totalPages = Math.ceil(filteredUsers.length / entriesPerPage);
   const indexOfLastEntry = currentPage * entriesPerPage;
-  const currentEntries = users.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
+  const currentEntries = filteredUsers.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
@@ -172,11 +182,27 @@ const FacilityUser = () => {
 
   return (
     <div className="container-fluid p-4">
+      {/* Header with Search */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1>Facility Users</h1>
         <Button onClick={openAddModal}>Add User</Button>
       </div>
 
+      {/* ✅ Search Bar */}
+      <div className="mb-4">
+        <InputGroup>
+          <InputGroup.Text>
+            <FaSearch />
+          </InputGroup.Text>
+          <Form.Control
+            placeholder="Search by name, email, phone, or department..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </InputGroup>
+      </div>
+
+      {/* Users Table */}
       <div className="table-responsive card p-3">
         <table className="table table-hover">
           <thead>
@@ -214,49 +240,52 @@ const FacilityUser = () => {
           </tbody>
         </table>
       </div>
-      {/* ✅ PAGINATION UI — Same as your other components */}
-        <div className="d-flex justify-content-end mt-3">
-          <nav>
-            <ul className="pagination mb-0">
-              <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                <button
-                  className="page-link"
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </button>
-              </li>
 
-              {[...Array(totalPages)].map((_, i) => {
-                const page = i + 1;
-                return (
-                  <li
-                    key={page}
-                    className={`page-item ${currentPage === page ? 'active' : ''}`}
+      {/* Pagination */}
+      <div className="d-flex justify-content-end mt-3">
+        <nav>
+          <ul className="pagination mb-0">
+            <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+            </li>
+
+            {[...Array(totalPages)].map((_, i) => {
+              const page = i + 1;
+              return (
+                <li
+                  key={page}
+                  className={`page-item ${currentPage === page ? 'active' : ''}`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => handlePageChange(page)}
                   >
-                    <button
-                      className="page-link"
-                      onClick={() => handlePageChange(page)}
-                    >
-                      {page}
-                    </button>
-                  </li>
-                );
-              })}
+                    {page}
+                  </button>
+                </li>
+              );
+            })}
 
-              <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
-                <button
-                  className="page-link"
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages || totalPages === 0}
-                >
-                  Next
-                </button>
-              </li>
-            </ul>
-          </nav>
-        </div>
+            <li className={`page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`}>
+              <button
+                className="page-link"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                Next
+              </button>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
+      {/* Modal */}
       <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered>
         <Modal.Header closeButton>
           <Modal.Title>{modalType === 'add' ? 'Add User' : 'Edit User'}</Modal.Title>
@@ -292,8 +321,6 @@ const FacilityUser = () => {
                 </Form.Group>
               </Col>
             </Row>
-
-            {/* ✅ Role is hidden completely */}
 
             <Row className="mb-3">
               <Col md={12}>

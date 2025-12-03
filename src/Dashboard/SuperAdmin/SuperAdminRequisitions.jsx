@@ -150,14 +150,17 @@ const SuperAdminRequisitions = () => {
   const filteredBySearch = filteredRequisitions.filter(r => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return true;
+  
+    // सेफ स्ट्रिंग चेक करने का हेल्पर
+    const safeString = (str) => (str ?? '').toString().toLowerCase();
+  
     return (
-      r.id.toString().toLowerCase().includes(q) ||
-      r.facility_name.toLowerCase().includes(q) ||
-      (r.items && r.items.length > 0 && r.items[0].item_name.toLowerCase().includes(q)) ||
-      r.status.toLowerCase().includes(q)
+      r.id?.toString().toLowerCase().includes(q) ||
+      safeString(r.facility_name).includes(q) ||
+      (r.items?.[0]?.item_name && safeString(r.items[0].item_name).includes(q)) ||
+      safeString(r.status).includes(q)
     );
   });
-
   // === BADGES ===
   const StatusBadge = ({ status }) => {
     const map = {

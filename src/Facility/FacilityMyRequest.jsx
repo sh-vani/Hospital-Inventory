@@ -414,8 +414,7 @@ const fetchRequisitionsByFacility = async (facilityId) => {
     setBulkItems(newItems);
   };
 
-  // Cancel requisition
-  const handleCancelRequisition = async (id) => {
+  const handleCancelRequisition = async (requisitionId) => {
     const result = await Swal.fire({
       title: "Are you sure?",
       text: "You won't be able to revert this!",
@@ -426,26 +425,50 @@ const fetchRequisitionsByFacility = async (facilityId) => {
       confirmButtonText: "Yes, cancel it!",
     });
     if (!result.isConfirmed) return;
-
+  
+    const user = getUserFromStorage();
+    if (!user?.facility_id) {
+      Swal.fire("Error", "User session missing facility info. Please log in again.", "error");
+      return;
+    }
+  
     setLoading(true);
     try {
-      const response = await axiosInstance.delete(`${BaseUrl}/requisitions/${id}`);
+      // ✅ POST करें, क्योंकि endpoint "/facility-requisitions/delete" है
+      const response = await axiosInstance.post(`${BaseUrl}/facility-requisitions/delete`, {
+        id: requisitionId,           // requisition ID (जैसे: 10)
+        facility_id: user.facility_id, // फैसिलिटी ID (जैसे: 5)
+      });
+  
       if (response.data.success) {
         setRequisitionHistory((prev) =>
-          prev.map((req) => (req.id === id ? { ...req, status: "Cancelled" } : req))
+          prev.map((req) => (req.id === requisitionId ? { ...req, status: "Cancelled" } : req))
         );
-        Swal.fire({ icon: "success", title: "Cancelled!", text: "Requisition has been cancelled.", timer: 2000 });
+        Swal.fire({
+          icon: "success",
+          title: "Cancelled!",
+          text: "Requisition has been cancelled.",
+          timer: 2000,
+          showConfirmButton: false,
+        });
       } else {
-        Swal.fire({ icon: "error", title: "Cancellation Failed", text: response.data.message || "Unknown error" });
+        Swal.fire({
+          icon: "error",
+          title: "Cancellation Failed",
+          text: response.data.message || "Unknown error",
+        });
       }
     } catch (error) {
-      const msg = error.response?.data?.message || "Network error.";
-      Swal.fire({ icon: "error", title: "Error", text: msg });
+      const msg = error.response?.data?.message || "Network error. Please try again.";
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: msg,
+      });
     } finally {
       setLoading(false);
     }
   };
-
   // View detail
   const handleViewDetail = (req) => {
     setSelectedRequisition(req);

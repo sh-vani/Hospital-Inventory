@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTrash, FaSearch, FaFilter } from 'react-icons/fa';
-// import { toast } from 'react-toastify';
-import axiosInstance from '../Api/axiosInstance'; // your axios instance
+import axiosInstance from '../Api/axiosInstance';
 
 const FacilityDepartmentsCategories = () => {
   const [departments, setDepartments] = useState([]);
+  const [filteredDepartments, setFilteredDepartments] = useState([]); // for filtered results
+  const [searchTerm, setSearchTerm] = useState(''); // search input value
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [selectedDept, setSelectedDept] = useState(null);
@@ -14,7 +16,6 @@ const FacilityDepartmentsCategories = () => {
     department_head: ''
   });
 
-  // ✅ Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const entriesPerPage = 10;
 
@@ -23,45 +24,50 @@ const FacilityDepartmentsCategories = () => {
     fetchDepartments();
   }, []);
 
+  // Apply search filter whenever departments or searchTerm changes
+  useEffect(() => {
+    const filtered = departments.filter(dept =>
+      dept.department_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      dept.department_head.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredDepartments(filtered);
+    setCurrentPage(1); // reset to first page on new search
+  }, [departments, searchTerm]);
+
   const fetchDepartments = async () => {
     try {
       const res = await axiosInstance.get('/department');
       setDepartments(res.data.data || []);
     } catch (error) {
       console.error('Error fetching departments:', error);
-      // toast.error('Failed to fetch departments');
     }
   };
 
   const handleAddDepartment = async () => {
     try {
       await axiosInstance.post('/department', newDept);
-      // toast.success('Department added successfully!');
       setShowAddModal(false);
       setNewDept({ department_name: '', department_head: '' });
       fetchDepartments();
     } catch (error) {
       console.error('Error adding department:', error);
-      // toast.error('Failed to add department');
     }
   };
 
   const handleRemoveDepartment = async () => {
     try {
       await axiosInstance.delete(`/department/${selectedDept.id}`);
-      // toast.success('Department removed successfully!');
       setShowRemoveModal(false);
       fetchDepartments();
     } catch (error) {
       console.error('Error removing department:', error);
-      // toast.error('Failed to remove department');
     }
   };
 
-  // ✅ Pagination logic
-  const totalPages = Math.ceil(departments.length / entriesPerPage);
+  // ✅ Pagination logic uses filteredDepartments
+  const totalPages = Math.ceil(filteredDepartments.length / entriesPerPage);
   const indexOfLastEntry = currentPage * entriesPerPage;
-  const currentEntries = departments.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
+  const currentEntries = filteredDepartments.slice(indexOfLastEntry - entriesPerPage, indexOfLastEntry);
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
@@ -84,20 +90,31 @@ const FacilityDepartmentsCategories = () => {
         </button>
       </div>
 
-      {/* Departments Table */}
-      <div className="card">
+      {/* Search & Filter Bar */}
+      <div className="card mb-3">
         <div className="card-header bg-white d-flex justify-content-between align-items-center">
           <h5 className="mb-0">Departments</h5>
           <div className="d-flex gap-2">
             <div className="input-group input-group-sm">
               <span className="input-group-text"><FaSearch /></span>
-              <input type="text" className="form-control" placeholder="Search departments..." />
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Search departments..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-            <button className="btn btn-sm btn-outline-secondary">
+            {/* Optional: You can expand "Filter" later (e.g., by status, category) */}
+            <button className="btn btn-sm btn-outline-secondary" disabled>
               <FaFilter />
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Departments Table */}
+      <div className="card">
         <div className="card-body table-responsive">
           <table className="table table-hover">
             <thead>
@@ -134,7 +151,8 @@ const FacilityDepartmentsCategories = () => {
           </table>
         </div>
       </div>
-      {/* ✅ PAGINATION UI — Same as your other components */}
+
+      {/* Pagination */}
       <div className="d-flex justify-content-end mt-3">
         <nav>
           <ul className="pagination mb-0">
@@ -180,100 +198,66 @@ const FacilityDepartmentsCategories = () => {
 
       {/* Add Department Modal */}
       {showAddModal && (
-        <>
-          <div
-            className="modal d-block"
-            tabIndex="-1"
-            style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-          >
-            <div className="modal-dialog">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Add Department</h5>
-                  <button className="btn-close" onClick={() => setShowAddModal(false)}></button>
+        <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Add Department</h5>
+                <button className="btn-close" onClick={() => setShowAddModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <label className="form-label">Department Name</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={newDept.department_name}
+                    onChange={(e) => setNewDept({ ...newDept, department_name: e.target.value })}
+                    placeholder="Enter department name"
+                  />
                 </div>
-                <div className="modal-body">
-                  <div className="mb-3">
-                    <label className="form-label">Department Name</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={newDept.department_name}
-                      onChange={(e) =>
-                        setNewDept({ ...newDept, department_name: e.target.value })
-                      }
-                      placeholder="Enter department name"
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label">Head of Department</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={newDept.department_head}
-                      onChange={(e) =>
-                        setNewDept({ ...newDept, department_head: e.target.value })
-                      }
-                      placeholder="Enter head name"
-                    />
-                  </div>
+                <div className="mb-3">
+                  <label className="form-label">Head of Department</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={newDept.department_head}
+                    onChange={(e) => setNewDept({ ...newDept, department_head: e.target.value })}
+                    placeholder="Enter head name"
+                  />
                 </div>
-                <div className="modal-footer">
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => setShowAddModal(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button className="btn btn-primary" onClick={handleAddDepartment}>
-                    Add
-                  </button>
-                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleAddDepartment}>Add</button>
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* Remove Department Modal */}
       {showRemoveModal && (
-        <>
-          <div
-            className="modal d-block"
-            tabIndex="-1"
-            style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-          >
-            <div className="modal-dialog">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Remove Department</h5>
-                  <button
-                    className="btn-close"
-                    onClick={() => setShowRemoveModal(false)}
-                  ></button>
-                </div>
-                <div className="modal-body">
-                  <p>
-                    Are you sure you want to remove{' '}
-                    <strong>{selectedDept?.department_name}</strong>?
-                  </p>
-                  <p className="text-muted">This action cannot be undone.</p>
-                </div>
-                <div className="modal-footer">
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => setShowRemoveModal(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button className="btn btn-danger" onClick={handleRemoveDepartment}>
-                    Remove
-                  </button>
-                </div>
+        <div className="modal d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Remove Department</h5>
+                <button className="btn-close" onClick={() => setShowRemoveModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <p>
+                  Are you sure you want to remove <strong>{selectedDept?.department_name}</strong>?
+                </p>
+                <p className="text-muted">This action cannot be undone.</p>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowRemoveModal(false)}>Cancel</button>
+                <button className="btn btn-danger" onClick={handleRemoveDepartment}>Remove</button>
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

@@ -337,9 +337,7 @@ const SuperAdminAssets = () => {
               >
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="retired">Retired</option>
-                <option value="">All Statuses</option>
+             
               </select>
             </div>
           </div>

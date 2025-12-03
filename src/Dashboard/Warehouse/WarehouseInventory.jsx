@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   FaSearch,
   FaEdit,
@@ -189,36 +189,35 @@ const [addToAllForm, setAddToAllForm] = useState({
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  // === FILTER LOGIC ===
-  const filteredInventory = inventory.filter((item) => {
-    const q = searchTerm.trim().toLowerCase();
-    const matchesSearch =
-      !q ||
-      item.item_code.toLowerCase().includes(q) ||
-      item.item_name.toLowerCase().includes(q) ||
-      item.category.toLowerCase().includes(q);
-
-    if (!matchesSearch) return false;
-
-    if (filterType === "out_of_stock") return item.quantity === 0;
-    if (filterType === "low_stock")
-      return item.quantity > 0 && item.quantity < item.reorder_level;
-    if (filterType === "near_expiry") {
-      if (!item.expiry_date) return false;
-      const days = daysUntilExpiry(item.expiry_date);
-      return days !== null && days <= 30;
-    }
-
-    return true;
-  });
-
+  const filteredInventory = useMemo(() => {
+    return inventory.filter((item) => {
+      const q = searchTerm.trim().toLowerCase();
+      const matchesSearch = !q ||
+      toLower(item.item_code).includes(q) ||
+      toLower(item.item_name).includes(q) ||
+      toLower(item.category).includes(q);
+      // If searching, ignore filterType
+      if (q) {
+        return matchesSearch;
+      }
+  
+      // Apply filterType only when no search term
+      if (filterType === "out_of_stock") return item.quantity === 0;
+      if (filterType === "low_stock")
+        return item.quantity > 0 && item.quantity < item.reorder_level;
+      if (filterType === "near_expiry") {
+        if (!item.expiry_date) return false;
+        const days = daysUntilExpiry(item.expiry_date);
+        return days !== null && days <= 30;
+      }
+  
+      return true;
+    });
+  }, [inventory, searchTerm, filterType]);
   // Pagination calculations
   const totalPages = Math.ceil(filteredInventory.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentInventory = filteredInventory.slice(
-    startIndex,
-    startIndex + itemsPerPage
-  );
+  const currentInventory = filteredInventory.slice(startIndex, startIndex + itemsPerPage);
 
   // Reset to first page when search term changes
   useEffect(() => {
