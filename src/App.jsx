@@ -59,6 +59,8 @@ import ReturnsRecalls from "./Dashboard/Warehouse/ReturnsRecalls";
 import WarehouseReturn from "./Dashboard/Warehouse/WarehouseReturn";
 import FacilityReturns from "./Facility/FacilityReturns";
 import WarehouseMainInventory from "./Dashboard/Warehouse/WarehouseMainInventory";
+import FacilityWarehouseView from "./Facility/FacilityWarehouseView";
+import FacilityAdminInventoryView from "./Dashboard/FacilityUser/FacilityAdminInventroyView";
 
 function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -117,6 +119,7 @@ function App() {
                   <Route path="/facility/usersRoles" element={<FacilityUsersRoles/>}/>'
                   <Route path="/facility/goodreceipt" element={<GoodReceipt/>}/>'
                   <Route path="/facility/returns" element={<FacilityReturns/>}/>'
+                  <Route path="/facility/warehouse-view" element={<FacilityWarehouseView/>}/>'
                    <Route path="/profile" element={<Profile/>}/>
                 {/* SuperAdmin */}
                    <Route path="/superadmin/dashboard"element={<SuperAdminDashboard/>}/>
@@ -137,6 +140,7 @@ function App() {
                   <Route path="/user/myRequests"element={<FacilityUserMyRequests/>}/>
                   <Route path="/user/notification"element={<FacilityUserNotifications/>}/>
                   <Route path="/user/receipts"element={<AcknowledgementOfReceipts/>}/>
+                  <Route path="/user/admin-inventory-view"element={<FacilityAdminInventoryView/>}/>
 
                   {/* Warehouse Routes */}
                  <Route path="/warehouse/dashboard"element={<WarehouseDashbaord/>}/>

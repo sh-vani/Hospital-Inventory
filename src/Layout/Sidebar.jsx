@@ -166,6 +166,13 @@ useEffect(() => {
         icon: faChartBar,
         path: "/facility/dashboard",
       },
+
+      {
+        name: "Warehouse Inventory",
+        icon: faWarehouse,
+        path: "/facility/warehouse-view"
+      },
+
       {
         name: "Facility Inventory",
         icon: faWarehouse,
@@ -228,6 +235,13 @@ useEffect(() => {
         icon: faChartBar,
         path: "/user/dashboard",
       },
+
+      {
+        name: "Admin Inventory",
+        icon:  faWarehouse,
+        path: "/user/admin-inventory-view"
+      },
+
       {
         name: "Facility Inventory",
         icon:  faWarehouse,

@@ -9,10 +9,10 @@ import {
   FaTimes,
   FaArrowRight,
 } from "react-icons/fa";
-import BaseUrl from "../../Api/BaseUrl";
-import axiosInstance from "../../Api/axiosInstance";
+import BaseUrl from "../Api/BaseUrl";
+import axiosInstance from '../Api/axiosInstance';
 
-const WarehouseMainInventory = () => {
+const facilityWarehouseView = () => {
   // === STATE ===
   const [inventory, setInventory] = useState([]);
   const [lowStockItems, setLowStockItems] = useState([]);
@@ -84,11 +84,13 @@ const WarehouseMainInventory = () => {
         setLoading(false);
       }
     };
+
     fetchInventory();
   }, []);
 
   // Categorize items whenever inventory changes
   useEffect(() => {
+    // ✅ FIXED: Include ALL items where quantity < reorder_level (even negative!)
     const lowStock = inventory.filter(
       (item) => item.quantity < item.reorder_level
     );
@@ -102,7 +104,6 @@ const WarehouseMainInventory = () => {
     setOutOfStockItems(outOfStock);
     setNearExpiryItems(nearExpiry);
   }, [inventory]);
-
   const openEditModal = (item) => {
     setCurrentItem(item);
     setEditForm({
@@ -114,42 +115,50 @@ const WarehouseMainInventory = () => {
       quantity: item.quantity?.toString() || "0",
       reorder_level: item.reorder_level?.toString() || "0",
       item_cost: item.item_cost?.toString() || "0",
+      // ✅ ISO string को input-friendly format में बदलें
       expiry_date: formatDateForInput(item.expiry_date),
     });
     setShowEditModal(true);
   };
 
-  const daysUntilExpiry = (expiryDate) => {
-    if (!expiryDate) return null;
-    const expiry = new Date(expiryDate);
-    const today = new Date();
-    const diffTime = expiry - today;
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
 
-  const filteredInventory = inventory.filter((item) => {
-    const q = searchTerm.trim().toLowerCase();
-    const matchesSearch =
-      !q ||
-      (item.item_code ?? "").toLowerCase().includes(q) ||
-      (item.item_name ?? "").toLowerCase().includes(q) ||
-      (item.category ?? "").toLowerCase().includes(q);
-    if (!matchesSearch) return false;
-    if (filterType === "out_of_stock") return item.quantity === 0;
-    if (filterType === "low_stock") return item.quantity < item.reorder_level;
-    if (filterType === "near_expiry") {
-      if (!item.expiry_date) return false;
-      const days = daysUntilExpiry(item.expiry_date);
-      return days !== null && days <= 30;
-    }
-    return true;
-  });
+// ✅ Pehle define karo
+const daysUntilExpiry = (expiryDate) => {
+  if (!expiryDate) return null;
+  const expiry = new Date(expiryDate);
+  const today = new Date();
+  const diffTime = expiry - today;
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
+// ✅ Ab use karo
+const filteredInventory = inventory.filter((item) => {
+  const q = searchTerm.trim().toLowerCase();
+  const matchesSearch =
+    !q ||
+    (item.item_code ?? "").toLowerCase().includes(q) ||
+    (item.item_name ?? "").toLowerCase().includes(q) ||
+    (item.category ?? "").toLowerCase().includes(q);
+
+  if (!matchesSearch) return false;
+
+  if (filterType === "out_of_stock") return item.quantity === 0;
+  if (filterType === "low_stock") return item.quantity < item.reorder_level;
+  if (filterType === "near_expiry") {
+    if (!item.expiry_date) return false;
+    const days = daysUntilExpiry(item.expiry_date); // ✅ Ab safe hai
+    return days !== null && days <= 30;
+  }
+  return true;
+});
 
   const totalPages = Math.ceil(filteredInventory.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentInventory = filteredInventory.slice(startIndex, startIndex + itemsPerPage);
 
   useEffect(() => setCurrentPage(1), [searchTerm]);
+
+
 
   const calculateStatus = (item) => {
     if (item.quantity === 0) return "out_of_stock";
@@ -174,16 +183,15 @@ const WarehouseMainInventory = () => {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString();
   };
-
-  const formatDateForInput = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
+// ISO string या Date object को YYYY-MM-DD में बदले
+const formatDateForInput = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
   // === MODAL HANDLERS ===
   const openViewModal = async (item) => {
     setLoading(true);
@@ -240,9 +248,13 @@ const WarehouseMainInventory = () => {
       alert("Item ID not found.");
       return;
     }
+  
     const safeParseInt = (value) => (value === "" || value == null ? 0 : parseInt(value, 10));
     const safeParseFloat = (value) => (value === "" || value == null ? 0 : parseFloat(value));
+  
+    // ✅ expiry_date पहले से ही "YYYY-MM-DD" या "" है
     const expiryDate = editForm.expiry_date === "" ? null : editForm.expiry_date;
+  
     const payload = {
       item_code: editForm.item_code?.trim() || "",
       item_name: editForm.item_name?.trim() || "",
@@ -252,11 +264,13 @@ const WarehouseMainInventory = () => {
       quantity: safeParseInt(editForm.quantity),
       reorder_level: safeParseInt(editForm.reorder_level),
       item_cost: safeParseFloat(editForm.item_cost),
-      expiry_date: expiryDate,
+      expiry_date: expiryDate, // ✅ अब यह "2025-12-05" या null होगा
     };
+  
     try {
       setLoading(true);
       const response = await axiosInstance.put(`${BaseUrl}/inventory/${currentItem.id}`, payload);
+  
       if (response.data?.success) {
         const updatedItem = { id: currentItem.id, ...payload };
         setInventory((prev) =>
@@ -281,6 +295,7 @@ const WarehouseMainInventory = () => {
       alert("Please fill all required fields.");
       return;
     }
+
     const payload = {
       item_code: addForm.item_code,
       item_name: addForm.item_name,
@@ -292,9 +307,11 @@ const WarehouseMainInventory = () => {
       item_cost: parseFloat(addForm.item_cost) || 0,
       expiry_date: addForm.expiry_date || null,
     };
+
     try {
       setAddingItem(true);
       const response = await axiosInstance.post(`${BaseUrl}/inventory/create`, payload);
+
       if (response.data?.success) {
         const newItem = {
           id: response.data.data?.id || inventory.length + 1,
@@ -327,6 +344,7 @@ const WarehouseMainInventory = () => {
 
   const handleDeleteItem = async (id) => {
     if (!window.confirm("Are you sure you want to delete this item?")) return;
+  
     try {
       setLoading(true);
       const response = await axiosInstance.delete(`${BaseUrl}/inventory/${id}`);
@@ -364,55 +382,6 @@ const WarehouseMainInventory = () => {
     .reduce((sum, item) => sum + (item.quantity || 0) * (parseFloat(item.item_cost) || 0), 0)
     .toFixed(2);
 
-  // ✅ NEW: Helper to calculate total cost for an item
-  const calculateTotalCost = (qty, cost) => {
-    return (parseFloat(qty || 0) * parseFloat(cost || 0)).toFixed(2);
-  };
-
-  // ✅ EXPORT WITH TOTAL COST
-  const handleExportCSV = () => {
-    const headers = [
-      "Item Code",
-      "Item Name",
-      "Category",
-      "Quantity",
-      "Reorder Level",
-      "Item Cost (GHS)",
-      "Total Cost (GHS)", // ✅ ADDED
-      "Expiry Date",
-      "Status",
-    ];
-    const rows = filteredInventory.map((item) => {
-      const totalCost = calculateTotalCost(item.quantity, item.item_cost);
-      return [
-        item.item_code,
-        item.item_name,
-        item.category,
-        item.quantity,
-        item.reorder_level,
-        item.item_cost ? parseFloat(item.item_cost).toFixed(2) : "0.00",
-        totalCost,
-        item.expiry_date ? formatDate(item.expiry_date) : "N/A",
-        calculateStatus(item).replace("_", " ").toUpperCase(),
-      ];
-    });
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row) =>
-        row.map((field) => `"${String(field).replace(/"/g, '""')}"`).join(",")
-      ),
-    ].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `warehouse_inventory_${new Date().toISOString().slice(0, 10)}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   return (
     <div className="container-fluid py-3">
       {/* Top Toolbar */}
@@ -432,22 +401,7 @@ const WarehouseMainInventory = () => {
               <FaSearch />
             </button>
           </div>
-          <div className="d-flex gap-2" style={{ height: "40px" }}>
-            <button
-              className="btn btn-primary d-flex align-items-center gap-1"
-              onClick={openAddModal}
-              disabled={loading}
-            >
-              <FaPlus /> Add Item
-            </button>
-            <button
-              className="btn btn-success d-flex align-items-center gap-1"
-              onClick={handleExportCSV}
-              disabled={loading || filteredInventory.length === 0}
-            >
-              Export CSV
-            </button>
-          </div>
+       
         </div>
       </div>
 
@@ -532,6 +486,7 @@ const WarehouseMainInventory = () => {
             </div>
           </div>
         </div>
+
         {/* Out of Stock Card */}
         <div className="col-md-4">
           <div
@@ -572,6 +527,7 @@ const WarehouseMainInventory = () => {
             </div>
           </div>
         </div>
+
         {/* Near Expiry Card */}
         <div className="col-md-4">
           <div
@@ -661,7 +617,6 @@ const WarehouseMainInventory = () => {
                   <th>Quantity</th>
                   <th>Reorder Level</th>
                   <th>Item Cost</th>
-                  <th>Total Cost</th> {/* ✅ NEW COLUMN */}
                   <th>Expiry Date</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -670,62 +625,46 @@ const WarehouseMainInventory = () => {
               <tbody>
                 {currentInventory.length === 0 ? (
                   <tr>
-                    <td colSpan="10" className="text-center py-4">
+                    <td colSpan="9" className="text-center py-4">
                       {searchTerm ? "No items match your search." : "No inventory items."}
                     </td>
                   </tr>
                 ) : (
-                  currentInventory.map((item) => {
-                    const totalCost = calculateTotalCost(item.quantity, item.item_cost);
-                    return (
-                      <tr key={item.id}>
-                        <td className="fw-bold">{item.item_code}</td>
-                        <td>{item.item_name}</td>
-                        <td><span className="badge bg-light text-dark">{item.category}</span></td>
-                        <td className={item.quantity < item.reorder_level ? "text-warning" : "text-success"}>
-                          {item.quantity}
-                        </td>
-                        <td>{item.reorder_level}</td>
-                        <td>GHS {parseFloat(item.item_cost).toFixed(2)}</td>
-                        <td><strong>GHS {totalCost}</strong></td> {/* ✅ TOTAL COST */}
-                        <td>
-                          {item.expiry_date ? (
-                            <span className={daysUntilExpiry(item.expiry_date) <= 30 ? "text-info" : ""}>
-                              {formatDate(item.expiry_date)}
-                            </span>
-                          ) : (
-                            "N/A"
-                          )}
-                        </td>
-                        <td>{getStatusBadge(calculateStatus(item))}</td>
-                        <td>
-                          <div className="btn-group">
-                            <button className="btn btn-sm btn-outline-success" onClick={() => openViewModal(item)}>
-                              View
-                            </button>
-                            <button 
-                              className="btn btn-sm btn-outline-primary" 
-                              onClick={() => openEditModal(item)}
-                              title="Edit Item"
-                            >
-                              <FaEdit />
-                            </button>
-                            <button 
-                              className="btn btn-sm btn-outline-danger" 
-                              onClick={() => handleDeleteItem(item.id)}
-                              title="Delete Item"
-                            >
-                              <FaTimes />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
+                  currentInventory.map((item) => (
+                    <tr key={item.id}>
+                      <td className="fw-bold">{item.item_code}</td>
+                      <td>{item.item_name}</td>
+                      <td><span className="badge bg-light text-dark">{item.category}</span></td>
+                      <td className={item.quantity < item.reorder_level ? "text-warning" : "text-success"}>
+                        {item.quantity}
+                      </td>
+                      <td>{item.reorder_level}</td>
+                      <td>GHS {parseFloat(item.item_cost).toFixed(2)}</td>
+                      <td>
+                        {item.expiry_date ? (
+                          <span className={daysUntilExpiry(item.expiry_date) <= 30 ? "text-info" : ""}>
+                            {formatDate(item.expiry_date)}
+                          </span>
+                        ) : (
+                          "N/A"
+                        )}
+                      </td>
+                      <td>{getStatusBadge(calculateStatus(item))}</td>
+                      <td>
+  <div className="btn-group">
+    <button className="btn btn-sm btn-outline-success" onClick={() => openViewModal(item)}>
+      View
+    </button>
+
+  </div>
+</td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>
           </div>
+
           {totalPages > 1 && (
             <nav className="d-flex justify-content-center mt-3">
               <ul className="pagination mb-0">
@@ -752,150 +691,7 @@ const WarehouseMainInventory = () => {
         </div>
       )}
 
-      {/* ===== ADD MODAL ===== */}
-      {showAddModal && (
-        <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Add New Inventory Item</h5>
-                <button type="button" className="btn-close" onClick={closeAllModals}></button>
-              </div>
-              <div className="modal-body">
-                <form>
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Item Code *</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="item_code"
-                        value={addForm.item_code}
-                        onChange={handleAddInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Category *</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="category"
-                        value={addForm.category}
-                        onChange={handleAddInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-12">
-                      <label className="form-label">Item Name *</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="item_name"
-                        value={addForm.item_name}
-                        onChange={handleAddInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-12">
-                      <label className="form-label">Description</label>
-                      <textarea
-                        className="form-control"
-                        name="description"
-                        value={addForm.description || ""}
-                        onChange={handleAddInputChange}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Unit *</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="unit"
-                        value={addForm.unit}
-                        onChange={handleAddInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Quantity *</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        name="quantity"
-                        value={addForm.quantity}
-                        onChange={handleAddInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Reorder Level</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        name="reorder_level"
-                        value={addForm.reorder_level || ""}
-                        onChange={handleAddInputChange}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Item Cost (GHS) *</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control"
-                        name="item_cost"
-                        value={addForm.item_cost}
-                        onChange={handleAddInputChange}
-                        required
-                      />
-                    </div>
-                    {/* ✅ TOTAL COST PREVIEW */}
-                    <div className="col-md-6">
-                      <label className="form-label">Total Cost (GHS) - Preview</label>
-                      <input
-                        className="form-control"
-                        value={calculateTotalCost(addForm.quantity, addForm.item_cost)}
-                        readOnly
-                        style={{ backgroundColor: "#f8f9fa" }}
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Expiry Date</label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        name="expiry_date"
-                        value={addForm.expiry_date || ""}
-                        onChange={handleAddInputChange}
-                      />
-                    </div>
-                  </div>
-                </form>
-              </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={closeAllModals}>
-                  Cancel
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={handleAddItem}
-                  disabled={addingItem}
-                >
-                  {addingItem ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                      Adding...
-                    </>
-                  ) : (
-                    "Add Item"
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+   
 
       {/* ===== VIEW MODAL ===== */}
       {showViewModal && viewItem && (
@@ -938,13 +734,6 @@ const WarehouseMainInventory = () => {
                 <div className="row mb-2">
                   <div className="col-5 fw-bold">Item Cost:</div>
                   <div className="col-7">GHS {parseFloat(viewItem.item_cost).toFixed(2)}</div>
-                </div>
-                {/* ✅ TOTAL COST IN VIEW MODAL */}
-                <div className="row mb-2">
-                  <div className="col-5 fw-bold">Total Cost:</div>
-                  <div className="col-7">
-                    <strong>GHS {calculateTotalCost(viewItem.quantity, viewItem.item_cost)}</strong>
-                  </div>
                 </div>
                 <div className="row mb-2">
                   <div className="col-5 fw-bold">Expiry Date:</div>
@@ -1009,145 +798,6 @@ const WarehouseMainInventory = () => {
         </div>
       )}
 
-      {/* ===== EDIT MODAL ===== */}
-      {showEditModal && currentItem && (
-        <div className="modal show d-block" tabIndex="-1">
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Edit Inventory Item</h5>
-                <button type="button" className="btn-close" onClick={closeAllModals}></button>
-              </div>
-              <div className="modal-body">
-                <form>
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <label className="form-label">Item Code</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="item_code"
-                        value={editForm.item_code}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Category</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="category"
-                        value={editForm.category}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-12">
-                      <label className="form-label">Item Name</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="item_name"
-                        value={editForm.item_name}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-12">
-                      <label className="form-label">Description</label>
-                      <textarea
-                        className="form-control"
-                        name="description"
-                        value={editForm.description || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Unit</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="unit"
-                        value={editForm.unit}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Quantity</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        name="quantity"
-                        value={editForm.quantity}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Reorder Level</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        name="reorder_level"
-                        value={editForm.reorder_level || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Item Cost (GHS)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control"
-                        name="item_cost"
-                        value={editForm.item_cost}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    {/* ✅ Preview in Edit Modal too (optional) */}
-                    <div className="col-md-6">
-                      <label className="form-label">Total Cost (GHS) - Preview</label>
-                      <input
-                        className="form-control"
-                        value={calculateTotalCost(editForm.quantity, editForm.item_cost)}
-                        readOnly
-                        style={{ backgroundColor: "#f8f9fa" }}
-                      />
-                    </div>
-                    <div className="col-md-6">
-                      <label className="form-label">Expiry Date</label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        name="expiry_date"
-                        value={editForm.expiry_date || ""}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                  </div>
-                </form>
-              </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={closeAllModals}>
-                  Cancel
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={handleSaveEdit}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Changes"
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Modal Backdrop */}
       {(showAddModal || showEditModal || showViewModal || showHistoryModal) && (
         <div className="modal-backdrop fade show"></div>
@@ -1156,4 +806,4 @@ const WarehouseMainInventory = () => {
   );
 };
 
-export default WarehouseMainInventory;
+export default facilityWarehouseView;

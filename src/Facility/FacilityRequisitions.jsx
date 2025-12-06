@@ -759,14 +759,20 @@ const handleReject = (req) => {
   ) : (
     currentEntries.map((req) => {
       const facilityStatus = getFacilityStatus(req);
-      const isActionable = (req.status === "Pending" || req.status === "Approved" || req.status === "Processing") && req.facilityStock < req.qty;
+      const isOutofStock = facilityStatus.status === "Out of Stock";
+      
+      // isActionable = not Out of Stock + pending/processing + stock < qty
+      const isActionable = !isOutofStock && 
+                           (req.status === "Pending" || req.status === "Approved" || req.status === "Processing") && 
+                           req.facilityStock < req.qty;
+
       const isChecked = bulkRequisitionList.some(
         (item) => item.reqId === req.id && item.item_id === req.item_id
       );
 
       return (
         <tr key={req.id}>
-          {/* ✅ NEW: Checkbox Column (First Column) */}
+          {/* Checkbox Column */}
           <td>
             {isActionable ? (
               <div className="form-check">
@@ -792,7 +798,7 @@ const handleReject = (req) => {
             )}
           </td>
 
-          {/* Existing Columns (UNCHANGED) */}
+          {/* Data Columns */}
           <td className="fw-medium">{req.id}</td>
           <td>{req.user}</td>
           <td>{req.department}</td>
@@ -811,24 +817,35 @@ const handleReject = (req) => {
                 req.status === "Pending"
                   ? "bg-secondary-subtle text-secondary-emphasis"
                   : req.status === "Processing"
-                    ? "bg-warning-subtle text-warning-emphasis"
-                    : req.status === "Delivered"
-                      ? "bg-info-subtle text-info-emphasis"
-                      : req.status === "Completed"
-                        ? "bg-success-subtle text-success-emphasis"
-                        : "bg-danger-subtle text-danger-emphasis"
+                  ? "bg-warning-subtle text-warning-emphasis"
+                  : req.status === "Delivered"
+                  ? "bg-info-subtle text-info-emphasis"
+                  : req.status === "Completed"
+                  ? "bg-success-subtle text-success-emphasis"
+                  : "bg-danger-subtle text-danger-emphasis"
               } px-3 py-1`}
             >
               {req.status}
             </span>
           </td>
           <td>{req.raisedOn}</td>
+
+          {/* Actions Column */}
           <td className="text-center">
             <div className="d-flex justify-content-center gap-2 flex-wrap">
-           
+              {/* When Out of Stock → ONLY "Raise to Warehouse" */}
+              {isOutofStock && (
+                <button
+                  className="btn btn-sm btn-primary"
+                  onClick={() => handleRaiseToWarehouse(req)}
+                  title="Raise to warehouse (Out of Stock)"
+                >
+                  Raise to Warehouse
+                </button>
+              )}
 
-              {/* Raise to Warehouse & Add to Bulk (UNCHANGED) */}
-              {isActionable && (
+              {/* When NOT Out of Stock → Show actionable buttons */}
+              {!isOutofStock && isActionable && (
                 <>
                   <button
                     className="btn btn-sm btn-primary"
@@ -847,16 +864,18 @@ const handleReject = (req) => {
                 </>
               )}
 
-              {/* Approve & Reject */}
+              {/* Approve & Reject (Approve only if NOT Out of Stock) */}
               {req.status === "Pending" && (
                 <>
-                  <button
-                    className="btn btn-sm btn-success"
-                    onClick={() => handleApprove(req)}
-                    title="Approve requisition"
-                  >
-                    Approve
-                  </button>
+                  {!isOutofStock && (
+                    <button
+                      className="btn btn-sm btn-success"
+                      onClick={() => handleApprove(req)}
+                      title="Approve requisition"
+                    >
+                      Approve
+                    </button>
+                  )}
                   <button
                     className="btn btn-sm btn-danger"
                     onClick={() => handleReject(req)}

@@ -11,7 +11,7 @@ import {
 } from "react-icons/fa";
 import axiosInstance from "../../Api/axiosInstance";
 import BaseUrl from "../../Api/BaseUrl";
-import Swal from "sweetalert2"; // SweetAlert import करें
+import Swal from "sweetalert2";
 
 const SuperAdminInventory = () => {
   // === STATE ===
@@ -23,14 +23,12 @@ const SuperAdminInventory = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState(null);
-
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-
   // Form states
   const [addForm, setAddForm] = useState({
     item_code: "",
@@ -43,7 +41,6 @@ const SuperAdminInventory = () => {
     item_cost: "",
     expiry_date: "",
   });
-
   const [bulkItems, setBulkItems] = useState([
     {
       item_code: "",
@@ -57,14 +54,17 @@ const SuperAdminInventory = () => {
       expiry_date: "",
     },
   ]);
-
   const [editForm, setEditForm] = useState({});
   const [currentItem, setCurrentItem] = useState(null);
   const [viewItem, setViewItem] = useState(null);
-
   const [addingSingle, setAddingSingle] = useState(false);
   const [addingBulk, setAddingBulk] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
+
+  // ✅ Helper: Calculate total cost
+  const calculateTotalCost = (qty, cost) => {
+    return (parseFloat(qty || 0) * parseFloat(cost || 0)).toFixed(2);
+  };
 
   // === FETCH SINGLE ITEM BY ID ===
   const fetchItemById = async (id) => {
@@ -153,7 +153,6 @@ const SuperAdminInventory = () => {
 
   const formatDate = (date) => (date ? new Date(date).toLocaleDateString() : "N/A");
 
-  // ISO string या Date object को YYYY-MM-DD में बदले
   const formatDateForInput = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -171,13 +170,7 @@ const SuperAdminInventory = () => {
       (item.item_code?.toLowerCase() || "").includes(q) ||
       (item.item_name?.toLowerCase() || "").includes(q) ||
       (item.category?.toLowerCase() || "").includes(q);
-  
-    // If searching, ignore filterType
-    if (q) {
-      return matchesSearch;
-    }
-  
-    // Apply filterType only when no search term
+    if (q) return matchesSearch;
     if (filterType === "out_of_stock") return item.quantity === 0;
     if (filterType === "low_stock")
       return item.quantity > 0 && item.quantity < item.reorder_level;
@@ -186,26 +179,25 @@ const SuperAdminInventory = () => {
       const days = daysUntilExpiry(item.expiry_date);
       return days !== null && days <= 30;
     }
-  
     return true;
   });
+
   const totalNetWorth = inventory
     .reduce((sum, item) => sum + (item.quantity || 0) * (parseFloat(item.item_cost) || 0), 0)
     .toFixed(2);
 
-    const openViewModal = async (item) => {
-      setLoading(true);
-      try {
-        const fetchedItem = await fetchItemById(item.id);
-        if (fetchedItem) {
-          setViewItem(fetchedItem);
-          setShowViewModal(true); // ✅ केवल तभी modal खोलें जब डेटा मिल जाए
-        }
-        // अगर fetchedItem null है, तो modal नहीं खुलेगा — और alert पहले से ही fetchItemById में दिख चुका होगा
-      } finally {
-        setLoading(false);
+  const openViewModal = async (item) => {
+    setLoading(true);
+    try {
+      const fetchedItem = await fetchItemById(item.id);
+      if (fetchedItem) {
+        setViewItem(fetchedItem);
+        setShowViewModal(true);
       }
-    };
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openEditModal = (item) => {
     setCurrentItem(item);
@@ -267,7 +259,6 @@ const SuperAdminInventory = () => {
       });
       return;
     }
-
     const payload = {
       item_code: addForm.item_code,
       item_name: addForm.item_name,
@@ -279,7 +270,6 @@ const SuperAdminInventory = () => {
       item_cost: parseFloat(addForm.item_cost) || 0,
       expiry_date: addForm.expiry_date || null,
     };
-
     try {
       setAddingSingle(true);
       const res = await axiosInstance.post(`${BaseUrl}/inventory/create`, payload);
@@ -330,11 +320,9 @@ const SuperAdminInventory = () => {
       });
       return;
     }
-
     const safeParseInt = (value) => (value === "" || value == null ? 0 : parseInt(value, 10));
     const safeParseFloat = (value) => (value === "" || value == null ? 0 : parseFloat(value));
     const expiryDate = editForm.expiry_date === "" ? null : editForm.expiry_date;
-
     const payload = {
       item_code: editForm.item_code?.trim() || "",
       item_name: editForm.item_name?.trim() || "",
@@ -346,7 +334,6 @@ const SuperAdminInventory = () => {
       item_cost: safeParseFloat(editForm.item_cost),
       expiry_date: expiryDate,
     };
-
     try {
       setLoading(true);
       const response = await axiosInstance.put(`${BaseUrl}/inventory/${currentItem.id}`, payload);
@@ -391,9 +378,7 @@ const SuperAdminInventory = () => {
       cancelButtonColor: "#d33",
       confirmButtonText: "Yes, delete it!",
     });
-
     if (!result.isConfirmed) return;
-
     try {
       setLoading(true);
       const response = await axiosInstance.delete(`${BaseUrl}/inventory/${id}`);
@@ -449,7 +434,6 @@ const SuperAdminInventory = () => {
     }
   };
 
-  // === BULK ADD (UPDATED) ===
   const handleAddBulk = async () => {
     const invalid = bulkItems.some(
       (item) => !item.item_code || !item.item_name || !item.category || !item.unit
@@ -462,8 +446,6 @@ const SuperAdminInventory = () => {
       });
       return;
     }
-
-    // ✅ Step 1: Payload को आपके दिए गए फॉर्मेट में बनाएं
     const payload = bulkItems.map((item) => ({
       item_code: item.item_code,
       item_name: item.item_name,
@@ -475,25 +457,18 @@ const SuperAdminInventory = () => {
       item_cost: parseFloat(item.item_cost) || 0,
       expiry_date: item.expiry_date || null,
     }));
-
     try {
       setAddingBulk(true);
-      // ✅ Step 2: नया एंडपॉइंट `/inventory/createBulk` का उपयोग करें
       const res = await axiosInstance.post(`${BaseUrl}/inventory/createBulk`, payload);
-      
       if (res.data?.success) {
-        // ✅ Step 3: रिस्पॉन्स को संभालने का तरीका अपडेट करें
-        // मान लें कि API सफलता पर बनाई गई आइटम्स की अरे वापस करती है
         const newItems = res.data.data || payload.map((p, i) => ({ id: Date.now() + i, ...p }));
         setInventory((prev) => [...prev, ...newItems]);
-        
         Swal.fire({
           icon: "success",
           title: "Success!",
           text: "Bulk items added successfully!",
         });
         closeModal();
-        // फॉर्म को रीसेट करें
         setBulkItems([
           { item_code: "", item_name: "", category: "", description: "", unit: "", quantity: "", reorder_level: "", item_cost: "", expiry_date: "" },
         ]);
@@ -519,11 +494,9 @@ const SuperAdminInventory = () => {
   const itemsPerPage = 10;
   const [currentPage, setCurrentPage] = useState(1);
   useEffect(() => setCurrentPage(1), [searchTerm]);
-
   const totalPages = Math.ceil(filteredInventory.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentInventory = filteredInventory.slice(startIndex, startIndex + itemsPerPage);
-
   const goToPage = (page) => {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
@@ -621,7 +594,6 @@ const SuperAdminInventory = () => {
             </div>
           </div>
         </div>
-
         {/* Out of Stock */}
         <div className="col-md-4">
           <div
@@ -664,7 +636,6 @@ const SuperAdminInventory = () => {
             </div>
           </div>
         </div>
-
         {/* Near Expiry */}
         <div className="col-md-4">
           <div
@@ -744,6 +715,7 @@ const SuperAdminInventory = () => {
                 <th>Quantity</th>
                 <th>Reorder Level</th>
                 <th>Item Cost</th>
+                <th>Total Cost</th> {/* ✅ NEW COLUMN */}
                 <th>Expiry Date</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -752,51 +724,54 @@ const SuperAdminInventory = () => {
             <tbody>
               {currentInventory.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="text-center py-4">
+                  <td colSpan="10" className="text-center py-4">
                     {searchTerm ? "No items match your search." : "No inventory items."}
                   </td>
                 </tr>
               ) : (
-                currentInventory.map((item) => (
-                  <tr key={item.id}>
-                    <td className="fw-bold">{item.item_code}</td>
-                    <td>{item.item_name}</td>
-                    <td><span className="badge bg-light text-dark">{item.category}</span></td>
-                    <td className={item.quantity < item.reorder_level ? "text-warning" : "text-success"}>
-                      {item.quantity}
-                    </td>
-                    <td>{item.reorder_level}</td>
-                    <td>GHS {parseFloat(item.item_cost).toFixed(2)}</td>
-                    <td>
-                      {item.expiry_date ? (
-                        <span className={daysUntilExpiry(item.expiry_date) <= 30 ? "text-info" : ""}>
-                          {formatDate(item.expiry_date)}
-                        </span>
-                      ) : (
-                        "N/A"
-                      )}
-                    </td>
-                    <td>{getStatusBadge(calculateStatus(item))}</td>
-                    <td>
-                      <div className="btn-group" role="group">
-                        <button className="btn btn-sm btn-outline-success" onClick={() => openViewModal(item)}>
-                          View
-                        </button>
-                        <button className="btn btn-sm btn-outline-primary" onClick={() => openEditModal(item)}>
-                          <FaEdit />
-                        </button>
-                        <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteItem(item.id)}>
-                          <FaTimes />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                currentInventory.map((item) => {
+                  const totalCost = calculateTotalCost(item.quantity, item.item_cost);
+                  return (
+                    <tr key={item.id}>
+                      <td className="fw-bold">{item.item_code}</td>
+                      <td>{item.item_name}</td>
+                      <td><span className="badge bg-light text-dark">{item.category}</span></td>
+                      <td className={item.quantity < item.reorder_level ? "text-warning" : "text-success"}>
+                        {item.quantity}
+                      </td>
+                      <td>{item.reorder_level}</td>
+                      <td>GHS {parseFloat(item.item_cost).toFixed(2)}</td>
+                      <td><strong>GHS {totalCost}</strong></td> {/* ✅ TOTAL COST */}
+                      <td>
+                        {item.expiry_date ? (
+                          <span className={daysUntilExpiry(item.expiry_date) <= 30 ? "text-info" : ""}>
+                            {formatDate(item.expiry_date)}
+                          </span>
+                        ) : (
+                          "N/A"
+                        )}
+                      </td>
+                      <td>{getStatusBadge(calculateStatus(item))}</td>
+                      <td>
+                        <div className="btn-group" role="group">
+                          <button className="btn btn-sm btn-outline-success" onClick={() => openViewModal(item)}>
+                            View
+                          </button>
+                          <button className="btn btn-sm btn-outline-primary" onClick={() => openEditModal(item)}>
+                            <FaEdit />
+                          </button>
+                          <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteItem(item.id)}>
+                            <FaTimes />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
-
         {totalPages > 1 && (
           <nav className="d-flex justify-content-center mt-3">
             <ul className="pagination mb-0">
@@ -915,6 +890,16 @@ const SuperAdminInventory = () => {
                         required
                       />
                     </div>
+                    {/* ✅ TOTAL COST PREVIEW */}
+                    <div className="col-md-6">
+                      <label className="form-label">Total Cost (GHS) - Preview</label>
+                      <input
+                        className="form-control"
+                        value={calculateTotalCost(addForm.quantity, addForm.item_cost)}
+                        readOnly
+                        style={{ backgroundColor: "#f8f9fa" }}
+                      />
+                    </div>
                     <div className="col-md-6">
                       <label className="form-label">Expiry Date</label>
                       <input
@@ -968,6 +953,7 @@ const SuperAdminInventory = () => {
                         <th>Quantity</th>
                         <th>Reorder Level</th>
                         <th>Item Cost (GHS)</th>
+                        <th>Total Cost</th> {/* ✅ BULK PREVIEW */}
                         <th>Expiry Date</th>
                         <th>Actions</th>
                       </tr>
@@ -983,6 +969,10 @@ const SuperAdminInventory = () => {
                           <td><input type="number" className="form-control" value={item.quantity} onChange={(e) => handleBulkChange(idx, "quantity", e.target.value)} /></td>
                           <td><input type="number" className="form-control" value={item.reorder_level} onChange={(e) => handleBulkChange(idx, "reorder_level", e.target.value)} /></td>
                           <td><input type="number" step="0.01" className="form-control" value={item.item_cost} onChange={(e) => handleBulkChange(idx, "item_cost", e.target.value)} /></td>
+                          {/* ✅ TOTAL COST PER ROW */}
+                          <td className="bg-light">
+                            GHS {calculateTotalCost(item.quantity, item.item_cost)}
+                          </td>
                           <td><input type="date" className="form-control" value={item.expiry_date || ""} onChange={(e) => handleBulkChange(idx, "expiry_date", e.target.value)} /></td>
                           <td>
                             <button className="btn btn-sm btn-danger" onClick={() => removeBulkRow(idx)} disabled={bulkItems.length <= 1}>
@@ -1057,6 +1047,13 @@ const SuperAdminInventory = () => {
                 <div className="row mb-2">
                   <div className="col-5 fw-bold">Item Cost:</div>
                   <div className="col-7">GHS {parseFloat(viewItem.item_cost).toFixed(2)}</div>
+                </div>
+                {/* ✅ VIEW MODAL TOTAL COST */}
+                <div className="row mb-2">
+                  <div className="col-5 fw-bold">Total Cost:</div>
+                  <div className="col-7">
+                    <strong>GHS {calculateTotalCost(viewItem.quantity, viewItem.item_cost)}</strong>
+                  </div>
                 </div>
                 <div className="row mb-2">
                   <div className="col-5 fw-bold">Expiry Date:</div>
@@ -1165,6 +1162,16 @@ const SuperAdminInventory = () => {
                         name="item_cost"
                         value={editForm.item_cost}
                         onChange={handleInputChange}
+                      />
+                    </div>
+                    {/* ✅ EDIT PREVIEW */}
+                    <div className="col-md-6">
+                      <label className="form-label">Total Cost (GHS) - Preview</label>
+                      <input
+                        className="form-control"
+                        value={calculateTotalCost(editForm.quantity, editForm.item_cost)}
+                        readOnly
+                        style={{ backgroundColor: "#f8f9fa" }}
                       />
                     </div>
                     <div className="col-md-6">

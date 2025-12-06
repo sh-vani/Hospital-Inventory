@@ -9,7 +9,7 @@ const WarehouseRequisitions = () => {
   const [showPartialApproveModal, setShowPartialApproveModal] = useState(false);
   const [showBulkApproveModal, setShowBulkApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [showItemsModal, setShowItemsModal] = useState(false); // New state for items modal
+  const [showItemsModal, setShowItemsModal] = useState(false);
   const [currentRequisition, setCurrentRequisition] = useState(null);
   const [rejectingRequisition, setRejectingRequisition] = useState(null);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -30,6 +30,14 @@ const WarehouseRequisitions = () => {
   });
 
   const [requisitions, setRequisitions] = useState([]);
+
+  // 🔹 Helper: Check if full approval is possible (all items in stock)
+  const canFullyApprove = (req) => {
+    if (!req?.items || !Array.isArray(req.items)) return false;
+    return req.items.every(
+      (item) => (item.available_quantity || 0) >= item.quantity
+    );
+  };
 
   useEffect(() => {
     const fetchRaiseRequests = async () => {
@@ -56,12 +64,11 @@ const WarehouseRequisitions = () => {
         setLoading(false);
       }
     };
-  
+
     fetchRaiseRequests();
   }, []);
 
   const filteredRequisitions = useMemo(() => {
-    // Ensure requisitions is an array before filtering
     if (!Array.isArray(requisitions)) return [];
     return requisitions.filter(
       (req) =>
@@ -78,9 +85,8 @@ const WarehouseRequisitions = () => {
   };
 
   useEffect(() => {
-    // Ensure filteredRequisitions is an array before filtering
     if (!Array.isArray(filteredRequisitions)) return;
-    
+
     const pendingReqs = filteredRequisitions.filter(
       (req) => req.status?.toLowerCase() === "pending"
     );
@@ -127,7 +133,7 @@ const WarehouseRequisitions = () => {
     );
   };
 
-  // MODAL HANDLERS — now work on full requisition
+  // MODAL HANDLERS
   const openApproveModal = (req) => {
     setCurrentRequisition(req);
     setRemarks("");
@@ -139,16 +145,17 @@ const WarehouseRequisitions = () => {
     setRejectionReason("");
     setShowRejectModal(true);
   };
+
   const openPartialApproveModal = (req) => {
     const initial = {};
     req.items.forEach((item) => {
-      // Suggest min(requested, available)
       initial[item.id] = Math.min(item.quantity, item.available_quantity);
     });
     setPartialApproveQuantities(initial);
     setCurrentRequisition(req);
     setShowPartialApproveModal(true);
   };
+
   const openItemsModal = (req) => {
     setCurrentRequisition(req);
     setShowItemsModal(true);
@@ -163,195 +170,185 @@ const WarehouseRequisitions = () => {
     setShowBulkApproveModal(true);
   };
 
-// Simplified handleApprove — only sends requisition_id and remark
-const handleApprove = async (remarks) => {
-  if (!currentRequisition) return;
+  // APPROVAL HANDLERS
+  const handleApprove = async (remarks) => {
+    if (!currentRequisition) return;
 
-  const payload = {
-    requisition_id: currentRequisition.id, // number
-    remark: remarks.trim() || "Approved for dispatch", // note: "remark", not "remarks"
+    const payload = {
+      requisition_id: currentRequisition.id,
+      remark: remarks.trim() || "Approved for dispatch",
+    };
+
+    try {
+      setLoading(true);
+      await axios.post(`${BaseUrl}/facility-requisitions/approve`, payload);
+
+      setRequisitions((prev) =>
+        prev.map((req) =>
+          req.id === currentRequisition.id
+            ? { ...req, status: "approved" }
+            : req
+        )
+      );
+
+      setShowApproveModal(false);
+      setCurrentRequisition(null);
+      setRemarks("");
+    } catch (err) {
+      setError("Approval failed: " + (err.response?.data?.message || err.message));
+      console.error("Approve error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  try {
-    setLoading(true);
+  const handleApproveSubmit = async () => {
+    if (!currentRequisition) return;
+    await handleApprove(remarks);
+  };
 
-    // ✅ POST to /facility-requisitions/approve (no ID in URL)
-    await axios.post(`${BaseUrl}/facility-requisitions/approve`, payload);
+  const handlePartialApprove = async (approvedItems, remarks) => {
+    if (!currentRequisition) return;
 
-    // Update UI
-    setRequisitions((prev) =>
-      prev.map((req) =>
-        req.id === currentRequisition.id
-          ? { ...req, status: "approved" }
-          : req
-      )
-    );
+    const hasAtLeastOne = approvedItems.some(item => (item.approved_qty || 0) > 0);
+    if (!hasAtLeastOne) {
+      setError("At least one item must have approved quantity greater than 0.");
+      return;
+    }
 
-    setShowApproveModal(false);
-    setCurrentRequisition(null);
-    setRemarks(""); // optional: clear remarks
-  } catch (err) {
-    setError("Approval failed: " + (err.response?.data?.message || err.message));
-    console.error("Approve error:", err);
-  } finally {
-    setLoading(false);
-  }
-};
+    const payload = {
+      requisition_id: currentRequisition.id,
+      remark: remarks.trim() || "Partially approved by warehouse",
+      items: approvedItems.map(item => ({
+        item_id: item.item_id,
+        approved_quantity: item.approved_qty || 0,
+      })),
+    };
 
-// Simplified submit handler — no item mapping needed
-const handleApproveSubmit = async () => {
-  if (!currentRequisition) return;
-  await handleApprove(remarks); // only pass remarks
-};
-// ✅ PARTIAL APPROVAL — updated to match your API spec
-const handlePartialApprove = async (approvedItems, remarks) => {
-  if (!currentRequisition) return;
+    try {
+      setLoading(true);
+      await axios.post(`${BaseUrl}/facility-requisitions/approve/partial`, payload);
 
-  // Optional: ensure at least one item has quantity > 0 (you can keep or remove)
-  const hasAtLeastOne = approvedItems.some(item => (item.approved_qty || 0) > 0);
-  if (!hasAtLeastOne) {
-    setError("At least one item must have approved quantity greater than 0.");
-    return;
-  }
+      setRequisitions((prev) =>
+        prev.map((req) =>
+          req.id === currentRequisition.id
+            ? { ...req, status: "partially approved" }
+            : req
+        )
+      );
 
-  // ✅ Build payload exactly as required
-  const payload = {
-    requisition_id: currentRequisition.id,
-    remark: remarks.trim() || "Partially approved by warehouse",
-    items: approvedItems.map(item => ({
+      setShowPartialApproveModal(false);
+      setCurrentRequisition(null);
+      setRemarks("");
+      setPartialApproveQuantities({});
+    } catch (err) {
+      setError("Partial approval failed: " + (err.response?.data?.message || err.message));
+      console.error("Partial approve error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePartialApproveSubmit = async () => {
+    if (!currentRequisition) return;
+
+    const approvedItems = currentRequisition.items.map(item => ({
       item_id: item.item_id,
-      approved_quantity: item.approved_qty || 0, // include even if 0
-    })),
+      approved_qty: partialApproveQuantities[item.id] || 0,
+    }));
+
+    await handlePartialApprove(approvedItems, remarks);
   };
 
-  try {
-    setLoading(true);
-    // ✅ Correct endpoint
-    await axios.post(`${BaseUrl}/facility-requisitions/approve/partial`, payload);
+  const handleReject = async (rejectionReason) => {
+    if (!rejectingRequisition || !rejectionReason?.trim()) return;
 
-    // Update UI
-    setRequisitions((prev) =>
-      prev.map((req) =>
-        req.id === currentRequisition.id
-          ? { ...req, status: "partially approved" }
-          : req
-      )
-    );
+    const payload = {
+      requisition_id: rejectingRequisition.id,
+      remarks: rejectionReason.trim(),
+    };
 
-    setShowPartialApproveModal(false);
-    setCurrentRequisition(null);
-    setRemarks("");
-    setPartialApproveQuantities({});
-  } catch (err) {
-    setError("Partial approval failed: " + (err.response?.data?.message || err.message));
-    console.error("Partial approve error:", err);
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
+      await axios.post(`${BaseUrl}/facility-requisitions/reject`, payload);
 
-// ✅ PARTIAL SUBMIT HANDLER
-const handlePartialApproveSubmit = async () => {
-  if (!currentRequisition) return;
+      setRequisitions(prev =>
+        prev.map(req =>
+          req.id === rejectingRequisition.id
+            ? { ...req, status: "rejected" }
+            : req
+        )
+      );
 
-  const approvedItems = currentRequisition.items.map(item => ({
-    item_id: item.item_id,
-    approved_qty: partialApproveQuantities[item.id] || 0,
-  }));
-
-  await handlePartialApprove(approvedItems, remarks);
-};
-
-
-const handleReject = async (rejectionReason) => {
-  if (!rejectingRequisition || !rejectionReason?.trim()) return;
-
-  const payload = {
-    requisition_id: rejectingRequisition.id, // ✅ सिर्फ यही चाहिए
-    remarks: rejectionReason.trim(),
+      setShowRejectModal(false);
+      setRejectingRequisition(null);
+      setRejectionReason("");
+    } catch (err) {
+      setError("Rejection failed: " + (err.response?.data?.message || err.message));
+      console.error("Reject error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  try {
-    setLoading(true);
-    // ✅ नया endpoint: /facility-requisitions/reject
-    await axios.post(`${BaseUrl}/facility-requisitions/reject`, payload);
+  const handleBulkApprove = async () => {
+    if (selectedRequisitions.length === 0) {
+      setError("No requisitions selected for approval");
+      return;
+    }
 
-    // UI अपडेट: status = "rejected"
-    setRequisitions(prev =>
-      prev.map(req =>
-        req.id === rejectingRequisition.id
-          ? { ...req, status: "rejected" }
-          : req
-      )
+    const pendingReqs = requisitions.filter(
+      (req) =>
+        selectedRequisitions.includes(req.id) &&
+        req.status?.toLowerCase() === "pending"
     );
 
-    setShowRejectModal(false);
-    setRejectingRequisition(null);
-    setRejectionReason("");
-  } catch (err) {
-    setError("Rejection failed: " + (err.response?.data?.message || err.message));
-    console.error("Reject error:", err);
-  } finally {
-    setLoading(false);
-  }
-};
+    if (pendingReqs.length === 0) {
+      setError("No pending requisitions selected for approval");
+      return;
+    }
 
-const handleBulkApprove = async () => {
-  if (selectedRequisitions.length === 0) {
-    setError("No requisitions selected for approval");
-    return;
-  }
+    // 🔹 NEW: Filter only those that can be fully approved
+    const fullyApprovableReqs = pendingReqs.filter(canFullyApprove);
+    if (fullyApprovableReqs.length === 0) {
+      setError("None of the selected requisitions can be fully approved (insufficient stock).");
+      return;
+    }
 
-  // Only pending requisitions
-  const pendingReqs = requisitions.filter(
-    (req) =>
-      selectedRequisitions.includes(req.id) &&
-      req.status?.toLowerCase() === "pending"
-  );
+    const payload = {
+      requisition_ids: fullyApprovableReqs.map((req) => req.id),
+      remark: bulkRemarks.trim() || "Approved via bulk action",
+    };
 
-  if (pendingReqs.length === 0) {
-    setError("No pending requisitions selected for approval");
-    return;
-  }
+    try {
+      setLoading(true);
+      await axios.post(`${BaseUrl}/facility-requisitions/approve-bulk`, payload);
 
-  const payload = {
-    requisition_ids: pendingReqs.map((req) => req.id), // ✅ array of IDs
-    remark: bulkRemarks.trim() || "Approved via bulk action", // ✅ single remark
+      setRequisitions((prev) =>
+        prev.map((req) =>
+          fullyApprovableReqs.some((p) => p.id === req.id)
+            ? { ...req, status: "approved" }
+            : req
+        )
+      );
+
+      setSelectedRequisitions([]);
+      setSelectAll(false);
+      setShowBulkApproveModal(false);
+      setBulkRemarks("");
+    } catch (err) {
+      setError(
+        "Bulk approval failed: " + (err.response?.data?.message || err.message)
+      );
+      console.error("Bulk approve error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
-
-  try {
-    setLoading(true);
-    // ✅ POST to correct endpoint with simplified payload
-    await axios.post(`${BaseUrl}/facility-requisitions/approve-bulk`, payload);
-
-    // Update UI: mark all as approved
-    setRequisitions((prev) =>
-      prev.map((req) =>
-        pendingReqs.some((p) => p.id === req.id)
-          ? { ...req, status: "approved" }
-          : req
-      )
-    );
-
-    setSelectedRequisitions([]);
-    setSelectAll(false);
-    setShowBulkApproveModal(false);
-    setBulkRemarks("");
-  } catch (err) {
-    setError(
-      "Bulk approval failed: " + (err.response?.data?.message || err.message)
-    );
-    console.error("Bulk approve error:", err);
-  } finally {
-    setLoading(false);
-  }
-};
 
   const handleSelectRequisition = (reqId) => {
     if (selectedRequisitions.includes(reqId)) {
-      setSelectedRequisitions(
-        selectedRequisitions.filter((id) => id !== reqId)
-      );
+      setSelectedRequisitions(selectedRequisitions.filter((id) => id !== reqId));
     } else {
       setSelectedRequisitions([...selectedRequisitions, reqId]);
     }
@@ -371,10 +368,7 @@ const handleBulkApprove = async () => {
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= pagination.totalPages) {
-      setPagination({
-        ...pagination,
-        currentPage: page,
-      });
+      setPagination({ ...pagination, currentPage: page });
     }
   };
 
@@ -384,16 +378,9 @@ const handleBulkApprove = async () => {
     <div className="container-fluid">
       {/* Error Alert */}
       {error && (
-        <div
-          className="alert alert-danger alert-dismissible fade show"
-          role="alert"
-        >
+        <div className="alert alert-danger alert-dismissible fade show" role="alert">
           {error}
-          <button
-            type="button"
-            className="btn-close"
-            onClick={() => setError(null)}
-          ></button>
+          <button type="button" className="btn-close" onClick={() => setError(null)}></button>
         </div>
       )}
 
@@ -489,14 +476,11 @@ const handleBulkApprove = async () => {
                     >
                       {
                         requisitions.filter(
-                          (r) =>
-                            r.status?.toLowerCase() === status.toLowerCase()
+                          (r) => r.status?.toLowerCase() === status.toLowerCase()
                         ).length
                       }
                     </h5>
-                    <p className="card-text text-muted">
-                      {status} Requisitions
-                    </p>
+                    <p className="card-text text-muted">{status} Requisitions</p>
                   </div>
                 </div>
               </div>
@@ -505,7 +489,7 @@ const handleBulkApprove = async () => {
         ))}
       </div>
 
-      {/* Table — NOW GROUPED BY REQUISITION */}
+      {/* Table */}
       <div className="card border-0 shadow-sm">
         <div className="card-body p-0">
           <div className="table-responsive">
@@ -518,16 +502,11 @@ const handleBulkApprove = async () => {
                       onClick={handleSelectAll}
                       disabled={loading}
                     >
-                      {selectAll ? (
-                        <FaCheckSquare size={18} />
-                      ) : (
-                        <FaSquare size={18} />
-                      )}
+                      {selectAll ? <FaCheckSquare size={18} /> : <FaSquare size={18} />}
                     </button>
                   </th>
                   <th>Req ID</th>
                   <th>Facility</th>
-               
                   <th>Items</th>
                   <th>Priority</th>
                   <th>Status</th>
@@ -536,7 +515,7 @@ const handleBulkApprove = async () => {
               </thead>
               <tbody>
                 {currentItems.length > 0 ? (
-                  currentItems.map((req,index) => (
+                  currentItems.map((req) => (
                     <tr key={req.id}>
                       <td>
                         {req.status?.toLowerCase() === "pending" && (
@@ -555,7 +534,6 @@ const handleBulkApprove = async () => {
                       </td>
                       <td>{req.requisition_id}</td>
                       <td>{req.facility_name || "N/A"}</td>
-                  
                       <td>
                         <div className="d-flex align-items-center">
                           <span className="badge bg-secondary me-2">
@@ -563,7 +541,7 @@ const handleBulkApprove = async () => {
                           </span>
                           <button
                             className="btn btn-sm btn-outline-primary"
-                            onClick={() => openItemsModal(req)} // Added click handler
+                            onClick={() => openItemsModal(req)}
                           >
                             View Items
                           </button>
@@ -576,35 +554,42 @@ const handleBulkApprove = async () => {
                         <StatusBadge status={req.status} />
                       </td>
                       <td>
-  <div className="d-flex gap-1 flex-wrap">
-    {req.status?.toLowerCase() === "pending" && (
-      <>
-        <button
-          className="btn btn-sm btn-success"
-          onClick={() => openApproveModal(req)}
-          disabled={loading}
-        >
-          Approve All
-        </button>
-        <button
-          className="btn btn-sm btn-warning"
-          onClick={() => openPartialApproveModal(req)}
-          disabled={loading}
-        >
-          Partial
-        </button>
-        <button
-  className="btn btn-danger"
-  onClick={() => openRejectModal(req)}
-  disabled={loading}
->
-  {loading ? "Processing..." : "Reject"}
-</button>
-      </>
-    )}
-  </div>
-</td>
+                        <div className="d-flex gap-1 flex-wrap">
+                          {req.status?.toLowerCase() === "pending" && (
+                            <>
+                              {/* ✅ Approve All — conditionally enabled */}
+                              <button
+                                className="btn btn-sm btn-success"
+                                onClick={() => openApproveModal(req)}
+                                disabled={!canFullyApprove(req) || loading}
+                                title={
+                                  !canFullyApprove(req)
+                                    ? "Not enough stock for full approval"
+                                    : ""
+                                }
+                              >
+                                Approve All
+                              </button>
 
+                              <button
+                                className="btn btn-sm btn-warning"
+                                onClick={() => openPartialApproveModal(req)}
+                                disabled={loading}
+                              >
+                                Partial
+                              </button>
+
+                              <button
+                                className="btn btn-danger"
+                                onClick={() => openRejectModal(req)}
+                                disabled={loading}
+                              >
+                                {loading ? "Processing..." : "Reject"}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -623,12 +608,8 @@ const handleBulkApprove = async () => {
       {/* Pagination */}
       <div className="d-flex justify-content-between align-items-center mt-3">
         <div>
-          Showing {(pagination.currentPage - 1) * pagination.itemsPerPage + 1}{" "}
-          to{" "}
-          {Math.min(
-            pagination.currentPage * pagination.itemsPerPage,
-            pagination.totalItems
-          )}{" "}
+          Showing {(pagination.currentPage - 1) * pagination.itemsPerPage + 1} to{" "}
+          {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)}{" "}
           of {pagination.totalItems} entries
         </div>
         <div className="btn-group" role="group">
@@ -644,23 +625,21 @@ const handleBulkApprove = async () => {
             type="button"
             className="btn btn-outline-primary"
             onClick={() => handlePageChange(pagination.currentPage + 1)}
-            disabled={
-              pagination.currentPage === pagination.totalPages || loading
-            }
+            disabled={pagination.currentPage === pagination.totalPages || loading}
           >
             Next
           </button>
         </div>
       </div>
 
+      {/* 🔹 REMAINING MODALS: no change needed — already correct */}
       {/* View Items Modal */}
       {showItemsModal && currentRequisition && (
         <div
           className="modal fade show d-block"
           tabIndex="-1"
           onClick={(e) => {
-            if (e.target.classList.contains("modal"))
-              setShowItemsModal(false);
+            if (e.target.classList.contains("modal")) setShowItemsModal(false);
           }}
         >
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -674,29 +653,15 @@ const handleBulkApprove = async () => {
                 ></button>
               </div>
               <div className="modal-body">
-                <p>
-                  <strong>Requisition ID:</strong> #{currentRequisition.id}
-                </p>
-                <p>
-                  <strong>Facility:</strong> {currentRequisition.facility_name}
-                </p>
-                <p>
-                  <strong>User:</strong> {currentRequisition.user_name} ({currentRequisition.user_email})
-                </p>
-                <p>
-                  <strong>Status:</strong> <StatusBadge status={currentRequisition.status} />
-                </p>
-                <p>
-                  <strong>Priority:</strong> <PriorityBadge priority={currentRequisition.priority} />
-                </p>
+                <p><strong>Requisition ID:</strong> #{currentRequisition.id}</p>
+                <p><strong>Facility:</strong> {currentRequisition.facility_name}</p>
+                <p><strong>User:</strong> {currentRequisition.user_name} ({currentRequisition.user_email})</p>
+                <p><strong>Status:</strong> <StatusBadge status={currentRequisition.status} /></p>
+                <p><strong>Priority:</strong> <PriorityBadge priority={currentRequisition.priority} /></p>
                 {currentRequisition.remarks && (
-                  <p>
-                    <strong>Remarks:</strong> {currentRequisition.remarks}
-                  </p>
+                  <p><strong>Remarks:</strong> {currentRequisition.remarks}</p>
                 )}
-                <p>
-                  <strong>Items:</strong>
-                </p>
+                <p><strong>Items:</strong></p>
                 <div className="table-responsive">
                   <table className="table table-sm table-bordered">
                     <thead className="table-light">
@@ -722,25 +687,18 @@ const handleBulkApprove = async () => {
                             <td>{item.delivered_quantity || 0}</td>
                             <td>{item.available_quantity}</td>
                             <td>{item.unit}</td>
-                            <td>
-                              <PriorityBadge priority={item.priority} />
-                            </td>
+                            <td><PriorityBadge priority={item.priority} /></td>
                           </tr>
                         ))
                       ) : (
-                        <tr>
-                          <td colSpan="8" className="text-center">No items available</td>
-                        </tr>
+                        <tr><td colSpan="8" className="text-center">No items available</td></tr>
                       )}
                     </tbody>
                   </table>
                 </div>
               </div>
               <div className="modal-footer">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setShowItemsModal(false)}
-                >
+                <button className="btn btn-secondary" onClick={() => setShowItemsModal(false)}>
                   Close
                 </button>
               </div>
@@ -749,14 +707,13 @@ const handleBulkApprove = async () => {
         </div>
       )}
 
-      {/* Approve Modal (Full Requisition) */}
+      {/* Approve Modal */}
       {showApproveModal && currentRequisition && (
         <div
           className="modal fade show d-block"
           tabIndex="-1"
           onClick={(e) => {
-            if (e.target.classList.contains("modal"))
-              setShowApproveModal(false);
+            if (e.target.classList.contains("modal")) setShowApproveModal(false);
           }}
         >
           <div className="modal-dialog modal-dialog-centered modal-lg">
@@ -770,16 +727,9 @@ const handleBulkApprove = async () => {
                 ></button>
               </div>
               <div className="modal-body">
-                <p>
-                  <strong>Requisition ID:</strong> #{currentRequisition.id}
-                </p>
-                <p>
-                  <strong>Facility:</strong> {currentRequisition.facility_name}
-                </p>
-               
-                <p>
-                  <strong>Items:</strong>
-                </p>
+                <p><strong>Requisition ID:</strong> #{currentRequisition.id}</p>
+                <p><strong>Facility:</strong> {currentRequisition.facility_name}</p>
+                <p><strong>Items:</strong></p>
                 <div className="table-responsive">
                   <table className="table table-sm">
                     <thead>
@@ -803,9 +753,7 @@ const handleBulkApprove = async () => {
                           </tr>
                         ))
                       ) : (
-                        <tr>
-                          <td colSpan="5" className="text-center">No items available</td>
-                        </tr>
+                        <tr><td colSpan="5" className="text-center">No items available</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -848,16 +796,13 @@ const handleBulkApprove = async () => {
           className="modal fade show d-block"
           tabIndex="-1"
           onClick={(e) => {
-            if (e.target.classList.contains("modal"))
-              setShowPartialApproveModal(false);
+            if (e.target.classList.contains("modal")) setShowPartialApproveModal(false);
           }}
         >
           <div className="modal-dialog modal-dialog-centered modal-lg">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title fw-bold">
-                  Partially Approve Requisition
-                </h5>
+                <h5 className="modal-title fw-bold">Partially Approve Requisition</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -865,15 +810,9 @@ const handleBulkApprove = async () => {
                 ></button>
               </div>
               <div className="modal-body">
-                <p>
-                  <strong>Requisition ID:</strong> #{currentRequisition.id}
-                </p>
-                <p>
-                  <strong>Facility:</strong> {currentRequisition.facility_name}
-                </p>
-                <p>
-                  <strong>Set approved quantities:</strong>
-                </p>
+                <p><strong>Requisition ID:</strong> #{currentRequisition.id}</p>
+                <p><strong>Facility:</strong> {currentRequisition.facility_name}</p>
+                <p><strong>Set approved quantities:</strong></p>
                 <div className="table-responsive">
                   <table className="table table-sm">
                     <thead>
@@ -888,9 +827,8 @@ const handleBulkApprove = async () => {
                     </thead>
                     <tbody>
                       {currentRequisition.items && currentRequisition.items.length > 0 ? (
-                        currentRequisition.items.map((item,index) => (
+                        currentRequisition.items.map((item, index) => (
                           <tr key={index}>
-
                             <td>{item.item_name}</td>
                             <td>{item.item_code}</td>
                             <td>{item.quantity}</td>
@@ -914,9 +852,7 @@ const handleBulkApprove = async () => {
                           </tr>
                         ))
                       ) : (
-                        <tr>
-                          <td colSpan="6" className="text-center">No items available</td>
-                        </tr>
+                        <tr><td colSpan="6" className="text-center">No items available</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -959,16 +895,13 @@ const handleBulkApprove = async () => {
           className="modal fade show d-block"
           tabIndex="-1"
           onClick={(e) => {
-            if (e.target.classList.contains("modal"))
-              setShowBulkApproveModal(false);
+            if (e.target.classList.contains("modal")) setShowBulkApproveModal(false);
           }}
         >
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title fw-bold">
-                  Bulk Approve Requisitions
-                </h5>
+                <h5 className="modal-title fw-bold">Bulk Approve Requisitions</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -976,10 +909,7 @@ const handleBulkApprove = async () => {
                 ></button>
               </div>
               <div className="modal-body">
-                <p>
-                  <strong>Selected Requisitions:</strong>{" "}
-                  {selectedRequisitions.length}
-                </p>
+                <p><strong>Selected Requisitions:</strong> {selectedRequisitions.length}</p>
                 <div className="mb-3">
                   <label className="form-label">Remarks</label>
                   <textarea
@@ -991,7 +921,7 @@ const handleBulkApprove = async () => {
                   ></textarea>
                 </div>
                 <div className="alert alert-info">
-                  This will approve all the selected requisitions.
+                  Only fully approvable requisitions (with sufficient stock) will be approved.
                 </div>
               </div>
               <div className="modal-footer">
@@ -1007,9 +937,7 @@ const handleBulkApprove = async () => {
                   onClick={handleBulkApprove}
                   disabled={loading}
                 >
-                  {loading
-                    ? "Processing..."
-                    : `Approve ${selectedRequisitions.length} Requisitions`}
+                  {loading ? "Processing..." : `Approve Selected`}
                 </button>
               </div>
             </div>
@@ -1037,13 +965,8 @@ const handleBulkApprove = async () => {
                 ></button>
               </div>
               <div className="modal-body">
-                <p>
-                  <strong>Requisition ID:</strong> #{rejectingRequisition.id}
-                </p>
-                <p>
-                  <strong>Facility:</strong>{" "}
-                  {rejectingRequisition.facility_name}
-                </p>
+                <p><strong>Requisition ID:</strong> #{rejectingRequisition.id}</p>
+                <p><strong>Facility:</strong> {rejectingRequisition.facility_name}</p>
                 <div className="mb-3">
                   <label className="form-label">
                     Reason for rejection <span className="text-danger">*</span>
@@ -1067,12 +990,12 @@ const handleBulkApprove = async () => {
                   Cancel
                 </button>
                 <button
-  className="btn btn-danger"
-  onClick={() => handleReject(rejectionReason)} // ✅ अब सही रीजन पास होगा
-  disabled={loading}
->
-  {loading ? "Processing..." : "Reject"}
-</button>
+                  className="btn btn-danger"
+                  onClick={() => handleReject(rejectionReason)}
+                  disabled={loading}
+                >
+                  {loading ? "Processing..." : "Reject"}
+                </button>
               </div>
             </div>
           </div>
@@ -1084,9 +1007,7 @@ const handleBulkApprove = async () => {
         showPartialApproveModal ||
         showRejectModal ||
         showBulkApproveModal ||
-        showItemsModal) && (
-        <div className="modal-backdrop fade show"></div>
-      )}
+        showItemsModal) && <div className="modal-backdrop fade show"></div>}
     </div>
   );
 };
